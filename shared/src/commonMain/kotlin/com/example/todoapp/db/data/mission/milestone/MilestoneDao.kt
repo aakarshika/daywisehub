@@ -1,0 +1,94 @@
+package com.example.todoapp.db.data.mission.milestone
+
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.RoomWarnings
+import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface MilestoneDao {
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertMilestone(milestone: Milestone): Long
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertMilestoneProgressData(milestoneProgressData: MilestoneProgressData)
+
+
+    @Query("""
+        SELECT mpd.*, 
+                mls.* 
+        FROM milestone mls 
+        Left join milestone_progress_data mpd ON mls.milestone_id = mpd.mpd_milestone_id 
+        WHERE milestone_id = :milestoneId ORDER BY milestone_order ASC 
+    """)
+     fun getMilestoneById(milestoneId: Long): Flow<Milestone?>
+
+    @Query("""
+        SELECT 
+            mpd.*,
+            mls.* 
+            FROM milestone mls 
+        Left join milestone_progress_data mpd ON mls.milestone_id = mpd.mpd_milestone_id 
+        WHERE mls.mile_mission_id = :missionId ORDER BY milestone_order ASC 
+    """)
+    fun getMilestonesByMissionId(missionId: Long): Flow<List<Milestone>>
+
+    @Query("""
+        SELECT 
+        mls.*,
+        mpd.*,
+        m.*,
+        p.*
+        FROM milestone mls 
+        LEFT JOIN milestone_progress_data mpd ON mls.milestone_id = mpd.mpd_milestone_id
+        LEFT JOIN mission m ON m.mission_id = mls.mile_mission_id
+        LEFT JOIN mission_pillar_mapping pm ON pm.mission_mapping_id = m.mission_id
+        LEFT JOIN pillar p ON p.pillar_id = pm.pillar_mapping_id
+        WHERE 
+            m.user_id = :userId and 
+            (mpd.actual_completion_date = :date or mls.expected_completion_date = :date )
+            """
+    )
+    fun getAllMilestonesForDate(userId: Long, date: String): Flow<List<MilestoneWithDetails>>
+
+    @Query("""
+        SELECT 
+        mls.*,
+        mpd.*,
+        m.*,
+        p.*
+        FROM milestone mls 
+        LEFT JOIN milestone_progress_data mpd ON mls.milestone_id = mpd.mpd_milestone_id
+        LEFT JOIN mission m ON m.mission_id = mls.mile_mission_id
+        LEFT JOIN mission_pillar_mapping pm ON pm.mission_mapping_id = m.mission_id
+        LEFT JOIN pillar p ON p.pillar_id = pm.pillar_mapping_id
+        WHERE 
+            m.mission_id = :missionId and 
+            (mpd.actual_completion_date = :date or mls.expected_completion_date = :date )
+            """
+    )
+    fun getAllMilestonesForDateAndMission (date: String, missionId:Long): Flow<List<MilestoneWithDetails>>
+    @Query("""
+        SELECT 
+        mls.*,
+        mpd.*,
+        m.*,
+        p.*
+        FROM milestone mls 
+        LEFT JOIN milestone_progress_data mpd ON mls.milestone_id = mpd.mpd_milestone_id
+        LEFT JOIN mission m ON m.mission_id = mls.mile_mission_id
+        LEFT JOIN mission_pillar_mapping pm ON pm.mission_mapping_id = m.mission_id
+        LEFT JOIN pillar p ON p.pillar_id = pm.pillar_mapping_id
+        WHERE 
+            m.user_id = :userId 
+            """
+    )
+    fun getAllMilestones(userId: Long): Flow<List<MilestoneWithDetails>>
+
+    // Query to get milestone progress data by milestone ID
+    @Query("SELECT * FROM milestone_progress_data WHERE mpd_milestone_id = :milestoneId")
+     fun getMilestoneProgressDataByMilestoneId(milestoneId: Long): Flow<MilestoneProgressData?>
+}

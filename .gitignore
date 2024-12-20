@@ -1,0 +1,53 @@
+# Common
+.gradle/
+build/
+.idea/
+*.iml
+*.log
+.DS_Store
+local.properties
+*.hprof
+.gradle/caches/
+.gradle/gradle.properties
+
+# Android specific
+*.apk
+*.ap_
+*.dex
+*.class
+*.so
+*.jar
+*.keystore
+/captures/
+/output.json
+/.externalNativeBuild/
+
+# iOS specific
+**/xcuserdata/
+**/DerivedData/
+Pods/
+Podfile.lock
+*.mode1v3
+*.pbxuser
+!default.pbxuser
+*.xcworkspace/
+*.xcuserstate
+
+# Kotlin/Multiplatform
+.idea/kotlin.multiplatform.idea.settings.xml
+.kotlin/
+*.kotlin_module
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.*
+
+# MacOS
+*.DS_Store
+
+# JetBrains IDEs
+.idea/
+*.iml

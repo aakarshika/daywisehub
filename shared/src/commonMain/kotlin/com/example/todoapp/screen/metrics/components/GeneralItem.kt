@@ -1,0 +1,35 @@
+package com.example.todoapp.screen.metrics.components
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
+import com.example.todoapp.screen.basicblocks.WriteText
+
+@Composable
+fun GeneralItem(
+                todoTask: TodayTaskWithFewDetails?
+) {
+    Box(modifier = Modifier.fillMaxWidth().height(40.dp).padding(horizontal = 20.dp)){
+        Row(modifier = Modifier.fillMaxWidth()
+        ){
+            columnWeights.forEachIndexed { i, item->
+                Box(
+                    modifier = Modifier.wrapContentHeight().fillMaxWidth()
+                        .weight(columnWeights[i])
+                ){
+                    if(i == 1) {
+                        WriteText(text = " ${todoTask?.mission?.missionTitle?:""}")
+                    }
+                }
+            }
+        }
+    }
+
+}
