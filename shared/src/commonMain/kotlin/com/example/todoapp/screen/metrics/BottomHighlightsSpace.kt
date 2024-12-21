@@ -36,13 +36,19 @@ import androidx.compose.ui.unit.sp
 import com.example.todoapp.db.data.todotask.TodayTaskWithDetails
 import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
 import com.example.todoapp.db.models.MyDate
+import kotlinx.datetime.LocalDate
 
 @Composable
  fun BottomHighlightsSpace(
-    selection: MyDate,
-    selectedTaskList: List<TodayTaskWithFewDetails>?,
+    selection: LocalDate,
+    bottomHighlightsViewModel: BottomHighlightsViewModel,
     onExpandClicked: () -> Unit
 ) {
+    val selectedTaskList: List<TodayTaskWithFewDetails>? by bottomHighlightsViewModel.dayTasks.collectAsState(emptyList())
+
+    LaunchedEffect(selection) {
+        bottomHighlightsViewModel.loadTaskDetails()
+    }
     val allTasks = (selectedTaskList?: listOf() )
 //        .sortedBy { t-> t.missionWithDetails.pillar?.pillarName }
         .sortedBy { t-> t.todayTask.taskStatus }
@@ -90,7 +96,7 @@ import com.example.todoapp.db.models.MyDate
             ) {
                 // Heading
                 BasicText(
-                    text = "${selection.dateString}",
+                    text = "${selection.dayOfMonth} ${selection.month}",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold

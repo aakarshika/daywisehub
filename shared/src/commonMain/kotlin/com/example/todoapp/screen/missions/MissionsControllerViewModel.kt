@@ -1,5 +1,6 @@
 package com.example.todoapp.screen.missions
 
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
@@ -12,11 +13,14 @@ import com.example.todoapp.repo.MissionRepository
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.collectLatest
+import kotlin.random.Random
 
 class MissionsControllerViewModel constructor(
     private val missionRepository: MissionRepository
 ) : ViewModel() {
-
+    val randPaddings = List(100) {
+        Pair(Random.nextInt(0, 31).dp, Random.nextInt(0, 11).dp)
+    }
     val pillars = listOf(
             Pillar(
                 pillarId = 1L,

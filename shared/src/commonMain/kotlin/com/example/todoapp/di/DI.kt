@@ -8,10 +8,13 @@ import com.example.todoapp.repo.TodayTaskRepository
 import com.example.todoapp.repo.UserRepository
 import com.example.todoapp.screen.globalViewModels.UserViewModel
 import com.example.todoapp.screen.init.InitViewModel
+import com.example.todoapp.screen.metrics.BottomHighlightsViewModel
 import com.example.todoapp.screen.metrics.CalDiaryViewModel
+import com.example.todoapp.screen.metrics.DiaryViewModel
 import com.example.todoapp.screen.missions.MissionItemViewModel
 import com.example.todoapp.screen.missions.MissionsControllerViewModel
 import com.example.todoapp.screen.missions.calendar.progress.DayMissionProgressViewModel
+import kotlinx.datetime.LocalDate
 import org.koin.core.Koin
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
@@ -38,8 +41,10 @@ fun vmModule(): Module {
         factory { (missionId: Long) -> MissionItemViewModel(get(), missionId) } // for dynamic MissionItemViewModel
 
         factory { (day: MyDate, missionId: Long) -> DayMissionProgressViewModel(get(), day, missionId) }
+        factory { (day: LocalDate, n: Int) -> DiaryViewModel(get(), day, n) }
+        factory { (day: LocalDate) -> BottomHighlightsViewModel(get(), day) }
 
-        factory { CalDiaryViewModel(get()) }
+        single { CalDiaryViewModel(get()) }
 
     }
 }

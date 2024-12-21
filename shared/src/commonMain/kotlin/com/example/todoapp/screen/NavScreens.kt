@@ -65,7 +65,7 @@ fun NavScreens() {
             }
         }
     ) { innerPadding ->
-        Box(modifier = Modifier.padding(10.dp)) {
+        Box(modifier = Modifier) {
             NavHost(
                 navigator = navigator,
                 navTransition = NavTransition(),

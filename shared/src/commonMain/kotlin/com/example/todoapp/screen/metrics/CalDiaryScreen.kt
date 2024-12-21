@@ -53,6 +53,7 @@ import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.di.KoinF
 import com.example.todoapp.getScreenHeight
 import com.example.todoapp.getScreenWidth
+import com.example.todoapp.getTopCalHeight
 import com.example.todoapp.screen.missions.Orange80
 import com.example.todoapp.screen.missions.Red80
 import com.example.todoapp.screen.missions.calendar.progress.DayMissionProgressViewModel
@@ -79,144 +80,121 @@ import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.number
+import org.koin.core.parameter.parametersOf
 
 
 @Composable
-fun CalDiaryScreen( mode:String) {
+fun CalDiaryScreen(mode: String, calDateViewModel: CalDiaryViewModel) {
 
+    val screenHeightDp = getScreenHeight()
+    val screenWidthDp = getScreenWidth()
+    val topCalHeight = getTopCalHeight()
 
-    val screenHeightDp = getScreenHeight() // Screen width in dp
-    val screenWidthDp = getScreenWidth() // Screen width in dp
+    var diaryViewMode by remember { mutableStateOf(mode) }
+    var dateFilterMode by remember { mutableStateOf("NORMAL") } // NORMAL/SELECTED Mission/Pillar
 
-    var selectedDate by remember { mutableStateOf<LocalDate>( LocalDate.now())}
+    val diaryHeight by animateDpAsState(
+        targetValue = if (diaryViewMode == "DIARY_MODE") (screenHeightDp - topCalHeight) else (screenHeightDp - 500.dp)
+    )
+    val diaryWidth by animateDpAsState(
+        targetValue = if (diaryViewMode == "DIARY_MODE") screenWidthDp else (screenWidthDp - 100.dp)
+    )
+    val calHeight by animateDpAsState(
+        targetValue = if (diaryViewMode == "DIARY_MODE") 100.dp else screenHeightDp
+    )
+    val diaryAlpha by animateFloatAsState(
+        targetValue = if (diaryViewMode == "DIARY_MODE") 1f else 0f
+    )
 
-    var mutableDiaryViewMode = remember { mutableStateOf( mode ) }
-    var dateFilterMode by remember { mutableStateOf("NORMAL") } //NORMAL/ SELECTED Mission/ pillar
+    val currentDate by calDateViewModel.currentDate.collectAsState()
+    val missions by calDateViewModel.missionIds.collectAsState(emptyList())
 
-    val diaryViewMode = mutableDiaryViewMode.value
-
-    val diaryHeight by animateDpAsState(targetValue = if (diaryViewMode=="DIARY_MODE") (screenHeightDp-100.dp) else (screenHeightDp-500.dp))
-    val diaryWidth by animateDpAsState(targetValue = if (diaryViewMode=="DIARY_MODE") (screenWidthDp) else (screenWidthDp-100.dp))
-
-    val calHeight by animateDpAsState(targetValue = if (diaryViewMode=="DIARY_MODE") 100.dp else screenHeightDp)
-
-    val diaryAlpha by animateFloatAsState(targetValue = if (diaryViewMode=="DIARY_MODE") 1f else 0f)
-
-
-    val diaryViewModel = KoinF.di?.get<CalDiaryViewModel>()!!
-    val selectedTaskList: List<TodayTaskWithFewDetails>? by diaryViewModel.dayTasks.collectAsState(emptyList())
-
-    LaunchedEffect(selectedDate){
-        diaryViewModel.loadTaskDetails()
+    LaunchedEffect(Unit) {
+        calDateViewModel.loadMissionIds()
     }
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-//            .background(CalendarGradientA),
-    ) {
 
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .align(Alignment.TopCenter)
+    Box(modifier = Modifier.fillMaxSize()) {
+        CalendarArea(
+            selectedDate = currentDate,
+            diaryViewMode = diaryViewMode,
+            expandAlpha = diaryAlpha,
+            onDateClicked = { date -> calDateViewModel.selectDate(date) },
+            onCollapseClicked = { diaryViewMode = "CALENDAR_MODE" },
+            onExpandClicked = { diaryViewMode = "DIARY_MODE" }
+        )
+
+        Box(
+            modifier = Modifier
+                .height(diaryHeight)
+                .width(diaryWidth)
+                .align(Alignment.BottomCenter)
         ) {
-
-            CalendarArea(
-                selectedDate = selectedDate,
-                diaryViewMode = mutableDiaryViewMode,
-                calHeight = calHeight,
-                expandAlpha = diaryAlpha,
-                onDateClicked = { date ->
-                    selectedDate = date
-                    diaryViewModel.selectDate(selectedDate)
-                },
-                onCollapseClicked = {
-                    mutableDiaryViewMode.value = "CALENDAR_MODE"
-                },
-                onExpandClicked = {
-                    mutableDiaryViewMode.value = "DIARY_MODE"
-                }
-            )
-
-        }
-        Box(modifier = Modifier
-            .height(diaryHeight)
-            .width(diaryWidth)
-            .align(Alignment.BottomCenter)
-        ){
-            Box(
-                modifier = Modifier
-                    .alpha(diaryAlpha)
-            ) {
-                Text("Yo diary")
-                DiaryScreen(selectedTaskList, diaryViewModel)
+            Box(modifier = Modifier.alpha(diaryAlpha)) {
+                DiaryScreen(
+                    selection = currentDate,
+                    diaryViewModel = KoinF.di?.get<DiaryViewModel> {
+                        parametersOf(currentDate, missions.size)
+                    } ?: error("DiaryViewModel not found")
+                )
             }
-            Box(modifier = Modifier
-                .alpha(1f-diaryAlpha)
-            ){
-                Text("Yo")
+            Box(modifier = Modifier.alpha(1f - diaryAlpha)) {
                 BottomHighlightsSpace(
-                    selection = MyDate.fromLocalDate(selectedDate),
-                    selectedTaskList,
-                    onExpandClicked = {
-                        mutableDiaryViewMode.value = "DIARY_MODE"
-                    }
+                    selection = currentDate,
+                    bottomHighlightsViewModel = KoinF.di?.get<BottomHighlightsViewModel> {
+                        parametersOf(currentDate)
+                    } ?: error("BottomHighlightsViewModel not found"),
+                    onExpandClicked = { diaryViewMode = "DIARY_MODE" }
                 )
             }
         }
     }
 }
 
-
 @Composable
 private fun CalendarArea(
     selectedDate: LocalDate,
     onDateClicked: (LocalDate) -> Unit,
-    onCollapseClicked : () -> Unit,
-    onExpandClicked : () -> Unit,
-    diaryViewMode: MutableState<String>,
-    expandAlpha: Float,
-    calHeight: Dp
+    onCollapseClicked: () -> Unit,
+    onExpandClicked: () -> Unit,
+    diaryViewMode: String,
+    expandAlpha: Float
 ) {
 
-
-//    val dayTasks: Map<String, List<TodayTaskWithDetails>>
-    val dayMilestones: List<MilestoneWithDetails>
-    val screenHeightDp = getScreenHeight() // Screen width in dp
-
-    val calBigHeight by animateDpAsState(targetValue = if (diaryViewMode.value=="DIARY_MODE") 0.dp else screenHeightDp )
-    val calWeekHeight by animateDpAsState(targetValue = if (diaryViewMode.value=="DIARY_MODE") 100.dp else 0.dp)
+    val screenHeightDp = getScreenHeight()
+    val calBigHeight by animateDpAsState(
+        targetValue = if (diaryViewMode == "DIARY_MODE") 0.dp else screenHeightDp
+    )
+    val calWeekHeight by animateDpAsState(
+        targetValue = if (diaryViewMode == "DIARY_MODE") 100.dp else 0.dp
+    )
 
     val currentDate = remember { LocalDate.now() }
-
-    var dragCalendarDownOffset by remember { mutableStateOf(0f) }
-
     val currentMonth = remember { YearMonth.now() }
-    val currentYear = remember { currentMonth.year }
 
-    val startMonth = remember { currentMonth.minusYears(3) } // Adjust as needed
-    val endMonth = remember { currentMonth.plusYears(3) } // Adjust as needed
-    val firstDayOfWeek = remember { firstDayOfWeekFromLocale() } // Available from the library
+    val startMonth = remember { currentMonth.minusYears(3) }
+    val endMonth = remember { currentMonth.plusYears(3) }
+    val firstDayOfWeek = remember { firstDayOfWeekFromLocale() }
 
     val daysOfWeek = daysOfWeek(firstDayOfWeek = DayOfWeek.SUNDAY)
     val state = rememberCalendarState(
         startMonth = startMonth,
         endMonth = endMonth,
         firstVisibleMonth = currentMonth,
-        firstDayOfWeek = firstDayOfWeek,
+        firstDayOfWeek = firstDayOfWeek
     )
     val weekState = rememberWeekCalendarState(
         startDate = startMonth.atStartOfMonth(),
         endDate = endMonth.atEndOfMonth(),
         firstVisibleWeekDate = currentDate,
-        firstDayOfWeek = daysOfWeek.first(),
+        firstDayOfWeek = daysOfWeek.first()
     )
 
-    Box(){
+    Box {
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .alpha(expandAlpha)
-        ) { //expand
+        ) {
             WeekCalendar(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -224,14 +202,9 @@ private fun CalendarArea(
                     .pointerInput(Unit) {
                         detectVerticalDragGestures(
                             onVerticalDrag = { change, dragAmount ->
-                                // Process drag gestures
-                                change.consume() // Consume the event
-                                dragCalendarDownOffset += dragAmount
+                                change.consume()
                             },
-                            onDragEnd = {
-                                onCollapseClicked()
-                                dragCalendarDownOffset = 0f
-                            }
+                            onDragEnd = { onCollapseClicked() }
                         )
                     },
                 state = weekState,
@@ -242,61 +215,52 @@ private fun CalendarArea(
                         isSelected = selectedDate == day.date,
                         onDateClicked
                     )
-                },
+                }
             )
         }
-        Box(){
-            Box(
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .alpha(1f - expandAlpha)
+        ) {
+            VerticalCalendar(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .alpha(1f-expandAlpha)
-            ) {
-                VerticalCalendar(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(calBigHeight),
-                    state = state,
-                    calendarScrollPaged = false,
-                    dayContent = { day ->
-                        MonthDay(
-                            day,
-                            isSelected = selectedDate == day.date,
-                            onDateClicked
-                        )
-                    },
-                    monthBody = { month, content ->
-                        Box(
-                            modifier = Modifier.background(
-                                brush = Brush.verticalGradient(
-                                    colors = if (month.yearMonth.month.number % 2 == 0) listOf(
-                                        CalendarGradientA,
-                                        CalendarGradientB
-                                    ) else listOf(
-                                        CalendarGradientB,
-                                        CalendarGradientA
-                                    )
-                                )
+                    .fillMaxWidth()
+                    .height(calBigHeight),
+                state = state,
+                calendarScrollPaged = false,
+                dayContent = { day ->
+                    MonthDay(
+                        day,
+                        isSelected = selectedDate == day.date,
+                        onDateClicked
+                    )
+                },
+                monthBody = { month, content ->
+                    Box(
+                        modifier = Modifier.background(
+                            brush = Brush.verticalGradient(
+                                colors = if (month.yearMonth.month.number % 2 == 0)
+                                    listOf(CalendarGradientA, CalendarGradientB)
+                                else
+                                    listOf(CalendarGradientB, CalendarGradientA)
                             )
-                        ) {
-                            content()
-                        }
-                    },
-                    monthContainer = { month, container ->
-                        Column(modifier = Modifier.fillMaxWidth()) { // Wrap month in a Column
-                            MonthHeader(month) // Display month header
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                            ) {
-                                container()
-                            }
-                        }
+                        )
+                    ) {
+                        content()
                     }
-                )
-            }
+                },
+                monthContainer = { month, container ->
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        MonthHeader(month)
+                        Box(modifier = Modifier.fillMaxWidth()) { container() }
+                    }
+                }
+            )
         }
     }
 }
+
 
 @Composable
 fun WeekDay(
@@ -527,3 +491,4 @@ private fun MonthHeader(month: CalendarMonth) {
 
 val CalendarGradientA = Color(0xFFFFFBF0)
 val CalendarGradientB = Color(0xFFFCECE7)
+

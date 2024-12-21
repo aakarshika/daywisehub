@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import co.touchlab.kermit.Logger
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -12,7 +13,10 @@ interface TodayTaskDao {
 
     //insert
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertTodayTask(todayTask: TodayTask): Long
+    suspend fun insertTodayTask(todayTask: TodayTask): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun updateTodayTask(todayTask: TodayTask)
 
     //insert today task reminder
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -40,6 +44,32 @@ interface TodayTaskDao {
         LEFT JOIN mission_frequency mf ON tt.task_mission_id = mf.fs_mission_id
         """)
     fun getTodayTaskWithDetails(): Flow<List<TodayTaskWithFewDetails>>
+
+
+    @Query("""SELECT tt.*,tr.*,m.*,p.*,mf.* 
+        FROM today_task  tt
+        LEFT JOIN today_task_reminder tr ON tt.today_task_id = tr.rem_task_id
+        LEFT JOIN mission m ON tt.task_mission_id = m.mission_id
+        LEFT JOIN mission_pillar_mapping mp ON m.mission_id = mp.mission_mapping_id 
+        LEFT JOIN pillar p ON mp.pillar_mapping_id = p.pillar_id
+        LEFT JOIN mission_frequency mf ON tt.task_mission_id = mf.fs_mission_id
+        where tt.task_date = :date
+        """)
+    fun getAllTasksForDate1(date: String): Flow<List<TodayTaskWithFewDetails>>
+
+
+
+    @Query("""SELECT tt.*,tr.*,m.*,p.*,mf.* 
+        FROM today_task  tt
+        LEFT JOIN today_task_reminder tr ON tt.today_task_id = tr.rem_task_id
+        LEFT JOIN mission m ON tt.task_mission_id = m.mission_id
+        LEFT JOIN mission_pillar_mapping mp ON m.mission_id = mp.mission_mapping_id 
+        LEFT JOIN pillar p ON mp.pillar_mapping_id = p.pillar_id
+        LEFT JOIN mission_frequency mf ON tt.task_mission_id = mf.fs_mission_id
+        where tt.task_date = :date
+        """)
+    fun getAllTasksForDate2(date: String): Flow<List<TodayTaskWithFewDetails>>
+
 
     //getdetails for tssk id
     @Query("""SELECT tt.*,tr.*,m.*,p.*,mf.* 
@@ -85,4 +115,24 @@ interface TodayTaskDao {
     """)
     suspend fun updateTaskTagById(todayTaskId: Long, tag: String)
 
+    @Transaction
+    suspend fun insertFullTask(task: TodayTaskWithFewDetails): Long {
+
+        if (task.todayTask.todayTaskId > 0L) {
+            Logger.e( "updating task ${task.todayTask}")
+            updateTodayTask(task.todayTask)
+            Logger.e( "updating task reminder ${task.todayTaskReminder}")
+            upsertTodayTaskReminder(task.todayTaskReminder!!)
+            return task.todayTask.todayTaskId
+        } else {
+            Logger.e( "Inserting task ${task.todayTask}")
+            val todayTaskId = insertTodayTask(task.todayTask)
+            val rem = task.todayTaskReminder!!.copy(
+                todayTaskId = todayTaskId
+            )
+            Logger.e( "Inserting task reminder ${task.todayTaskReminder}")
+            upsertTodayTaskReminder(rem)
+            return todayTaskId
+        }
+    }
 }

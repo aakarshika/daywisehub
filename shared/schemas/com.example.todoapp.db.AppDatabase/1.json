@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "4b82b51108cd545b4174b9e4f73c77b2",
+    "identityHash": "a13c1455d9937e90cafd11cc5c1aa265",
     "entities": [
       {
         "tableName": "users",
@@ -603,7 +603,7 @@
       },
       {
         "tableName": "today_task_reminder",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`reminder_info_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `rem_task_id` INTEGER NOT NULL, `time_of_day` TEXT NOT NULL, `alarm_tone` TEXT NOT NULL, `time_before` INTEGER NOT NULL, `time_before_unit` INTEGER NOT NULL, FOREIGN KEY(`rem_task_id`) REFERENCES `today_task`(`today_task_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`reminder_info_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `rem_task_id` INTEGER NOT NULL, `time_of_day` TEXT NOT NULL, `alarm_tone` TEXT NOT NULL, `time_before` INTEGER NOT NULL, `time_before_unit` INTEGER NOT NULL, FOREIGN KEY(`rem_task_id`) REFERENCES `today_task`(`today_task_id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
         "fields": [
           {
             "fieldPath": "reminderInfoId",
@@ -662,7 +662,7 @@
         "foreignKeys": [
           {
             "table": "today_task",
-            "onDelete": "CASCADE",
+            "onDelete": "NO ACTION",
             "onUpdate": "NO ACTION",
             "columns": [
               "rem_task_id"
@@ -778,7 +778,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4b82b51108cd545b4174b9e4f73c77b2')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a13c1455d9937e90cafd11cc5c1aa265')"
     ]
   }
 }

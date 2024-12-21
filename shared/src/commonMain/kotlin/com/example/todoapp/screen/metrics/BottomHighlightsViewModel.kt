@@ -1,6 +1,5 @@
 package com.example.todoapp.screen.metrics
 
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
@@ -25,29 +24,21 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
-import kotlin.random.Random
 
-class CalDiaryViewModel(
-    private val missionRepository: MissionRepository
+class BottomHighlightsViewModel(
+    private val todayTaskRepository: TodayTaskRepository,
+    private val currentDate: LocalDate
 ) : ViewModel() {
-//
-    private val _missionIds = MutableSharedFlow<List<Long>>(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-    val missionIds: SharedFlow<List<Long>> get() = _missionIds
 
-    private val _currentDate = MutableStateFlow(LocalDate.now())
-    val currentDate: StateFlow<LocalDate> get() = _currentDate
+    val dayTasks: MutableSharedFlow<List<TodayTaskWithFewDetails>?> = MutableSharedFlow(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
 
-
-    fun selectDate(selectedDate: LocalDate) {
-        _currentDate.value = selectedDate
-    }
-
-    fun loadMissionIds() {
+    fun loadTaskDetails() {
         viewModelScope.launch {
-            missionRepository.getAllMissionIds()
-                .collect { missionList ->
-                    _missionIds.tryEmit(missionList)
+            todayTaskRepository.getAllTasksForDate2(MyDate.fromLocalDate(currentDate))
+                .collectLatest {
+                    Logger.w("tasks collected BH 2: ${currentDate} ${it.size}")
+                    dayTasks.emit(it)
                 }
         }
     }

@@ -15,4 +15,11 @@ actual fun getScreenWidth(): Dp = LocalWindowInfo.current.containerSize.width.px
 @Composable
 actual fun getScreenHeight(): Dp = LocalWindowInfo.current.containerSize.height.pxToPoint().dp
 
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+actual fun getTopCalHeight(): Dp = 160.dp
+
+
+
+
 fun Int.pxToPoint(): Double = this.toDouble() / UIScreen.mainScreen.scale

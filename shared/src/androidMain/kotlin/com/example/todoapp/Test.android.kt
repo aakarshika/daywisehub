@@ -11,3 +11,8 @@ actual fun getScreenWidth(): Dp = LocalConfiguration.current.screenWidthDp.dp
 
 @Composable
 actual fun getScreenHeight(): Dp = LocalConfiguration.current.screenHeightDp.dp
+
+@Composable
+actual fun getTopCalHeight(): Dp = 80.dp
+
+

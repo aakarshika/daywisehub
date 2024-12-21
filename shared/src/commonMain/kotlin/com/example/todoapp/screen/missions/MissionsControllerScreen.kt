@@ -60,9 +60,6 @@ fun MissionsControllerScreen(viewModel: MissionsControllerViewModel) {
 
         val editMissionMode = remember { mutableStateOf("IDLE") }
 
-        val randPaddingStart = missionIds.map { Random.nextInt(0, 31).dp }
-        val randPaddingEnd = missionIds.map {  Random.nextInt(0, 11).dp }
-
         // Load mission IDs when the screen is composed
         LaunchedEffect(Unit) {
 //            viewModel.loadPillars()
@@ -81,28 +78,31 @@ fun MissionsControllerScreen(viewModel: MissionsControllerViewModel) {
                 }
             }
             itemsIndexed(missionIds) { i, missionId ->
-                MissionItem(
-                    missionId = missionId,
-                    missionItemViewModel = KoinF.di?.get<MissionItemViewModel> { parametersOf(missionId) }!!,
-                    isSelected = selectedMissionId.value == missionId,
-                    isTrigger = triggerMissionId.value == missionId,
-                    modifier = Modifier
-                        .padding(
-                            start = randPaddingStart[i],
-                            top = randPaddingEnd[i]
-                        ),
-                    onEditClick = { m->
-                        viewModel.selectMission(m)
-                        triggerMissionId.value = 0L
-                        editMissionMode.value = "EDIT"
-                    },
-                    onViewClick = { mId->
-                        viewModel.selectMissionId(mId)
-                    },
-                    onCloseClick = {
-                        viewModel.resetSelectedMissionId()
-                        editMissionMode.value = "IDLE"
-                    })
+                val missionItemViewModel = KoinF.di?.get<MissionItemViewModel> { parametersOf(missionId) }
+                if (missionItemViewModel != null) {
+                    MissionItem(
+                        missionId = missionId,
+                        missionItemViewModel = missionItemViewModel,
+                        isSelected = selectedMissionId.value == missionId,
+                        isTrigger = triggerMissionId.value == missionId,
+                        modifier = Modifier
+                            .padding(
+                                start = viewModel.randPaddings[i].first,
+                                top = viewModel.randPaddings[i].second
+                            ),
+                        onEditClick = { m->
+                            viewModel.selectMission(m)
+                            triggerMissionId.value = 0L
+                            editMissionMode.value = "EDIT"
+                        },
+                        onViewClick = { mId->
+                            viewModel.selectMissionId(mId)
+                        },
+                        onCloseClick = {
+                            viewModel.resetSelectedMissionId()
+                            editMissionMode.value = "IDLE"
+                        })
+                }
             }
             item {
                 Spacer(modifier = Modifier.height(255.dp))

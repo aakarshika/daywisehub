@@ -12,10 +12,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -26,6 +31,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.unit.dp
+import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
 import com.example.todoapp.screen.metrics.components.GeneralItem
 import com.example.todoapp.screen.metrics.components.GeneralItemCheckbox
@@ -33,14 +39,26 @@ import com.example.todoapp.screen.metrics.components.ListHeader
 import com.example.todoapp.screen.metrics.components.MoodHeader
 import com.example.todoapp.screen.metrics.components.TodoItemCustom
 import com.example.todoapp.screen.metrics.components.WeatherHeader
+import kotlinx.datetime.LocalDate
 
 
 @Composable
 fun DiaryScreen(
-    selectedTaskList: List<TodayTaskWithFewDetails>?,
-    taskViewModel: CalDiaryViewModel
+    selection: LocalDate,
+    diaryViewModel: DiaryViewModel
     ) {
+    val selectedTaskList: List<TodayTaskWithFewDetails>? by diaryViewModel.dayTasks.collectAsState(emptyList())
+    var showDialog = remember { mutableStateOf(false) }
 
+    LaunchedEffect(selection) {
+        diaryViewModel.loadTaskDetails()
+    }
+//    LaunchedEffect(showDialog.value){
+//        if(showDialog.value){
+//            diaryViewModel.loadTaskDetails()
+//            showDialog.value = false
+//        }
+//    }
     val allTasks = selectedTaskList
 
     val tasks= selectedTaskList?.filter {  it.todayTask.taskPageTag=="TODO" }
@@ -62,6 +80,7 @@ fun DiaryScreen(
         val editingTaskMode = remember {
             mutableStateOf( "ViewItems")
         }
+
 
         val magicMode = remember {
             mutableStateOf("CHECK")
@@ -86,7 +105,7 @@ fun DiaryScreen(
                         dragOffset,
                         editingTaskMode,
                         magicMode,
-                        taskViewModel,
+                        diaryViewModel,
                         draggedTask,
                         todoListHeaderPosition,
                         top3HeaderPosition
@@ -115,9 +134,9 @@ fun DiaryScreen(
                         }
                         TodoItemCustom(editingMode = editingTaskMode.value, magicMode.value) { tag->
                             if(tag=="addRandomTask") {
-                                val success = taskViewModel.addRandomTask()
-                                if (!success) {
-                                }
+                                Logger.e("addtask")
+                                val success = diaryViewModel.addRandomTask()
+                                showDialog.value = true
                             } else if(tag=="rearrangeTaskList") {
                                 editingTaskMode.value = "Rearrange-ViewItems"
                             } else if(tag=="doneTaskList") {
@@ -169,7 +188,22 @@ fun DiaryScreen(
                 )
             }
         }
+//        if (showDialog.value) {
+//            AlertDialog(
+//                onDismissRequest = { showDialog.value = false },
+//                title = { Text(text = "Alert") },
+//                text = { Text(text = "This is an alert message.") },
+//                confirmButton = {
+//                    Button(
+//                        onClick = { showDialog.value = false }
+//                    ) {
+//                        Text("OK")
+//                    }
+//                }
+//            )
+//        }
     }
+
 }
 private fun LazyListScope.MoodHeaderItem() {
     item {
@@ -198,7 +232,7 @@ private fun LazyListScope.WeatherHeaderItem() {
 //            ListHeader(
 //                "DAY PLANNER",
 //                modifier = Modifier
-//                    .padding(top = 8.dp)
+//
 //                    .background(if (draggedTask.value != null) Light_Yellowww else Color.Transparent)
 //
 //            )
@@ -229,7 +263,7 @@ private fun LazyListScope.TodoListItems(
     dragOffset: MutableState<Offset>,
     editingTaskMode: MutableState<String>,
     magicMode: MutableState<String>,
-    taskViewModel: CalDiaryViewModel,
+    taskViewModel: DiaryViewModel,
     draggedTask: MutableState<TodayTaskWithFewDetails?>,
     todoListHeaderPosition: MutableState<Float>,
     top3HeaderPosition: MutableState<Float>
@@ -239,7 +273,7 @@ private fun LazyListScope.TodoListItems(
             ListHeader(
                 "PRIORITIES",
                 modifier = Modifier
-                    .padding(top = 8.dp)
+
                     .background(if (draggedTask.value != null) Light_Yellowww else Color.Transparent)
                     .onGloballyPositioned { coordinates ->
                         top3HeaderPosition.value = coordinates.positionInWindow().y
@@ -267,7 +301,7 @@ private fun LazyListScope.TodoListItems(
             ListHeader(
                 "TO DO",
                 modifier = Modifier
-                    .padding(top = 8.dp)
+
                     .background(if (draggedTask.value != null) Light_Yellowww else Color.Transparent)
                     .onGloballyPositioned { coordinates ->
                         todoListHeaderPosition.value = coordinates.positionInWindow().y
@@ -294,7 +328,7 @@ private fun LazyListScope.TodoListItems(
             ListHeader(
                 "HABITS",
                 modifier = Modifier
-                    .padding(top = 8.dp)
+
                     .background(if (draggedTask.value != null) Light_Yellowww else Color.Transparent)
                     .onGloballyPositioned { coordinates ->
                         todoListHeaderPosition.value = coordinates.positionInWindow().y
@@ -323,7 +357,7 @@ private fun TaskItemBox(
     task: TodayTaskWithFewDetails,
     editingTaskMode: MutableState<String>,
     magicMode: MutableState<String>,
-    taskViewModel: CalDiaryViewModel,
+    taskViewModel: DiaryViewModel,
     dragOffset: MutableState<Offset>,
     draggedTask: MutableState<TodayTaskWithFewDetails?>,
     todoListHeaderPosition: MutableState<Float>,
@@ -396,12 +430,12 @@ private fun TaskItemBox(
 //}
 
 
-fun updateTaskStatus(taskWithDetails: TodayTaskWithFewDetails, taskStatus: String, taskViewModel: CalDiaryViewModel){
+fun updateTaskStatus(taskWithDetails: TodayTaskWithFewDetails, taskStatus: String, taskViewModel: DiaryViewModel){
     taskViewModel.updateTaskStatus(taskWithDetails.todayTask.todayTaskId, taskStatus)
 }
 
 
-fun updateMoveTask(taskWithDetails: TodayTaskWithFewDetails, moveTo:String, taskViewModel: CalDiaryViewModel){
+fun updateMoveTask(taskWithDetails: TodayTaskWithFewDetails, moveTo:String, taskViewModel: DiaryViewModel){
     taskViewModel.updateTaskTag(taskWithDetails.todayTask.todayTaskId,moveTo)
 }
 //
