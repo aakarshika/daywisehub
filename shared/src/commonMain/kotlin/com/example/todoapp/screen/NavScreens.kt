@@ -20,9 +20,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.todoapp.app.MyScreen
 import com.example.todoapp.di.KoinF
+import com.example.todoapp.screen.metrics.CalDiaryScreen
+import com.example.todoapp.screen.metrics.CalDiaryViewModel
 import com.example.todoapp.screen.metrics.MetricsScreen
 import com.example.todoapp.screen.missions.MissionsControllerScreen
 import com.example.todoapp.screen.missions.MissionsControllerViewModel
+import moe.tlaster.precompose.navigation.BackHandler
 import moe.tlaster.precompose.navigation.NavHost
 import moe.tlaster.precompose.navigation.rememberNavigator
 import moe.tlaster.precompose.navigation.transition.NavTransition
@@ -35,6 +38,7 @@ fun NavScreens() {
     val modifier = Modifier
     val backStackEntry by navigator.currentEntry.collectAsState(null)
 
+    val diaryViewModel = KoinF.di?.get<CalDiaryViewModel>()!!
 
     // Get the name of the current screen
     val currentScreen = MyScreen.valueOf(
@@ -52,7 +56,10 @@ fun NavScreens() {
                 )
                 NavigationBarItem(
                     selected = currentScreen == MyScreen.Diary,
-                    onClick = { navigator.navigate(MyScreen.Diary.name) },
+                    onClick = {
+                        if(currentScreen != MyScreen.Diary) {
+                            navigator.popBackStack()
+                        } },
                     label = { Text("Diary") },
                     icon = { Icon(Icons.Default.Menu, contentDescription = "Diary") }
                 )
@@ -65,35 +72,43 @@ fun NavScreens() {
             }
         }
     ) { innerPadding ->
+
         Box(modifier = Modifier) {
             NavHost(
                 navigator = navigator,
-                navTransition = NavTransition(),
-                initialRoute = MyScreen.Missions.name
+                initialRoute = MyScreen.Diary.name
             ) {
                 scene(
-                    route = MyScreen.Missions.name,
-                    navTransition = NavTransition()
+                    route = MyScreen.Missions.name
                 ) {
                     MissionsControllerScreen(KoinF.di?.get<MissionsControllerViewModel>()!!)
                 }
                 scene(
-                    route = MyScreen.Diary.name,
-                    navTransition = NavTransition()
+                    route = MyScreen.Diary.name
                 ) {
-                    DiaryScreen()
+                    CalDiaryScreen("DIARY_MODE", diaryViewModel,
+                        onExpandClicked = {
+                        },
+                        onCollapseClicked = {
+                            navigator.navigate(MyScreen.Calendar.name)
+                        }
+                    )
                 }
                 scene(
-                    route = MyScreen.Calendar.name,
-                    navTransition = NavTransition()
+                    route = MyScreen.Calendar.name
                 ) {
-                    MetricsScreen()
+                    CalDiaryScreen("CALENDAR_MODE", diaryViewModel,
+                        onExpandClicked = {
+                            navigator.popBackStack()
+                        },
+                        onCollapseClicked = {
+                        }
+                    )
                 }
             }
         }
     }
 }
-
 
 
 @Composable

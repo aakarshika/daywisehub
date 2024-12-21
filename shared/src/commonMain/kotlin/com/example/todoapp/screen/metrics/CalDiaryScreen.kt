@@ -84,14 +84,17 @@ import org.koin.core.parameter.parametersOf
 
 
 @Composable
-fun CalDiaryScreen(mode: String, calDateViewModel: CalDiaryViewModel) {
+fun CalDiaryScreen(mode: String, calDateViewModel: CalDiaryViewModel,
+                   onExpandClicked: () -> Unit,
+                   onCollapseClicked: () -> Unit
+) {
 
     val screenHeightDp = getScreenHeight()
     val screenWidthDp = getScreenWidth()
     val topCalHeight = getTopCalHeight()
 
     var diaryViewMode by remember { mutableStateOf(mode) }
-    var dateFilterMode by remember { mutableStateOf("NORMAL") } // NORMAL/SELECTED Mission/Pillar
+    var dateFilterMode by remember { mutableStateOf("NORMAL") }
 
     val diaryHeight by animateDpAsState(
         targetValue = if (diaryViewMode == "DIARY_MODE") (screenHeightDp - topCalHeight) else (screenHeightDp - 500.dp)
@@ -119,8 +122,8 @@ fun CalDiaryScreen(mode: String, calDateViewModel: CalDiaryViewModel) {
             diaryViewMode = diaryViewMode,
             expandAlpha = diaryAlpha,
             onDateClicked = { date -> calDateViewModel.selectDate(date) },
-            onCollapseClicked = { diaryViewMode = "CALENDAR_MODE" },
-            onExpandClicked = { diaryViewMode = "DIARY_MODE" }
+            onCollapseClicked = onCollapseClicked,
+            onExpandClicked = onExpandClicked
         )
 
         Box(
@@ -143,7 +146,7 @@ fun CalDiaryScreen(mode: String, calDateViewModel: CalDiaryViewModel) {
                     bottomHighlightsViewModel = KoinF.di?.get<BottomHighlightsViewModel> {
                         parametersOf(currentDate)
                     } ?: error("BottomHighlightsViewModel not found"),
-                    onExpandClicked = { diaryViewMode = "DIARY_MODE" }
+                    onExpandClicked = onExpandClicked
                 )
             }
         }

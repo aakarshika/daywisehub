@@ -11,8 +11,6 @@ import com.example.todoapp.di.KoinF
 fun MetricsScreen(
 ) {
     Box {
-        val diaryViewModel = KoinF.di?.get<CalDiaryViewModel>()!!
-        CalDiaryScreen("CALENDAR_MODE", diaryViewModel)
 
 
     }
