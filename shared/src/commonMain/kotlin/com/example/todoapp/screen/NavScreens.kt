@@ -42,7 +42,7 @@ fun NavScreens() {
 
     // Get the name of the current screen
     val currentScreen = MyScreen.valueOf(
-        backStackEntry?.route?.route ?: MyScreen.Missions.name
+        backStackEntry?.route?.route ?: MyScreen.Diary.name
     )
 
     Scaffold(
@@ -50,22 +50,31 @@ fun NavScreens() {
             NavigationBar {
                 NavigationBarItem(
                     selected = currentScreen == MyScreen.Missions,
-                    onClick = { navigator.navigate(MyScreen.Missions.name) },
+                    onClick = {
+                        if(currentScreen != MyScreen.Missions) {
+                            navigator.navigate(MyScreen.Missions.name)
+                        }
+                              },
                     label = { Text("Missions") },
                     icon = { Icon(Icons.Default.AddCircle, contentDescription = "Missions") }
                 )
                 NavigationBarItem(
                     selected = currentScreen == MyScreen.Diary,
                     onClick = {
-                        if(currentScreen != MyScreen.Diary) {
+                        if (currentScreen != MyScreen.Diary) {
                             navigator.popBackStack()
-                        } },
+                        }
+                    },
                     label = { Text("Diary") },
                     icon = { Icon(Icons.Default.Menu, contentDescription = "Diary") }
                 )
                 NavigationBarItem(
                     selected = currentScreen == MyScreen.Calendar,
-                    onClick = { navigator.navigate(MyScreen.Calendar.name) },
+                    onClick = {
+                        if (currentScreen != MyScreen.Calendar) {
+                            navigator.navigate(MyScreen.Calendar.name)
+                        }
+                    },
                     label = { Text("Metrics") },
                     icon = { Icon(Icons.Default.Home, contentDescription = "Metrics") }
                 )
