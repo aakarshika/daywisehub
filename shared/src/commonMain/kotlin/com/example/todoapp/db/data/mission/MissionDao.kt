@@ -114,6 +114,7 @@ interface MissionDao {
         val mp = pillar?.let { MissionPillarMapping(missionId = missionId, pillarId = it.pillarId) }
         if (pillar != null) {
             if (mp != null) {
+                deletePillarMapping(missionId)
                 upsertPillarMapping(mp)
             }
         }

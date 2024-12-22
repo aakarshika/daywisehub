@@ -9,12 +9,13 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
 import com.example.todoapp.screen.basicblocks.WriteText
 
 @Composable
 fun GeneralItem(
-                todoTask: TodayTaskWithFewDetails?
+                mission: Mission
 ) {
     Box(modifier = Modifier.fillMaxWidth().height(40.dp).padding(horizontal = 20.dp)){
         Row(modifier = Modifier.fillMaxWidth()
@@ -25,7 +26,9 @@ fun GeneralItem(
                         .weight(columnWeights[i])
                 ){
                     if(i == 1) {
-                        WriteText(text = " ${todoTask?.mission?.missionTitle?:""}")
+                        Box(modifier = Modifier.padding(start = 10.dp)) {
+                            WriteText(text = "${mission?.missionTitle ?: ""}")
+                        }
                     }
                 }
             }

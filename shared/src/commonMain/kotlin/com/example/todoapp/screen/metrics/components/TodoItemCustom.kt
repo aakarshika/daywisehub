@@ -98,11 +98,11 @@ fun TodoItemCustom(editingMode : String, magicMode : String, doStuff: (String)->
                         Box(
                             modifier = Modifier
                                 .clickable {
-                                    doStuff("rearrangeTaskList")
+                                    doStuff("habitEdit")
                                     }
                         ) {
                             Text(
-                                text = " Rearrange ",
+                                text = " Habit? ",
                                 modifier = Modifier,
                                 style = MaterialTheme.typography.bodyLarge
                             )
@@ -121,7 +121,7 @@ fun TodoItemCustom(editingMode : String, magicMode : String, doStuff: (String)->
                         }
 
                     }
-                    else if(editingMode == "Rearrange-ViewItems") {
+                    else if(editingMode == "Habit?") {
                         Box(
                             modifier = Modifier.clickable {
                                 doStuff("doneTaskList")

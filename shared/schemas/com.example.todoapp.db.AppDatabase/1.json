@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "a13c1455d9937e90cafd11cc5c1aa265",
+    "identityHash": "b184dd6a3e2013367160524422444b54",
     "entities": [
       {
         "tableName": "users",
@@ -272,7 +272,7 @@
       },
       {
         "tableName": "mission_frequency",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`frequency_set_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `fs_mission_id` INTEGER NOT NULL, `frequency_set_name` TEXT, `frequency` INTEGER NOT NULL, `frequency_period` TEXT, `frequency_unit` TEXT, `fs_active` TEXT, FOREIGN KEY(`fs_mission_id`) REFERENCES `mission`(`mission_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`frequency_set_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `fs_mission_id` INTEGER NOT NULL, `frequency_set_name` TEXT, `frequency` INTEGER NOT NULL, `frequency_period` TEXT, `frequency_unit` TEXT, `is_daily_habit` INTEGER NOT NULL, `fs_active` TEXT, FOREIGN KEY(`fs_mission_id`) REFERENCES `mission`(`mission_id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
         "fields": [
           {
             "fieldPath": "frequencySetId",
@@ -308,6 +308,12 @@
             "affinity": "TEXT"
           },
           {
+            "fieldPath": "isDailyHabit",
+            "columnName": "is_daily_habit",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
             "fieldPath": "active",
             "columnName": "fs_active",
             "affinity": "TEXT"
@@ -333,7 +339,7 @@
         "foreignKeys": [
           {
             "table": "mission",
-            "onDelete": "CASCADE",
+            "onDelete": "NO ACTION",
             "onUpdate": "NO ACTION",
             "columns": [
               "fs_mission_id"
@@ -778,7 +784,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a13c1455d9937e90cafd11cc5c1aa265')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b184dd6a3e2013367160524422444b54')"
     ]
   }
 }

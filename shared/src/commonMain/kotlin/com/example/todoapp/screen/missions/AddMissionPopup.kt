@@ -49,6 +49,7 @@ val defaultMissionWithDetails: MissionWithDetails = MissionWithDetails(
         frequency = 2,
         frequencyPeriod = "DAILY",
         frequencyUnit = "TIMES",
+        isDailyHabit = true,
         active = "true"
     ),
     pillar = pillarDefault
@@ -134,6 +135,7 @@ private fun getMissionFrequency(frequencySetValue: Float): MissionFrequency {
             frequencyPeriod = "MONTHLY",
             frequencyUnit = "TIMES",
             active = "Y",
+            isDailyHabit = false,
             missionId = 0L
         )
     } else if (freqSet == "COMFORTABLE") {
@@ -141,6 +143,7 @@ private fun getMissionFrequency(frequencySetValue: Float): MissionFrequency {
             frequencySetName = freqSet,
             frequency = 1,
             frequencyPeriod = "WEEKLY",
+            isDailyHabit = false,
             frequencyUnit = "TIMES",
             active = "Y",
             missionId = 0L
@@ -151,6 +154,7 @@ private fun getMissionFrequency(frequencySetValue: Float): MissionFrequency {
             frequency = 3,
             frequencyPeriod = "WEEKLY",
             frequencyUnit = "TIMES",
+            isDailyHabit = false,
             active = "Y",
             missionId = 0L
         )
@@ -161,6 +165,7 @@ private fun getMissionFrequency(frequencySetValue: Float): MissionFrequency {
             frequencyPeriod = "DAILY",
             frequencyUnit = "TIMES",
             active = "Y",
+            isDailyHabit = true,
             missionId = 0L
         )
     }

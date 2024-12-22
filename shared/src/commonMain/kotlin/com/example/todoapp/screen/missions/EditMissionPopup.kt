@@ -269,7 +269,7 @@ fun EditMissionPopup(
                                 var currentIndex by remember { mutableStateOf(0) }
 
 
-                                // xPILLAR _ HEALTH
+                                // xPILLAR__ HEALTH
                                 FrequencyPeriodButton(
                                     text = "${pillarSelected.value?.pillarName}",
                                     modifier = Modifier
@@ -360,6 +360,7 @@ fun EditMissionPopup(
                                     frequencyPeriod = "MONTHLY",
                                     frequencyUnit = "TIMES",
                                     active = "Y",
+                                    isDailyHabit = false,
                                     missionId = 0L
                                 )
                             } else if (freqSet == "COMFORTABLE") {
@@ -368,6 +369,7 @@ fun EditMissionPopup(
                                     frequency = 1,
                                     frequencyPeriod = "WEEKLY",
                                     frequencyUnit = "TIMES",
+                                    isDailyHabit = false,
                                     active = "Y",
                                     missionId = 0L
                                 )
@@ -376,6 +378,7 @@ fun EditMissionPopup(
                                     frequencySetName = freqSet,
                                     frequency = 3,
                                     frequencyPeriod = "WEEKLY",
+                                    isDailyHabit = false,
                                     frequencyUnit = "TIMES",
                                     active = "Y",
                                     missionId = 0L
@@ -385,6 +388,7 @@ fun EditMissionPopup(
                                     frequencySetName = freqSet,
                                     frequency = 1,
                                     frequencyPeriod = "DAILY",
+                                    isDailyHabit = true,
                                     frequencyUnit = "TIMES",
                                     active = "Y",
                                     missionId = 0L
@@ -420,7 +424,7 @@ fun EditMissionPopup(
                         }
 
                         if (expandFrequency.value) {
-                            Box(
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(150.dp)
@@ -435,6 +439,25 @@ fun EditMissionPopup(
                                             .align(Alignment.End)
                                     ) {
                                         MissionBlueprintCalendarScreen(mission, pillarSelected)
+                                    }
+                                }
+                                Column{
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.End)
+                                    ) {
+
+                                        FrequencyPeriodButton(
+                                            text = if(missionFrequency.value?.isDailyHabit==true) "DAILY HABIT" else "MISSION",
+                                            modifier = Modifier
+                                                .height(40.dp)
+                                                .background(Orange80)
+                                                .clickable {
+                                                    missionFrequency.value= missionFrequency.value?.copy(
+                                                        isDailyHabit = !(missionFrequency.value?.isDailyHabit?:false)
+                                                    )
+                                                }
+                                        )
                                     }
                                 }
                             }

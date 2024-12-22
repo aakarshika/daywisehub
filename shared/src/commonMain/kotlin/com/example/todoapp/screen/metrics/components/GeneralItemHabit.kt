@@ -17,50 +17,52 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import com.example.todoapp.db.data.pillar.Pillar
-import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
 import com.example.todoapp.screen.basicblocks.CustomCheckbox
+import com.example.todoapp.screen.basicblocks.CustomHabitButton
 import com.example.todoapp.screen.basicblocks.WriteText
+import com.example.todoapp.screen.metrics.cal.clickable
 import com.example.todoapp.screen.missions.getPillarColor
+import com.example.todoapp.screen.missions.getThemeColor
 
 @Composable
-fun GeneralItemCheckbox(
-    todoTask: TodayTask?,
-    pillar: Pillar?,
+fun GeneralItemHabit(
+    todoTask: TodayTaskWithFewDetails?,
     editingMode :String,
-    taskErased: (TodayTask?, Boolean) -> Unit,
+    taskIsHabit: (TodayTaskWithFewDetails?, Boolean) -> Unit,
 ) {
-    val isChecked = todoTask?.taskStatus== "COMPLETED"
+    val isChecked = todoTask?.todayTask?.taskPageTag == "HABIT"
 
     val ld = LocalDensity.current
 
     Box(modifier = Modifier.fillMaxWidth().height(40.dp).padding(horizontal = 20.dp)){
         Row(modifier = Modifier.fillMaxWidth()
+            .clickable  {
+                if (isChecked) taskIsHabit(todoTask, false)
+                else taskIsHabit(todoTask,  true)
+            }
         ){
             columnWeights.forEachIndexed { i, item->
                 Box(
                     modifier = Modifier.wrapContentHeight().fillMaxWidth()
                         .weight(columnWeights[i])
                 ){
-                    if(i == 0) {
+                    if(i == 2) {
                         Box(modifier = Modifier.padding(start = 10.dp)) {
                             Column(
                                 modifier = Modifier
                                     .size(20.dp)
                                     .clip(CircleShape)
                             ) {
-                                CustomCheckbox(
+                                CustomHabitButton(
                                     checked = isChecked,
                                     onCheckedChange = {
-                                        if (isChecked) taskErased(
-                                            todoTask,
-                                            false
-                                        ) else taskErased(todoTask,  true)
+                                        if (isChecked) taskIsHabit(todoTask, false)
+                                        else taskIsHabit(todoTask,  true)
                                     },
                                     modifier = Modifier,
-                                    checkedColor = getPillarColor(pillar?.pillarName),
-                                    uncheckedColor = Color.Transparent,
+                                    checkedColor =  Color.Transparent,
+                                    uncheckedColor = LightGray,
                                     disabledColor = Color.Transparent
                                 )
                             }
@@ -71,3 +73,5 @@ fun GeneralItemCheckbox(
         }
     }
 }
+
+val LightGray = Color(0xEEEEEEEE)

@@ -18,3 +18,12 @@ data class TodayTaskWithDetails(
     val todayTaskWithFewDetails: TodayTaskWithFewDetails,
     val subTasks: List<SubTask>
 )
+
+
+data class HabitTaskWithFewDetails(
+    @Embedded val mission: Mission,
+    @Embedded val todayTask: TodayTask?,
+    @Embedded val todayTaskReminder: TodayTaskReminder?,
+    @Embedded val pillar: Pillar?,
+    @Embedded val missionFrequency: MissionFrequency?
+)

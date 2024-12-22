@@ -116,6 +116,13 @@ fun getPillarColor(pillarName: String?): Color {
     else  Color(0xFFCCC2DC)
 }
 
+
+fun getThemeColor(theme: String?): Color {
+    return if (theme == "HABIT") Color(0xFFF6D3FF)
+    else if (theme == "TOP3") Color(0xFFFFD4B8)
+    else  Color(0xFFCCC2DC)
+}
+
 @Composable
 private fun SmallListItem(
     mission: MissionWithDetails,

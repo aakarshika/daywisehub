@@ -13,7 +13,6 @@ import com.example.todoapp.db.data.mission.Mission
         entity = Mission::class,
         parentColumns = ["mission_id"],
         childColumns = ["fs_mission_id"],
-        onDelete = ForeignKey.CASCADE
     )],
     indices = [Index(value = ["fs_mission_id"])]
 )
@@ -24,5 +23,6 @@ data class MissionFrequency(
     @ColumnInfo(name = "frequency") val frequency: Int,
     @ColumnInfo(name = "frequency_period") val frequencyPeriod: String?,
     @ColumnInfo(name = "frequency_unit") val frequencyUnit: String?,
+    @ColumnInfo(name = "is_daily_habit") val isDailyHabit: Boolean,
     @ColumnInfo(name = "fs_active") val active: String?
 )
