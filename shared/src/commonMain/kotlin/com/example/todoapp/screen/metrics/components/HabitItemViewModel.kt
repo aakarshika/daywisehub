@@ -23,7 +23,6 @@ class HabitItemViewModel(
         viewModelScope.launch {
             todayTaskRepository.getTaskProgressForPastAround(missionId, cDate)
                 .collectLatest {
-                    Logger.e("loadMissionDetails mission: $it")
                     taskProgressForPastAround.tryEmit(it)
                 }
         }

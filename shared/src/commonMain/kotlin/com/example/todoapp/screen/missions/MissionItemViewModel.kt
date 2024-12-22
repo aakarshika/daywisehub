@@ -33,28 +33,28 @@ class MissionItemViewModel(
         viewModelScope.launch {
             missionRepository.getMission(missionId)
                 .collectLatest {
-                    Logger.e("loadMissionDetails mission: $it")
+                    Logger.w("loading mission for item: $it")
                     mission.tryEmit(it)
                 }
         }
         viewModelScope.launch {
             missionRepository.getPillar(missionId)
                 .collectLatest {
-                    Logger.e("loadMissionDetails pillar: $it")
+                    Logger.w("loading pillar for item: $it")
                     pillar.tryEmit(it)
                 }
         }
         viewModelScope.launch {
             missionRepository.getMissionFrequency(missionId)
                 .collectLatest {
-                    Logger.e("loadMissionDetails missionFreq: $it")
+                    Logger.w("loading missionFreq for item: $it")
                     missionFrequency.tryEmit(it)
                 }
         }
         viewModelScope.launch {
             missionRepository.getMilestones(missionId)
                 .collectLatest {
-                    Logger.e("loadMissionDetails milestones: $it")
+                    Logger.w("loading milestones for item: $it")
                     milestones.tryEmit(it)
                 }
         }

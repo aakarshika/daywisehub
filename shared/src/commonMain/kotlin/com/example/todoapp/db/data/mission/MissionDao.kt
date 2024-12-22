@@ -88,7 +88,7 @@ interface MissionDao {
         ON m.milestone_id = mp.mpd_milestone_id 
         WHERE m.mile_mission_id = :missionId
         """)
-    fun getMilestones(missionId: Long): Flow<List<MilestoneWithFewDetails>?>
+    fun getMilestones(missionId: Long): Flow<List<MilestoneWithFewDetails>>
 
     @Transaction
     suspend fun insertFullMission(missionWithDetails: MissionWithDetails): Long {

@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -31,13 +31,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.room.Embedded
 import co.touchlab.kermit.Logger
-import com.example.todoapp.db.data.todotask.HabitTaskWithFewDetails
+import com.example.todoapp.db.data.mission.Mission
+import com.example.todoapp.db.data.mission.missionstuff.MissionFrequency
+import com.example.todoapp.db.data.pillar.Pillar
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.todotask.TodayTaskReminder
-import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.di.KoinF
+import com.example.todoapp.screen.metrics.components.Blue80
 import com.example.todoapp.screen.metrics.components.GeneralItem
 import com.example.todoapp.screen.metrics.components.GeneralItemCheckbox
 import com.example.todoapp.screen.metrics.components.GeneralItemHabit
@@ -51,14 +54,39 @@ import com.kizitonwose.calendar.core.minusDays
 import kotlinx.datetime.LocalDate
 import org.koin.core.parameter.parametersOf
 
+data class ComboTask(
+    @Embedded val todayTask: TodayTask?,
+    @Embedded val todayTaskReminder: TodayTaskReminder?,
+    @Embedded val mission: Mission?,
+    @Embedded val pillar: Pillar?,
+    @Embedded val missionFrequency: MissionFrequency?
+) {
+    override fun toString(): String {
+        return if(missionFrequency?.isDailyHabit == true)
+            "habit(" +
+                    "'m${mission?.missionId?:0L},t${todayTask?.todayTaskId?:0L}'${mission?.missionTitle}-${pillar?.pillarName}." +
+                    (todayTask?.taskDate?.dateString?:"")+
+                    (if (todayTask?.taskStatus=="COMPLETED") "/CMPLD" else "")+
+                    (if (todayTask?.taskPageTag=="TOP3") "/T3" else "")+
+                    ")"
+        else "todo(" +
+                "'m${mission?.missionId?:0L},t${todayTask?.todayTaskId?:0L}'${mission?.missionTitle}-${pillar?.pillarName}." +
+                (todayTask?.taskDate?.dateString?:"")+
+                (if (todayTask?.taskStatus=="COMPLETED") "/CMPLD" else "")+
+                (if (todayTask?.taskPageTag=="TOP3") "/T3" else "")+
+                ")"
+    }
+}
+
+
 
 @Composable
 fun DiaryScreen(
     selection: LocalDate,
     diaryViewModel: DiaryViewModel
     ) {
-    val selectedTaskList: List<TodayTaskWithFewDetails>? by diaryViewModel.dayTasks.collectAsState(emptyList())
-    val habitTasks: List<HabitTaskWithFewDetails>? by diaryViewModel.habitList.collectAsState(emptyList())
+    val selectedTaskList: List<ComboTask>? by diaryViewModel.dayTasks.collectAsState(emptyList())
+    val habitTasks: List<ComboTask>? by diaryViewModel.habitList.collectAsState(emptyList())
 
     LaunchedEffect(selection) {
         diaryViewModel.loadTaskDetails()
@@ -69,10 +97,13 @@ fun DiaryScreen(
 //            showDialog.value = false
 //        }
 //    }
-    val allTasks = selectedTaskList?.filter { it.missionFrequency?.isDailyHabit != true }
+    val all : List<ComboTask> = (selectedTaskList?.toList() ?: listOf()) + (habitTasks?.toList() ?: listOf())
+    val allTasks = all
+                        .sortedBy {  it.todayTask?.taskPageTag!="TOP3" }
+                        .sortedBy { it.missionFrequency?.isDailyHabit == true }
 
-    val tasks= allTasks?.filter {  it.todayTask.taskPageTag=="TODO" }
-    val top3Tasks= allTasks?.filter {  it.todayTask.taskPageTag=="TOP3" }
+//    val tasks= allTasks?.filter {  it.todayTask?.taskPageTag=="TODO" }
+//    val top3Tasks= allTasks?.filter {  it.todayTask?.taskPageTag=="TOP3" }
 
 
     Box(
@@ -88,20 +119,15 @@ fun DiaryScreen(
                     WeatherHeaderItem()
                     TodoListItems(
                         selection,
-                        tasks,
-                        top3Tasks,
+                        allTasks,
                         editingTaskMode,
                         magicMode,
                         diaryViewModel
                     )
-                    TodoMenuItems(allTasks, diaryViewModel, magicMode, editingTaskMode)
-                    HabitListItems(
-                        selection,
-                        habitTasks,
-                        editingTaskMode,
-                        magicMode,
-                        diaryViewModel
-                    )
+                    item {
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
+                    TodoMenuItems(selection, allTasks, diaryViewModel, magicMode, editingTaskMode)
                     item {
                         Spacer(modifier = Modifier.height(500.dp))
                     }
@@ -112,7 +138,8 @@ fun DiaryScreen(
 }
 
 private fun LazyListScope.TodoMenuItems(
-    allTasks: List<TodayTaskWithFewDetails>?,
+    selection: LocalDate,
+    allTasks: List<ComboTask>?,
     diaryViewModel: DiaryViewModel,
     magicMode: MutableState<String>,
     editingTaskMode: MutableState<String>
@@ -131,8 +158,8 @@ private fun LazyListScope.TodoMenuItems(
         }
         Row {
             Box(modifier = Modifier.clickable {
-                Logger.e("addtask")
-                diaryViewModel.addRandomTask()
+                Logger.e("addtask $selection")
+                diaryViewModel.addRandomTask(selection)
             }) { Text("               +    ") }
 
             Box(modifier = Modifier.clickable {
@@ -166,90 +193,84 @@ private fun LazyListScope.WeatherHeaderItem() {
 }
 
 
-private fun LazyListScope.HabitListItems(
-    selection: LocalDate,
-    habitTasks: List<HabitTaskWithFewDetails>?,
-    editingTaskMode: MutableState<String>,
-    magicMode: MutableState<String>,
-    taskViewModel: DiaryViewModel,
-) {
-    item {
-        if(!habitTasks.isNullOrEmpty()) {
-            ListHeader("HABITS", modifier = Modifier.animateItem())
-        }
-    }
-    itemsIndexed(habitTasks?: listOf(), key = { _, task ->
-        task.mission.missionId*1000+(task.todayTask?.todayTaskId?:0L)
-    }) { i, task ->
-        if (true) {
-            Box(modifier = Modifier.animateItem()) {
-                HabitItem(selection, task, editingTaskMode, taskViewModel, magicMode, KoinF.di?.get<HabitItemViewModel> { parametersOf(selection,task.mission?.missionId) }!!)
-            }
-        }
-    }
-}
+
 
 private fun LazyListScope.TodoListItems(
     selection: LocalDate,
-    tasks: List<TodayTaskWithFewDetails>?,
-    top3tasks: List<TodayTaskWithFewDetails>?,
+    allTasks: List<ComboTask>?,
     editingTaskMode: MutableState<String>,
     magicMode: MutableState<String>,
     taskViewModel: DiaryViewModel,
 ) {
     item {
-        if(!top3tasks.isNullOrEmpty()) {
-            ListHeader("PRIORITIES", modifier = Modifier.animateItem())
-        }
-    }
-    itemsIndexed(top3tasks?: listOf(), key = { _, task ->
-        task.mission!!.missionId*1000+(task.todayTask?.todayTaskId?:0L)
-    }) { i, task ->
-        Box(modifier = Modifier.animateItem()) {
-            TodoItem(selection, task, editingTaskMode, taskViewModel, magicMode)
-        }
-    }
-    item {
-        if(!tasks.isNullOrEmpty()) {
+        if(!allTasks.isNullOrEmpty()) {
             ListHeader("TO DO", modifier = Modifier.animateItem())
         }
     }
-    itemsIndexed(tasks?: listOf(), key = { _, task ->
-        task.mission!!.missionId*1000+(task.todayTask?.todayTaskId?:0L)
+    item{
+        Box(modifier = Modifier.padding(top = 10.dp))
+    }
+    itemsIndexed(allTasks?: listOf(), key = { _, task ->
+        ((task.mission?.missionId?:0L)*1000)+(task.todayTask?.todayTaskId?:0L)
     }) { i, task ->
-        Box(modifier = Modifier.animateItem()) {
-            TodoItem(selection, task, editingTaskMode, taskViewModel, magicMode)
+        if(task.missionFrequency?.isDailyHabit == true){
+            Box(modifier = Modifier.animateItem()) {
+                HabitItem(selection, task, editingTaskMode, taskViewModel, magicMode,
+                    KoinF.di?.get<HabitItemViewModel> { parametersOf(selection,task.mission?.missionId) }!!
+                )
+            }
+        } else {
+            Box(modifier = Modifier.animateItem()) {
+                TodoItem(selection, task, editingTaskMode, taskViewModel, magicMode)
+            }
         }
     }
+    item{
+        Column {
+            Box(modifier = Modifier.height(1.dp).fillMaxWidth().background(Blue80))
+            Box(modifier = Modifier.height(25.dp).fillMaxWidth())
+            Box(modifier = Modifier.height(1.dp).fillMaxWidth().background(Blue80))
+        }
+    }
+//    item {
+//        if(!tasks.isNullOrEmpty()) {
+//            ListHeader("TO DO", modifier = Modifier.animateItem())
+//        }
+//    }
+//    itemsIndexed(tasks?: listOf(), key = { _, task ->
+//        task.mission!!.missionId*1000+(task.todayTask?.todayTaskId?:0L)
+//    }) { i, task ->
+//        Box(modifier = Modifier.animateItem()) {
+//            TodoItem(selection, task, editingTaskMode, taskViewModel, magicMode)
+//        }
+//    }
 }
 
 @Composable
 private fun TodoItem(
     selection: LocalDate,
-    task: TodayTaskWithFewDetails,
+    task: ComboTask,
     editingTaskMode: MutableState<String>,
     taskViewModel: DiaryViewModel,
     magicMode: MutableState<String>
 ) {
     GeneralItem(task.mission!!)
-    if (editingTaskMode.value == "prioritize") {
-        GeneralItemTopButton(task, editingTaskMode.value,
-            taskIsTop = { tt, check ->
-                if (check) {
-                    updateMoveTask(task.todayTask, "TOP3", taskViewModel)
-                } else {
-                    updateMoveTask(task.todayTask, "TODO", taskViewModel)
-                }
+    GeneralItemTopButton(task, editingTaskMode.value,
+        taskIsTop = { tt, check ->
+            if (check) {
+                updateMoveTask(task.todayTask!!, "TOP3", taskViewModel)
+            } else {
+                updateMoveTask(task.todayTask!!, "TODO", taskViewModel)
             }
-        )
-    } else
+        }
+    )
         if (editingTaskMode.value == "ViewItems" && magicMode.value == "CHECK") {
             GeneralItemCheckbox(task.todayTask,task.pillar, editingTaskMode.value,
                 taskErased = { tt, check ->
                     if (check) {
-                        updateTaskStatus(task.todayTask, "COMPLETED", taskViewModel)
+                        updateTaskStatus(task.todayTask!!, "COMPLETED", taskViewModel)
                     } else {
-                        updateTaskStatus(task.todayTask, "REFRESHED", taskViewModel)
+                        updateTaskStatus(task.todayTask!!, "REFRESHED", taskViewModel)
                     }
                 }
             )
@@ -258,91 +279,85 @@ private fun TodoItem(
 @Composable
 private fun HabitItem(
     selection: LocalDate,
-    hTask: HabitTaskWithFewDetails,
+    hTask: ComboTask,
     editingTaskMode: MutableState<String>,
     taskViewModel: DiaryViewModel,
     magicMode: MutableState<String>,
     habitViewModel: HabitItemViewModel
 ) {
-    GeneralItem(hTask.mission)
-        val taskProgressWeekList:List<TodayTask>? by habitViewModel.taskProgressForPastAround.collectAsState(emptyList())
-        LaunchedEffect(selection){
-            habitViewModel.loadTaskProgressForPastAround()
-        }
-        Box(modifier = Modifier.height(40.dp).fillMaxWidth()){
-            Row(modifier = Modifier.fillMaxWidth().padding(end = 5.dp), horizontalArrangement = Arrangement.End) {
-                (1..6).forEach {
-                    val boxDate = MyDate.fromLocalDate(selection.minusDays(5 - (it)))
-                    val t = taskProgressWeekList?.find { it.taskDate.dateString == boxDate.dateString }
-                    if(it==5){
-                        Box(
-                            modifier = Modifier
-                                .padding(start=4.dp, top = 5.dp)
-                                .size(15.dp).clip(RoundedCornerShape(4.dp))
-                                .align(Alignment.CenterVertically)
-                                .background(Color.LightGray)
-                        ){Box(
-                            modifier = Modifier
-                                .size(13.dp).clip(RoundedCornerShape(4.dp))
-                                .align(Alignment.Center)
-                                .background(
-                                    if (hTask.todayTask?.taskStatus == "COMPLETED") Orange80
-                                    else Color.White
-                                )
-                        )}
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .padding(start = 4.dp, top = 5.dp)
-                                .size(13.dp).clip(RoundedCornerShape(4.dp))
-                                .align(Alignment.CenterVertically)
-                                .background(
-                                    if (t?.taskStatus == "COMPLETED") Orange80
-                                    else Color.White
-                                )
-                        )
-                    }
-                }
+    GeneralItem(hTask.mission!!)
+    GeneralItemTopButton(hTask, editingTaskMode.value,
+        taskIsTop = { tt, check ->
+            if (check) {
+                updateMoveTask(hTask.todayTask!!, "TOP3", taskViewModel)
+            } else {
+                updateMoveTask(hTask.todayTask!!, "TODO", taskViewModel)
             }
         }
-        if (editingTaskMode.value == "ViewItems" && magicMode.value == "CHECK") {
-            GeneralItemCheckbox(hTask.todayTask ,hTask.pillar, editingTaskMode.value,
-                taskErased = { tt, check ->
-                    if((hTask.todayTask?.todayTaskId ?: 0L) > 0L) {
-                        updateTaskStatus(hTask.todayTask!!, if (check) "COMPLETED" else "REFRESHED", taskViewModel)
-                    } else {
-                        val newTask = TodayTaskWithFewDetails(
-                            todayTask = TodayTask(
-                                todayTaskId = 0L, // Example task ID
-                                userId = 1L, // Example userId
-                                missionId = hTask.mission.missionId,
-                                taskStatus = if (check) "COMPLETED" else "REFRESHED",
-                                taskDate = MyDate.fromLocalDate(selection) ,
-                                taskType = "USER_HABIT", // Example type
-                                taskPageTag = "TODO",
-                                taskProgressVal = if (check) 1f else 0f, // Example progress
-                                taskText = "", // Example text
-                                taskPictureUrl = null, // Example URL (can be null)
-                                taskLink = null // Example link (can be null)
-                            ),
-                            todayTaskReminder = TodayTaskReminder(
-                                todayTaskId = 0L, // Example task ID
-                                timeOfDay = "08:00", // Example time
-                                alarmTone = "Default Tone", // Example alarm tone
-                                timeBefore = 10, // Example time before
-                                timeBeforeUnit = 1 // Example time before unit (e.g., minutes)
-                            ),
-                            mission = hTask.mission,
-                            pillar = hTask.pillar,
-                            missionFrequency = hTask.missionFrequency
-                        )
-                        taskViewModel.insertTask(newTask)
-                    }
-//                    habitViewModel.loadTaskProgressForPastAround()
+    )
+    val taskProgressWeekList:List<TodayTask>? by habitViewModel.taskProgressForPastAround.collectAsState(emptyList())
+    LaunchedEffect(selection){
+        habitViewModel.loadTaskProgressForPastAround()
+    }
+    GeneralItemHabit(
+        selection,
+        hTask,
+        taskProgressWeekList,
+        editingTaskMode.value,
+        taskIsHabit = { tt, check ->}
+    )
+    if (editingTaskMode.value == "ViewItems" && magicMode.value == "CHECK") {
+        GeneralItemCheckbox(hTask.todayTask ,hTask.pillar, editingTaskMode.value,
+            taskErased = { tt, check ->
+                if((tt?.todayTaskId ?: 0L) > 0L) {
+                    Logger.w("updating status: ${hTask.todayTask}")
+                    updateTaskStatus(
+                        hTask.todayTask!!,
+                        if (check) "COMPLETED" else "REFRESHED",
+                        taskViewModel)
+                } else {
+                    Logger.w("try insert status: ${hTask.todayTask}")
+                    updateInsertTaskStatus(
+                        hTask,
+                        MyDate.fromLocalDate(selection),
+                        if (check) "COMPLETED" else "REFRESHED",
+                        taskViewModel)
                 }
-            )
-        }
+            }
+        )
+    }
 }
+
+fun updateInsertTaskStatus(task: ComboTask,taskDate: MyDate, taskStatus: String, taskViewModel: DiaryViewModel){
+    val newTask = ComboTask(
+        todayTask = TodayTask(
+            todayTaskId = 0L, // Example task ID
+            userId = 1L, // Example userId
+            missionId = task.mission!!.missionId,
+            taskStatus = taskStatus,
+            taskDate = taskDate ,
+            taskType = "USER_HABIT", // Example type
+            taskPageTag = "TODO",
+            taskProgressVal = 0f, // Example progress
+            taskText = "", // Example text
+            taskPictureUrl = null, // Example URL (can be null)
+            taskLink = null // Example link (can be null)
+        ),
+        todayTaskReminder = TodayTaskReminder(
+            todayTaskId = 0L, // Example task ID
+            timeOfDay = "08:00", // Example time
+            alarmTone = "Default Tone", // Example alarm tone
+            timeBefore = 10, // Example time before
+            timeBeforeUnit = 1 // Example time before unit (e.g., minutes)
+        ),
+        mission = null,
+        pillar = null,
+        missionFrequency = null
+    )
+    Logger.w("inserting status: ${newTask.todayTask}")
+    taskViewModel.insertTask(newTask)
+}
+
 
 
 fun updateTaskStatus(task: TodayTask, taskStatus: String, taskViewModel: DiaryViewModel){
@@ -355,7 +370,7 @@ fun updateMoveTask(task: TodayTask, moveTo:String, taskViewModel: DiaryViewModel
 }
 //
 //
-//fun updateTaskHighlightLines(taskWithDetails: TodayTaskWithFewDetails, eraseLines:List<HighlightTaskLine>, taskViewModel: TaskViewModel){
+//fun updateTaskHighlightLines(taskWithDetails: ComboTask, eraseLines:List<HighlightTaskLine>, taskViewModel: TaskViewModel){
 //    taskViewModel.updateFullTaskUi(
 //        taskWithDetails.copy(
 //            taskUiData = taskWithDetails.taskUiData.copy(

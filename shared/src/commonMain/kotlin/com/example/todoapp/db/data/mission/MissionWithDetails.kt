@@ -15,4 +15,16 @@ data class MissionWithDetails(
     @Embedded val pillar: Pillar?,
     @Embedded val missionFrequency: MissionFrequency?,
     @Embedded val milestones: List<MilestoneWithFewDetails>? = listOf(),
-)
+){
+    override fun toString(): String {
+        return if(missionFrequency?.isDailyHabit == true)
+            "hMission(" +
+                    "'m${mission?.missionId?:0L}'${mission?.missionTitle}-${pillar?.pillarName}." +
+                    (missionFrequency?.frequency)+(missionFrequency?.frequencyPeriod)+
+                    ")"
+        else "mission(" +
+                "'m${mission?.missionId?:0L}'${mission?.missionTitle}-${pillar?.pillarName}." +
+                (missionFrequency?.frequency)+(missionFrequency?.frequencyPeriod)+
+                ")"
+    }
+}

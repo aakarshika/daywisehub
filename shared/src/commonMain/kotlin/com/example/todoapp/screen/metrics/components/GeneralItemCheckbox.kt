@@ -35,7 +35,7 @@ fun GeneralItemCheckbox(
 
     val ld = LocalDensity.current
 
-    Box(modifier = Modifier.fillMaxWidth().height(40.dp).padding(horizontal = 20.dp)){
+    Box(modifier = Modifier.fillMaxWidth().height(RowHeight)){
         Row(modifier = Modifier.fillMaxWidth()
         ){
             columnWeights.forEachIndexed { i, item->
@@ -44,7 +44,7 @@ fun GeneralItemCheckbox(
                         .weight(columnWeights[i])
                 ){
                     if(i == 0) {
-                        Box(modifier = Modifier.padding(start = 10.dp)) {
+                        Box(modifier = Modifier.padding(start = 10.dp, top = 5.dp)) {
                             Column(
                                 modifier = Modifier
                                     .size(20.dp)

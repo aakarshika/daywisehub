@@ -13,12 +13,29 @@ data class TodayTaskWithFewDetails(
     @Embedded val mission: Mission?,
     @Embedded val pillar: Pillar?,
     @Embedded val missionFrequency: MissionFrequency?
-)
+) {
+    override fun toString(): String {
+        return if(missionFrequency?.isDailyHabit == true)
+            "habit(" +
+                    "'m${mission?.missionId?:0L},t${todayTask?.todayTaskId?:0L}'${mission?.missionTitle}-${pillar?.pillarName}." +
+                    (todayTask?.taskDate?.dateString?:"")+
+                    (if (todayTask?.taskStatus=="COMPLETED") "/CMPLD" else "")+
+                    (if (todayTask?.taskPageTag=="TOP3") "/T3" else "")+
+                    ")"
+        else "todo(" +
+                "'m${mission?.missionId?:0L},t${todayTask?.todayTaskId?:0L}'${mission?.missionTitle}-${pillar?.pillarName}." +
+                (todayTask?.taskDate?.dateString?:"")+
+                (if (todayTask?.taskStatus=="COMPLETED") "/CMPLD" else "")+
+                (if (todayTask?.taskPageTag=="TOP3") "/T3" else "")+
+                ")"
+    }
+}
+
+
 data class TodayTaskWithDetails(
     val todayTaskWithFewDetails: TodayTaskWithFewDetails,
     val subTasks: List<SubTask>
 )
-
 
 data class HabitTaskWithFewDetails(
     @Embedded val mission: Mission,
@@ -26,4 +43,20 @@ data class HabitTaskWithFewDetails(
     @Embedded val todayTaskReminder: TodayTaskReminder?,
     @Embedded val pillar: Pillar?,
     @Embedded val missionFrequency: MissionFrequency?
-)
+) {
+    override fun toString(): String {
+        return if(missionFrequency?.isDailyHabit == true)
+            "habit(" +
+                    "'m${mission?.missionId?:0L},t${todayTask?.todayTaskId?:0L}'${mission?.missionTitle}-${pillar?.pillarName}." +
+                    (todayTask?.taskDate?.dateString?:"")+
+                    (if (todayTask?.taskStatus=="COMPLETED") "/CMPLD" else "")+
+                    (if (todayTask?.taskPageTag=="TOP3") "/T3" else "")+
+                    ")"
+        else "todo(" +
+                "'m${mission?.missionId?:0L},t${todayTask?.todayTaskId?:0L}'${mission?.missionTitle}-${pillar?.pillarName}." +
+                (todayTask?.taskDate?.dateString?:"")+
+                (if (todayTask?.taskStatus=="COMPLETED") "/CMPLD" else "")+
+                (if (todayTask?.taskPageTag=="TOP3") "/T3" else "")+
+                ")"
+    }
+}

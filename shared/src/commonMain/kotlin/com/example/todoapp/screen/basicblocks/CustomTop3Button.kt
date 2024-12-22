@@ -36,7 +36,7 @@ fun CustomTop3Button(
     )
 
     // Choose the icon based on the checked state
-    val iconRes = Icons.Default.FavoriteBorder
+    val iconRes = if (checked) Icons.Default.Favorite else Icons.Default.FavoriteBorder
 
     // Determine the tint color based on the state
     val tintColor = if (!enabled) disabledColor else if (checked) checkedColor else uncheckedColor

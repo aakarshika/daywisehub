@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import co.touchlab.kermit.Logger
 import com.example.todoapp.db.models.MyDate
+import com.example.todoapp.screen.metrics.ComboTask
 import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.LocalDate
 
@@ -55,9 +56,9 @@ interface TodayTaskDao {
         LEFT JOIN mission_pillar_mapping mp ON m.mission_id = mp.mission_mapping_id 
         LEFT JOIN pillar p ON mp.pillar_mapping_id = p.pillar_id
         LEFT JOIN mission_frequency mf ON tt.task_mission_id = mf.fs_mission_id
-        where tt.task_date = :date
+        where tt.task_date = :date and mf.is_daily_habit != true
         """)
-    fun getAllTasksForDate1(date: String): Flow<List<TodayTaskWithFewDetails>>
+    fun getAllTasksForDate1(date: String): Flow<List<ComboTask>>
 
 
     @Query("""SELECT tt.*,tr.*,m.*,p.*,mf.* 
@@ -69,7 +70,7 @@ interface TodayTaskDao {
         LEFT JOIN mission_frequency mf ON m.mission_id = mf.fs_mission_id
         where mf.is_daily_habit = true 
         """)
-    fun getHabitMissions(date: String): Flow<List<HabitTaskWithFewDetails>>
+    fun getHabitMissions(date: String): Flow<List<ComboTask>>
 
     @Query("""SELECT tt.*
         FROM mission m
@@ -89,7 +90,7 @@ interface TodayTaskDao {
         LEFT JOIN mission_pillar_mapping mp ON m.mission_id = mp.mission_mapping_id 
         LEFT JOIN pillar p ON mp.pillar_mapping_id = p.pillar_id
         LEFT JOIN mission_frequency mf ON tt.task_mission_id = mf.fs_mission_id
-        where tt.task_date = :date
+        where tt.task_date = :date and mf.is_daily_habit != true
         """)
     fun getAllTasksForDate2(date: String): Flow<List<TodayTaskWithFewDetails>>
 
@@ -171,10 +172,15 @@ interface TodayTaskDao {
     }
 
     suspend fun addRandomMission(currentDate: LocalDate): Long{
+        Logger.e("adding RandomMission for date $currentDate")
         val newMissionId = getNewMissionForDay(MyDate.fromLocalDate(currentDate).dateString)
+        Logger.e("adding RandomMission newMissionId: $newMissionId")
         if(newMissionId>0) {
             val newTask = prepareTaskObject(newMissionId, currentDate)
-            return insertFullTask(newTask)
+            Logger.e("newTask prepared: $newTask")
+            val tid = insertFullTask(newTask)
+            Logger.e("inserted taskid: $tid")
+            return tid
         }
         return -1L
     }

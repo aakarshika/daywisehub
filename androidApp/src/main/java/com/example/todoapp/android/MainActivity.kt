@@ -11,6 +11,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.todoapp.app.App
 import com.example.todoapp.di.KoinF
+import com.example.todoapp.screen.metrics.components.GeneralItem
+import com.example.todoapp.screen.missions.defaultMissionWithDetails
 import org.koin.android.ext.koin.androidContext
 
 class MainActivity : ComponentActivity() {
@@ -23,4 +25,24 @@ KoinF.setupKoin {
             App()
         }
     }
+}
+
+
+@Composable
+fun GreetingView(text: String) {
+    Text(text = text)
+}
+
+@Preview
+@Composable
+fun DefaultPreview() {
+    MyApplicationTheme {
+        GreetingView("Hello, Android!")
+    }
+}
+
+@Preview
+@Composable
+fun  PreviewGeneralItem(){
+    GeneralItem(defaultMissionWithDetails.mission!!)
 }

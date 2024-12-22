@@ -10,6 +10,7 @@ import com.example.todoapp.db.data.todotask.TodayTaskWithDetails
 import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.screen.globalViewModels.UserInitManager
+import com.example.todoapp.screen.metrics.ComboTask
 import com.kizitonwose.calendar.core.minusDays
 import com.kizitonwose.calendar.core.plusDays
 import kotlinx.coroutines.flow.Flow
@@ -25,16 +26,12 @@ class TodayTaskRepository(private val database: AppDatabase) {
         return todayTaskDao.getTodayTaskWithDetails()
     }
 
-    suspend fun getAllTasksForDate1(date: MyDate): Flow<List<TodayTaskWithFewDetails>> {
-        val x = todayTaskDao.getAllTasksForDate1(date.dateString)
-        Logger.e("Returning list1: $x")
-        return x
+    suspend fun getAllTasksForDate1(date: MyDate): Flow<List<ComboTask>> {
+        return todayTaskDao.getAllTasksForDate1(date.dateString)
     }
 
     suspend fun getAllTasksForDate2(date: MyDate): Flow<List<TodayTaskWithFewDetails>> {
-        val x = todayTaskDao.getAllTasksForDate2(date.dateString)
-        Logger.e("Returning list2: $x")
-        return x
+        return todayTaskDao.getAllTasksForDate2(date.dateString)
     }
     //update status
     suspend fun updateStatus(todayTaskId: Long, status: String) {
@@ -49,7 +46,7 @@ class TodayTaskRepository(private val database: AppDatabase) {
         return todayTaskDao.insertFullTask(task)
     }
 
-    suspend fun getHabitMissions(date: MyDate): Flow<List<HabitTaskWithFewDetails>> {
+    suspend fun getHabitMissions(date: MyDate): Flow<List<ComboTask>> {
         return todayTaskDao.getHabitMissions(date.dateString)
     }
 
