@@ -94,6 +94,7 @@ fun DiaryScreen(
                         magicMode,
                         diaryViewModel
                     )
+                    TodoMenuItems(allTasks, diaryViewModel, magicMode, editingTaskMode)
                     HabitListItems(
                         selection,
                         habitTasks,
@@ -102,40 +103,6 @@ fun DiaryScreen(
                         diaryViewModel
                     )
                     item {
-                        val isLoading = remember { mutableStateOf(false) }
-                        if (allTasks != null) {
-                            if (isLoading.value && allTasks.isEmpty()) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator()
-                                }
-                            }
-                        }
-                        Row{
-                            Box(modifier = Modifier.clickable{
-                                Logger.e("addtask")
-                                diaryViewModel.addRandomTask()
-                            }){ Text("               +    ") }
-
-                            Box(modifier = Modifier.clickable{
-                                Logger.e("check/draw")
-                                if(magicMode.value=="CHECK")
-                                    magicMode.value = "DRAW" else
-                                        magicMode.value = "CHECK"
-                            }){ Text(if(magicMode.value=="CHECK") " CHECK " else " DRAW ") }
-
-                            Box(modifier = Modifier.clickable{
-                                Logger.e("Is Priority?")
-                                if (editingTaskMode.value == "ViewItems")
-                                    editingTaskMode.value = "prioritize"
-                                else
-                                    editingTaskMode.value = "ViewItems"
-                            }){ Text(if(editingTaskMode.value=="prioritize") "                  Done " else "    Prioritize ") }
-                        }
-                    }
-                    item {
                         Spacer(modifier = Modifier.height(500.dp))
                     }
                 }
@@ -143,6 +110,49 @@ fun DiaryScreen(
     }
 
 }
+
+private fun LazyListScope.TodoMenuItems(
+    allTasks: List<TodayTaskWithFewDetails>?,
+    diaryViewModel: DiaryViewModel,
+    magicMode: MutableState<String>,
+    editingTaskMode: MutableState<String>
+) {
+    item {
+        val isLoading = remember { mutableStateOf(false) }
+        if (allTasks != null) {
+            if (isLoading.value && allTasks.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+        }
+        Row {
+            Box(modifier = Modifier.clickable {
+                Logger.e("addtask")
+                diaryViewModel.addRandomTask()
+            }) { Text("               +    ") }
+
+            Box(modifier = Modifier.clickable {
+                Logger.e("check/draw")
+                if (magicMode.value == "CHECK")
+                    magicMode.value = "DRAW" else
+                    magicMode.value = "CHECK"
+            }) { Text(if (magicMode.value == "CHECK") " CHECK " else " DRAW ") }
+
+            Box(modifier = Modifier.clickable {
+                Logger.e("Is Priority?")
+                if (editingTaskMode.value == "ViewItems")
+                    editingTaskMode.value = "prioritize"
+                else
+                    editingTaskMode.value = "ViewItems"
+            }) { Text(if (editingTaskMode.value == "prioritize") "                  Done " else "    Prioritize ") }
+        }
+    }
+}
+
 private fun LazyListScope.MoodHeaderItem() {
     item {
         MoodHeader()
@@ -195,24 +205,20 @@ private fun LazyListScope.TodoListItems(
     itemsIndexed(top3tasks?: listOf(), key = { _, task ->
         task.mission!!.missionId*1000+(task.todayTask?.todayTaskId?:0L)
     }) { i, task ->
-        if (true) {
-            Box(modifier = Modifier.animateItem()) {
-                TodoItem(selection, task, editingTaskMode, taskViewModel, magicMode)
-            }
+        Box(modifier = Modifier.animateItem()) {
+            TodoItem(selection, task, editingTaskMode, taskViewModel, magicMode)
         }
     }
     item {
-        if(true) {
+        if(!tasks.isNullOrEmpty()) {
             ListHeader("TO DO", modifier = Modifier.animateItem())
         }
     }
     itemsIndexed(tasks?: listOf(), key = { _, task ->
         task.mission!!.missionId*1000+(task.todayTask?.todayTaskId?:0L)
     }) { i, task ->
-        if (true) {
-            Box(modifier = Modifier.animateItem()) {
-                TodoItem(selection, task, editingTaskMode, taskViewModel, magicMode)
-            }
+        Box(modifier = Modifier.animateItem()) {
+            TodoItem(selection, task, editingTaskMode, taskViewModel, magicMode)
         }
     }
 }
