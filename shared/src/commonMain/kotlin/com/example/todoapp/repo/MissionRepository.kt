@@ -79,9 +79,6 @@ class MissionRepository(private val database: AppDatabase) {
         ))
     }
 
-
-
-
     suspend fun insertDefaultPillars(user: User) {
         missionDao.upsertPillar(
             Pillar(

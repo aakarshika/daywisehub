@@ -13,6 +13,9 @@ import com.example.todoapp.db.data.mission.milestone.MilestoneDao
 import com.example.todoapp.db.data.mission.milestone.MilestoneProgressData
 import com.example.todoapp.db.data.mission.missionstuff.MissionFrequency
 import com.example.todoapp.db.data.mission.missionstuff.MissionPillarMapping
+import com.example.todoapp.db.data.mood.Mood
+import com.example.todoapp.db.data.mood.TodayMood
+import com.example.todoapp.db.data.mood.TodayMoodDao
 import com.example.todoapp.db.data.pillar.Pillar
 import com.example.todoapp.db.data.todotask.SubTask
 import com.example.todoapp.db.data.todotask.TodayTask
@@ -22,8 +25,6 @@ import com.example.todoapp.db.data.user.User
 import com.example.todoapp.db.data.user.UserDao
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-
-// shared/src/commonMain/kotlin/Database.kt
 
 @Database(entities = [
     User::class,
@@ -36,7 +37,12 @@ import kotlinx.coroutines.IO
     TodayTask::class,
     TodayTaskReminder::class,
     SubTask::class,
-    LoginStatus::class], version = 1)
+    Mood::class,
+    TodayMood::class,
+    LoginStatus::class],
+    version = 1
+)
+
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun getUserDao(): UserDao
@@ -44,16 +50,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun getMissionDao(): MissionDao
     abstract fun getMilestoneDao(): MilestoneDao
     abstract fun getTodayTaskDao(): TodayTaskDao
+    abstract fun getTodayMoodDao(): TodayMoodDao
 
-}
-
-fun getRoomDatabase(
-    builder: RoomDatabase.Builder<AppDatabase>
-): AppDatabase {
-    return builder
-        //.addMigrations(MIGRATIONS)
-        //.fallbackToDestructiveMigrationOnDowngrade()
-        .setDriver(BundledSQLiteDriver())
-        .setQueryCoroutineContext(Dispatchers.IO)
-        .build()
 }

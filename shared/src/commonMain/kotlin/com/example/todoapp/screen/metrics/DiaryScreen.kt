@@ -49,6 +49,7 @@ import com.example.todoapp.screen.metrics.components.ListHeader
 import com.example.todoapp.screen.metrics.components.MoodHeader
 import com.example.todoapp.screen.metrics.components.WeatherHeader
 import com.example.todoapp.screen.metrics.components.HabitItemViewModel
+import com.example.todoapp.screen.metrics.components.MoodViewModel
 import com.example.todoapp.screen.missions.Orange80
 import com.kizitonwose.calendar.core.minusDays
 import kotlinx.datetime.LocalDate
@@ -115,7 +116,9 @@ fun DiaryScreen(
         val magicMode = remember { mutableStateOf("CHECK") }
         Column {
                 LazyColumn(modifier = Modifier) {
-                    MoodHeaderItem()
+                    MoodHeaderItem(
+                        selection
+                    )
                     WeatherHeaderItem()
                     TodoListItems(
                         selection,
@@ -180,9 +183,14 @@ private fun LazyListScope.TodoMenuItems(
     }
 }
 
-private fun LazyListScope.MoodHeaderItem() {
+private fun LazyListScope.MoodHeaderItem(
+    selection: LocalDate
+) {
     item {
-        MoodHeader()
+        MoodHeader(
+            selection,
+            KoinF.di?.get<MoodViewModel> { parametersOf(selection) }!!
+        )
     }
 }
 

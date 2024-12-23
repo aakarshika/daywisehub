@@ -17,6 +17,7 @@ fun InitScreen(
     onInitSuccess: (userId: Long) -> Unit
 ) {
     val loginStatus by initViewModel.loginStatus.collectAsState(null)
+
     LaunchedEffect(Unit) {
         initViewModel.loadLoginState()
     }

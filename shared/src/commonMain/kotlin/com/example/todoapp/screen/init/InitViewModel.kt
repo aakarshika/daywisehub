@@ -8,18 +8,19 @@ import androidx.lifecycle.ViewModel
 import com.example.todoapp.db.data.loginstatus.LoginStatus
 import com.example.todoapp.repo.LoginRepository
 import com.example.todoapp.repo.MissionRepository
+import com.example.todoapp.repo.TodayMoodRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 
 class InitViewModel(
     private val userRepository: UserRepository,
     private val loginRepository: LoginRepository,
     private val pillarRepository: MissionRepository,
+    private val todayMoodRepository: TodayMoodRepository
 ) : ViewModel() {
 
 
     private val _loginStatus = MutableStateFlow<LoginStatus?>(null)
     val loginStatus: StateFlow<LoginStatus?> = _loginStatus
-
 
     init {
         loadLoginState()
@@ -34,10 +35,12 @@ class InitViewModel(
             val user = userRepository.insertUser(User(username = username, password = "password123"))
             val login = loginRepository.insertLoginStatus(LoginStatus(userId = user.id, isLoggedIn = true))
             pillarRepository.insertDefaultPillars(user)
+            todayMoodRepository.insertDefaultMoods(user)
             loadLoginState()
         }
     }
 }
+
 
 data class LoginStatusUiState(val item: LoginStatus?)
 data class LoggedInUserUiState(val item: User?)

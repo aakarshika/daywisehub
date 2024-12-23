@@ -4,6 +4,7 @@ import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.repo.LoginRepository
 import com.example.todoapp.repo.MilestoneRepository
 import com.example.todoapp.repo.MissionRepository
+import com.example.todoapp.repo.TodayMoodRepository
 import com.example.todoapp.repo.TodayTaskRepository
 import com.example.todoapp.repo.UserRepository
 import com.example.todoapp.screen.globalViewModels.UserViewModel
@@ -12,6 +13,7 @@ import com.example.todoapp.screen.metrics.BottomHighlightsViewModel
 import com.example.todoapp.screen.metrics.CalDiaryViewModel
 import com.example.todoapp.screen.metrics.DiaryViewModel
 import com.example.todoapp.screen.metrics.components.HabitItemViewModel
+import com.example.todoapp.screen.metrics.components.MoodViewModel
 import com.example.todoapp.screen.missions.MissionItemViewModel
 import com.example.todoapp.screen.missions.MissionsControllerViewModel
 import com.example.todoapp.screen.missions.calendar.progress.DayMissionProgressViewModel
@@ -32,10 +34,12 @@ fun vmModule(): Module {
         single { MissionRepository(get()) }
         single { MilestoneRepository(get()) }
         single { TodayTaskRepository(get()) }
+        single { TodayMoodRepository(get()) }
+
 
         // ViewModels base
         factory { UserViewModel(get()) }
-        single { InitViewModel(get(), get(), get()) }
+        single { InitViewModel(get(), get(), get(), get()) }
 
         // New ViewModels
         factory { MissionsControllerViewModel(get()) }
@@ -45,6 +49,8 @@ fun vmModule(): Module {
         factory { (day: LocalDate, n: Int) -> DiaryViewModel(get(), day, n) }
         factory { (day: LocalDate, missionId: Long) -> HabitItemViewModel(get(), day, missionId) }
         factory { (day: LocalDate) -> BottomHighlightsViewModel(get(), day) }
+
+        factory { (day: LocalDate) -> MoodViewModel(get(), day) }
 
         single { CalDiaryViewModel(get()) }
 
