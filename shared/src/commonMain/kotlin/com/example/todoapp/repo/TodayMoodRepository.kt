@@ -1,24 +1,12 @@
 package com.example.todoapp.repo
 
-import co.touchlab.kermit.Logger
 import com.example.todoapp.db.AppDatabase
 import com.example.todoapp.db.data.mood.Mood
 import com.example.todoapp.db.data.mood.TodayMood
 import com.example.todoapp.db.data.mood.TodayMoodDao
 import com.example.todoapp.db.data.mood.TodayMoodWithDetails
-import com.example.todoapp.db.data.pillar.Pillar
-import com.example.todoapp.db.data.todotask.HabitTaskWithFewDetails
-import com.example.todoapp.db.data.todotask.TodayTask
-import com.example.todoapp.db.data.todotask.TodayTaskDao
-import com.example.todoapp.db.data.todotask.TodayTaskReminder
-import com.example.todoapp.db.data.todotask.TodayTaskWithDetails
-import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
 import com.example.todoapp.db.data.user.User
 import com.example.todoapp.db.models.MyDate
-import com.example.todoapp.screen.globalViewModels.UserInitManager
-import com.example.todoapp.screen.metrics.ComboTask
-import com.kizitonwose.calendar.core.minusDays
-import com.kizitonwose.calendar.core.plusDays
 import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.LocalDate
 
@@ -42,16 +30,51 @@ class TodayMoodRepository(private val database: AppDatabase) {
             Mood(
                 moodId = 0L,
                 moodUserId = user.id,
-                moodName = "HAPPY"
+                moodName = "HAPPY",
+                moodIcon = "happy"
             )
         )
         todayMoodDao.upsertMood(
             Mood(
                 moodId = 0L,
                 moodUserId = user.id,
-                moodName = "SAD"
+                moodName = "SAD",
+                moodIcon = "sad"
             )
         )
+        todayMoodDao.upsertMood(
+            Mood(
+                moodId = 0L,
+                moodUserId = user.id,
+                moodName = "ANGRY",
+                moodIcon = "angry"
+            )
+        )
+        todayMoodDao.upsertMood(
+            Mood(
+                moodId = 0L,
+                moodUserId = user.id,
+                moodName = "AFRAID",
+                moodIcon = "afraid"
+            )
+        )
+        todayMoodDao.upsertMood(
+            Mood(
+                moodId = 0L,
+                moodUserId = user.id,
+                moodName = "SURPRISE",
+                moodIcon = "surprised"
+            )
+        )
+        todayMoodDao.upsertMood(
+            Mood(
+                moodId = 0L,
+                moodUserId = user.id,
+                moodName = "DISGUSTED",
+                moodIcon = "disgusted"
+            )
+        )
+
 
     }
 

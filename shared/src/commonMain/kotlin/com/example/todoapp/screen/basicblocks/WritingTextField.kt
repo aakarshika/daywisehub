@@ -46,7 +46,7 @@ fun WritingTextField(
         modifier = modifier,
         interactionSource = interactionSource
     ){
-        TextFieldDefaults.TextFieldDecorationBox(
+        TextFieldDefaults.DecorationBox(
             value = taskName,
             placeholder = { WriteText("$placeHolder", color = Color.Gray) },
             innerTextField = it,
@@ -54,12 +54,12 @@ fun WritingTextField(
             singleLine = false,
             visualTransformation = VisualTransformation.None,
             interactionSource = interactionSource,
-            contentPadding = PaddingValues(horizontal = 1.dp, vertical = 1.dp),
-            colors = TextFieldDefaults.textFieldColors(
+            colors = TextFieldDefaults.colors(
                 disabledTextColor = Color.Gray,
                 unfocusedIndicatorColor = Color.Transparent,
-                containerColor = Color.Transparent
-            )
+                focusedContainerColor = Color.Transparent
+            ),
+            contentPadding = PaddingValues(horizontal = 1.dp, vertical = 1.dp)
         )
     }
 }

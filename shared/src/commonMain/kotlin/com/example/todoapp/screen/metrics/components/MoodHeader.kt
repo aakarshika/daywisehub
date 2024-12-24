@@ -30,11 +30,32 @@ import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.repo.TodayMoodRepository
 import kotlinx.datetime.LocalDate
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.painterResource
 import todoapp.shared.generated.resources.Res
+import todoapp.shared.generated.resources.happiness
+import todoapp.shared.generated.resources.happy
+import todoapp.shared.generated.resources.sad
+import todoapp.shared.generated.resources.angry
+import todoapp.shared.generated.resources.afraid
+import todoapp.shared.generated.resources.surprised
+import todoapp.shared.generated.resources.disgusted
 
 
 val Red80 = Color(0xFFFFCBD2)
+
+private fun getDrawableIdFromMoodIcon(moodIcon: String): DrawableResource {
+    val drawableMap = mapOf(
+        "happy" to Res.drawable.happy,
+        "sad" to Res.drawable.sad,
+        "angry" to Res.drawable.angry,
+        "afraid" to Res.drawable.afraid,
+        "surprised" to Res.drawable.surprised,
+        "disgusted" to Res.drawable.disgusted
+    )
+    return drawableMap[moodIcon] ?: Res.drawable.happy
+}
 
 @Composable
 fun MoodHeader(
@@ -90,10 +111,13 @@ fun MoodHeader(
                     todayMoodList?.forEach {
                         Icon(
                             tint = if (it.todayMood?.tmMoodStatus != "ACTIVE") Color.Gray else Color.Red,
-                            painter = rememberVectorPainter(Icons.Default.Face),
+                            painter = painterResource(
+                                getDrawableIdFromMoodIcon(it.mood.moodIcon)
+                            ),
                             modifier = Modifier
                                 .size(40.dp)
                                 .align(Alignment.CenterVertically)
+                                .padding(3.dp)
                                 .clickable {
                                     moodViewModel.upsertTodayMood(
                                         TodayMood(
@@ -104,8 +128,7 @@ fun MoodHeader(
                                         )
                                     )
 
-                                }
-                            ,
+                                },
                             contentDescription = "mood-icon-smile"
                         )
                     }

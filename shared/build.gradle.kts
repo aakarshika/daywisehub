@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_9
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.compose.compiler)
     alias(libs.plugins.room)
     id("com.google.devtools.ksp")
     alias(libs.plugins.jetbrainsCompose)
@@ -50,7 +51,7 @@ kotlin {
             implementation(compose.material3)
             implementation(compose.components.resources)
             implementation(libs.androidx.lifecycle.viewmodel)
-            api("moe.tlaster:precompose:1.5.7")
+            api(libs.precompose)
             implementation(libs.kermit)
         }
         androidMain.dependencies {
@@ -74,6 +75,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.rendering)
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
     add("kspIosX64", libs.androidx.room.compiler)
