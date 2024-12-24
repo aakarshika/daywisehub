@@ -38,12 +38,10 @@ fun GeneralItem(
                             .fillMaxWidth()
                             ) {
                                 (1..(RowHeight/26)).forEach {
-                                    Box(modifier = Modifier.height(1.dp).fillMaxWidth().background(Blue80))
-                                    Box(modifier = Modifier.height(25.dp).fillMaxWidth())
+                                    NotebookLine()
                                 }
-                                Box(modifier = Modifier.height(1.dp).fillMaxWidth().background(Blue80))
-                                Box(modifier = Modifier.height(25.dp).fillMaxWidth())
-                                Box(modifier = Modifier.height(1.dp).fillMaxWidth().background(Blue80))
+                            NotebookLine()
+                            Box(modifier = Modifier.height(1.dp).fillMaxWidth().background(Blue80))
                         }
                     }
                     if(i == 1) {
@@ -63,4 +61,10 @@ fun GeneralItem(
             }
         }
     }
+}
+
+@Composable
+fun NotebookLine() {
+    Box(modifier = Modifier.height(1.dp).fillMaxWidth().background(Blue80))
+    Box(modifier = Modifier.height(25.dp).fillMaxWidth())
 }

@@ -13,16 +13,16 @@ interface UserDao {
     suspend fun insert(user: User): Long
 
     @Query("SELECT * FROM users WHERE id = :userId")
-   suspend fun getUserByUserId(userId: Long): User?
+    fun getUserByUserId(userId: Long): Flow<User>
 
     @Query("SELECT * FROM users WHERE id = :userId")
-   suspend fun getUserValueByUserId(userId: Long): User?
+    fun getUserValueByUserId(userId: Long): Flow<User>
 
     @Query("SELECT * FROM users WHERE username = :username")
-    suspend fun getUserByUsername(username: String): User?
+    fun getUserByUsername(username: String): Flow<User>
 
     @Query("SELECT * FROM users WHERE username = :username AND password = :password LIMIT 1")
-    suspend fun getUser(username: String, password: String):  User?
+    fun getUser(username: String, password: String):  Flow<User>
 
     @Query("DELETE FROM users WHERE username = :username")
     suspend fun deleteUser(username: String)

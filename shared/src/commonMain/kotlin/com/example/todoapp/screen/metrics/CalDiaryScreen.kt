@@ -76,6 +76,7 @@ import com.kizitonwose.calendar.core.firstDayOfWeekFromLocale
 import com.kizitonwose.calendar.core.minusYears
 import com.kizitonwose.calendar.core.now
 import com.kizitonwose.calendar.core.plusYears
+import kotlinx.coroutines.delay
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.daysUntil
@@ -112,45 +113,63 @@ fun CalDiaryScreen(mode: String, calDateViewModel: CalDiaryViewModel,
     val currentDate by calDateViewModel.currentDate.collectAsState()
     val missions by calDateViewModel.missionIds.collectAsState(emptyList())
 
+    var diaryLoaded by remember { mutableStateOf(false) }
+
+
     LaunchedEffect(Unit) {
         calDateViewModel.loadMissionIds()
     }
-
     Box(modifier = Modifier.fillMaxSize()) {
-        CalendarArea(
-            selectedDate = currentDate,
-            diaryViewMode = diaryViewMode,
-            expandAlpha = diaryAlpha,
-            onDateClicked = { date -> calDateViewModel.selectDate(date) },
-            onCollapseClicked = onCollapseClicked,
-            onExpandClicked = onExpandClicked
-        )
+            CalendarArea(
+                selectedDate = currentDate,
+                diaryViewMode = diaryViewMode,
+                expandAlpha = diaryAlpha,
+                onDateClicked = { date ->
+//                selectedPageDate = date
+//                diaryLoaded = true
+                    calDateViewModel.selectDate(date)
+                },
+                onCollapseClicked = onCollapseClicked,
+                onExpandClicked = onExpandClicked
+            )
 
-        Box(
-            modifier = Modifier
-                .height(diaryHeight)
-                .width(diaryWidth)
-                .align(Alignment.BottomCenter)
-        ) {
-            Box(modifier = Modifier.alpha(diaryAlpha)) {
-                DiaryScreen(
-                    selection = currentDate,
-                    diaryViewModel = KoinF.di?.get<DiaryViewModel> {
-                        parametersOf(currentDate, missions.size)
-                    } ?: error("DiaryViewModel not found")
-                )
-            }
-            Box(modifier = Modifier.alpha(1f - diaryAlpha)) {
-                BottomHighlightsSpace(
-                    selection = currentDate,
-                    bottomHighlightsViewModel = KoinF.di?.get<BottomHighlightsViewModel> {
-                        parametersOf(currentDate)
-                    } ?: error("BottomHighlightsViewModel not found"),
-                    onExpandClicked = onExpandClicked
-                )
+            Box(
+                modifier = Modifier
+                    .height(diaryHeight)
+                    .width(diaryWidth)
+                    .align(Alignment.BottomCenter)
+            ) {
+                Box(modifier = Modifier.alpha(diaryAlpha)) {
+                    if (diaryAlpha > 0f) {
+                        DiaryScreen(
+                            selection = currentDate,
+                            calMode = diaryViewMode,
+                            diaryViewModel = KoinF.di?.get<DiaryViewModel> {
+                                parametersOf(currentDate, missions.size)
+                            } ?: error("DiaryViewModel not found"),
+                            diaryLoaded = {
+                        diaryLoaded = true
+                            }
+                        )
+                    }
+                }
+                Box(modifier = Modifier.alpha(1f - diaryAlpha)) {
+                    if (diaryAlpha < 1f) {
+                        BottomHighlightsSpace(
+                            selection = currentDate,
+                            calMode = diaryViewMode,
+                            bottomHighlightsViewModel = KoinF.di?.get<BottomHighlightsViewModel> {
+                                parametersOf(currentDate)
+                            } ?: error("BottomHighlightsViewModel not found"),
+                            onExpandClicked = onExpandClicked,
+                            diaryLoaded = {
+//                                diaryLoaded = true
+                            }
+                        )
+                    }
+                }
             }
         }
-    }
 }
 
 @Composable

@@ -50,6 +50,9 @@ import com.example.todoapp.screen.metrics.components.ListHeader
 import com.example.todoapp.screen.metrics.components.MoodHeader
 import com.example.todoapp.screen.metrics.components.WeatherHeader
 import com.example.todoapp.screen.metrics.components.HabitItemViewModel
+import com.example.todoapp.screen.metrics.components.MenuItem
+import com.example.todoapp.screen.metrics.components.MoodViewModel
+import com.example.todoapp.screen.metrics.components.NotebookLine
 import com.example.todoapp.screen.missions.Orange80
 import com.kizitonwose.calendar.core.minusDays
 import kotlinx.datetime.LocalDate
@@ -73,7 +76,7 @@ data class ComboTask(
         else "todo(" +
                 "'m${mission?.missionId?:0L},t${todayTask?.todayTaskId?:0L}'${mission?.missionTitle}-${pillar?.pillarName}." +
                 (todayTask?.taskDate?.dateString?:"")+
-                (if (todayTask?.taskStatus=="COMPLETED") "/CMPLD" else "")+
+                (if (todayTask?.taskStatus=="COMPLETED") "/CMPLD" else "/${todayTask?.taskProgressVal}")+
                 (if (todayTask?.taskPageTag=="TOP3") "/T3" else "")+
                 ")"
     }
@@ -84,13 +87,23 @@ data class ComboTask(
 @Composable
 fun DiaryScreen(
     selection: LocalDate,
-    diaryViewModel: DiaryViewModel
+    calMode: String,
+    diaryViewModel: DiaryViewModel,
+    diaryLoaded: () -> Unit
+
     ) {
     val selectedTaskList: List<ComboTask>? by diaryViewModel.dayTasks.collectAsState(emptyList())
     val habitTasks: List<ComboTask>? by diaryViewModel.habitList.collectAsState(emptyList())
 
     LaunchedEffect(selection) {
-        diaryViewModel.loadTaskDetails()
+//        if(selection!=LocalDate.fromEpochDays(0)) {
+            diaryViewModel.loadTaskDetails()
+//        }
+    }
+    LaunchedEffect(Unit) {
+//        if(selection!=LocalDate.fromEpochDays(0)) {
+//            diaryViewModel.loadTaskDetails()
+//        }
     }
 //    LaunchedEffect(showDialog.value){
 //        if(showDialog.value){
@@ -116,11 +129,15 @@ fun DiaryScreen(
         val magicMode = remember { mutableStateOf("CHECK") }
         Column {
                 LazyColumn(modifier = Modifier) {
-                    MoodHeaderItem()
+                    MoodHeaderItem(
+                        selection
+                    )
                     WeatherHeaderItem()
-                    TodoMenuItems(selection, allTasks, diaryViewModel, magicMode, editingTaskMode)
+                    ExtraLines(1)
                     TodoListItems(selection, allTasks,
                         editingTaskMode, magicMode, diaryViewModel)
+                    TodoMenuItems(selection, diaryViewModel, editingTaskMode)
+                    ExtraLines(7)
                     item {
                         Spacer(modifier = Modifier.height(10.dp))
                     }
@@ -133,52 +150,43 @@ fun DiaryScreen(
 
 }
 
-private fun LazyListScope.TodoMenuItems(
-    selection: LocalDate,
-    allTasks: List<ComboTask>?,
-    diaryViewModel: DiaryViewModel,
-    magicMode: MutableState<String>,
-    editingTaskMode: MutableState<String>
-) {
+private fun LazyListScope.ExtraLines(n: Int ) {
     item {
-        val isLoading = remember { mutableStateOf(false) }
-        if (allTasks != null) {
-            if (isLoading.value && allTasks.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
+        Column {
+            (1..n).forEach {
+                NotebookLine()
             }
-        }
-        Row {
-            Box(modifier = Modifier.clickable {
-                Logger.e("addtask $selection")
-                diaryViewModel.addRandomTask(selection)
-            }) { Text("               +    ") }
-
-            Box(modifier = Modifier.clickable {
-                Logger.e("check/draw")
-                if (magicMode.value == "CHECK")
-                    magicMode.value = "DRAW" else
-                    magicMode.value = "CHECK"
-            }) { Text(if (magicMode.value == "CHECK") " CHECK " else " DRAW ") }
-
-            Box(modifier = Modifier.clickable {
-                Logger.e("Is Priority?")
-                if (editingTaskMode.value == "ViewItems")
-                    editingTaskMode.value = "prioritize"
-                else
-                    editingTaskMode.value = "ViewItems"
-            }) { Text(if (editingTaskMode.value == "prioritize") "                  Done " else "    Prioritize ") }
         }
     }
 }
 
-private fun LazyListScope.MoodHeaderItem() {
+private fun LazyListScope.TodoMenuItems(
+    selection: LocalDate,
+    diaryViewModel: DiaryViewModel,
+    editingTaskMode: MutableState<String>
+) {
+    item{
+        MenuItem(
+            selection,
+            52,
+            editingTaskMode.value,
+            prioritizeClicked={
+                editingTaskMode.value = it
+            }, addRandomTask = {
+                diaryViewModel.addRandomTask(selection)
+            }
+        )
+    }
+}
+
+private fun LazyListScope.MoodHeaderItem(
+    selection: LocalDate
+) {
     item {
-        MoodHeader()
+        MoodHeader(
+            selection,
+            KoinF.di?.get<MoodViewModel> { parametersOf(selection) }!!
+        )
     }
 }
 
@@ -200,11 +208,8 @@ private fun LazyListScope.TodoListItems(
 ) {
     item {
         if(!allTasks.isNullOrEmpty()) {
-            ListHeader("TO DO", modifier = Modifier.animateItem())
+//            ListHeader("TO DO", modifier = Modifier.animateItem())
         }
-    }
-    item{
-        Box(modifier = Modifier.padding(top = 10.dp))
     }
     itemsIndexed(allTasks?: listOf(), key = { _, task ->
         ((task.mission?.missionId?:0L)*1000)+(task.todayTask?.todayTaskId?:0L)
@@ -213,25 +218,6 @@ private fun LazyListScope.TodoListItems(
             DiaryItem(selection, task, editingTaskMode, taskViewModel, magicMode,
                 KoinF.di?.get<HabitItemViewModel> { parametersOf(selection,task.mission?.missionId) }!!
             )
-        }
-    }
-    item{
-        Column {
-            Box(modifier = Modifier.height(1.dp).fillMaxWidth().background(Blue80))
-            Box(modifier = Modifier.height(25.dp).fillMaxWidth())
-            Box(modifier = Modifier.height(1.dp).fillMaxWidth().background(Blue80))
-            Box(modifier = Modifier.height(25.dp).fillMaxWidth())
-            Box(modifier = Modifier.height(1.dp).fillMaxWidth().background(Blue80))
-            Box(modifier = Modifier.height(25.dp).fillMaxWidth())
-            Box(modifier = Modifier.height(1.dp).fillMaxWidth().background(Blue80))
-            Box(modifier = Modifier.height(25.dp).fillMaxWidth())
-            Box(modifier = Modifier.height(1.dp).fillMaxWidth().background(Blue80))
-            Box(modifier = Modifier.height(25.dp).fillMaxWidth())
-            Box(modifier = Modifier.height(1.dp).fillMaxWidth().background(Blue80))
-            Box(modifier = Modifier.height(25.dp).fillMaxWidth())
-            Box(modifier = Modifier.height(1.dp).fillMaxWidth().background(Blue80))
-            Box(modifier = Modifier.height(25.dp).fillMaxWidth())
-            Box(modifier = Modifier.height(1.dp).fillMaxWidth().background(Blue80))
         }
     }
 }

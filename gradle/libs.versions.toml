@@ -1,9 +1,10 @@
 [versions]
 agp = "8.7.2"
 kermit = "2.0.5"
-kotlin = "1.9.23"
+kotlin = "2.0.20"
 compose = "1.6.6"
-compose-plugin = "1.6.2"
+compose-plugin = "1.7.1"
+precompose = "1.5.7"
 skie = "0.6.2"
 androidx-material = "1.11.0"
 compose-material3 = "1.1.2"
@@ -14,10 +15,11 @@ androidx-core-ktx = "1.13.0"
 androidx-espresso-core = "3.5.1"
 androidxRoom = "2.7.0-alpha01"
 sqlite = "2.5.0-alpha01"
-ksp = "1.9.23-1.0.19"
+ksp = "2.0.20-1.0.25"
 koin = "3.2.0"
 lifecycle = "2.8.0-rc01"
 cal-version = "2.6.1"
+rendering = "1.17.1"
 
 [libraries]
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
@@ -30,6 +32,7 @@ compose-foundation = { module = "androidx.compose.foundation:foundation", versio
 compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "compose-material3" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "androidxRoom" }
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "androidxRoom" }
+precompose = { module = "moe.tlaster:precompose", version.ref = "precompose" }
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
 sqlite = { module = "androidx.sqlite:sqlite", version.ref = "sqlite" }
 koin = { module = "io.insert-koin:koin-core", version.ref = "koin" }
@@ -40,6 +43,7 @@ androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime
 androidx-lifecycle-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
 androidx-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel", version.ref = "lifecycle" }
 calendar-lib = { module = "com.kizitonwose.calendar:compose-multiplatform", version.ref = "cal-version"}
+rendering = { group = "com.google.ar.sceneform", name = "rendering", version.ref = "rendering" }
 
 
 [plugins]
@@ -52,3 +56,4 @@ room = { id = "androidx.room", version.ref = "androidxRoom" }
 skie = { id = "co.touchlab.skie", version.ref = "skie"}
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 jetbrainsCompose = { id = "org.jetbrains.compose", version.ref = "compose-plugin" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

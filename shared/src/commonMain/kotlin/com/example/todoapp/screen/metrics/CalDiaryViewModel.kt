@@ -34,6 +34,7 @@ class CalDiaryViewModel(
     private val _missionIds = MutableSharedFlow<List<Long>>(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     val missionIds: SharedFlow<List<Long>> get() = _missionIds
 
+//    private val _currentDate = MutableStateFlow(LocalDate.fromEpochDays(0))
     private val _currentDate = MutableStateFlow(LocalDate.now())
     val currentDate: StateFlow<LocalDate> get() = _currentDate
 

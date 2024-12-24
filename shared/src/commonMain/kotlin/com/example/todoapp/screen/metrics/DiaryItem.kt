@@ -13,6 +13,7 @@ import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.todotask.TodayTaskReminder
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.screen.metrics.components.GeneralItem
+import com.example.todoapp.screen.metrics.components.GeneralItemCheckbox
 import com.example.todoapp.screen.metrics.components.GeneralItemHabit
 import com.example.todoapp.screen.metrics.components.GeneralItemTop3Star
 import com.example.todoapp.screen.metrics.components.GeneralItemTopButton
@@ -41,21 +42,11 @@ fun DiaryItem(
     GeneralItemTop3Star(rowHeight.value,hTask, editingTaskMode.value, taskIsTop = { tt, check ->})
     if(hTask.missionFrequency?.frequencyPeriod == "DAILY") {
         GeneralItemHabit(rowHeight.value,selection, hTask, taskProgressWeekList, editingTaskMode.value) { tt, check -> }
-        if (hTask.missionFrequency.frequency > 10){
-            //colorable area segments
-        }else{
-            //stampable area segments
-        }
     }
-    ItemProgressBar(rowHeight.value,selection,hTask.todayTask ,hTask.pillar!!, hTask.mission!!, hTask.missionFrequency!!,
-        editingTaskMode.value){  progress->
-        Logger.e("progress: ${progress} for $hTask")
-        updateTaskProgress(selection, hTask, progress, taskViewModel)
-//        if(progress==1f){
-//            animateCompletedTask.value = hTask
-//        } else if (progress==0f){
-//            animateRefreshedTask.value = hTask
-//        }
+    if (editingTaskMode.value == "ViewItems" && hTask.todayTask?.taskStatus!="COMPLETED") {
+        ItemProgressBar(rowHeight.value, selection, hTask, editingTaskMode.value) { progress ->
+            updateTaskProgress(selection, hTask, progress, taskViewModel)
+        }
     }
     if(editingTaskMode.value == "prioritize") {
         GeneralItemTopButton(rowHeight.value,hTask, editingTaskMode.value){ tt, check ->
@@ -64,18 +55,11 @@ fun DiaryItem(
             }
         }
     }
-    if (editingTaskMode.value == "ViewItems" && magicMode.value == "CHECK") {
-//        GeneralItemCheckbox(rowHeight.value,hTask.todayTask ,hTask.pillar, editingTaskMode.value,){ tt, check ->
-//            if((tt?.todayTaskId ?: 0L) > 0L) {
-//                Logger.w("updating status: ${hTask.todayTask}")
-//                updateTaskStatus(hTask.todayTask!!,
-//                    if (check) "COMPLETED" else "REFRESHED", taskViewModel)
-//            } else {
-//                Logger.w("try insert status: ${hTask.todayTask}")
-//                updateInsertTaskStatus(hTask, MyDate.fromLocalDate(selection),
-//                    if (check) "COMPLETED" else "REFRESHED", taskViewModel)
-//            }
-//        }
+    if (editingTaskMode.value == "ViewItems" && hTask.todayTask?.taskStatus=="COMPLETED") {
+        GeneralItemCheckbox(rowHeight.value,hTask, editingTaskMode.value,){ tt, check ->
+            updateTaskStatus(selection,hTask,
+                if (check) "COMPLETED" else "REFRESHED", taskViewModel)
+        }
     }
 }
 
@@ -108,7 +92,7 @@ fun updateTaskProgress(
     var status = t.todayTask?.taskStatus?:"ADDED"
     if(progress==1f){
         status = "COMPLETED"
-    } else if (progress==0f){
+    } else {
         status = "REFRESHED"
     }
     val updatedTask = (t.todayTask?:getNewTask(t.mission!!.missionId, selection)).copy(
@@ -127,13 +111,7 @@ fun upsertTask(
     } else {
         taskViewModel.insertTask(
             ComboTask(updatedTask,
-            todayTaskReminder = TodayTaskReminder(
-                todayTaskId = 0L, // Example task ID
-                timeOfDay = "08:00", // Example time
-                alarmTone = "Default Tone", // Example alarm tone
-                timeBefore = 10, // Example time before
-                timeBeforeUnit = 1 // Example time before unit (e.g., minutes)
-            ),
+            todayTaskReminder = getNewReminder(0L),
             mission = null,
             pillar = null,
             missionFrequency = null
@@ -156,31 +134,14 @@ fun getNewTask(missionId: Long, taskDate: LocalDate): TodayTask{
         taskPictureUrl = null, // Example URL (can be null)
         taskLink = null // Example link (can be null)
     )
-//    val newTask = ComboTask(
-//        todayTask = TodayTask(
-//            todayTaskId = 0L, // Example task ID
-//            userId = 1L, // Example userId
-//            missionId = missionId,
-//            taskStatus = "ADDED",
-//            taskDate = MyDate.fromLocalDate(taskDate) ,
-//            taskType = "USER_HABIT", // Example type
-//            taskPageTag = "TODO",
-//            taskProgressVal = 0f, // Example progress
-//            taskText = "", // Example text
-//            taskPictureUrl = null, // Example URL (can be null)
-//            taskLink = null // Example link (can be null)
-//        ),
-//        todayTaskReminder = TodayTaskReminder(
-//            todayTaskId = 0L, // Example task ID
-//            timeOfDay = "08:00", // Example time
-//            alarmTone = "Default Tone", // Example alarm tone
-//            timeBefore = 10, // Example time before
-//            timeBeforeUnit = 1 // Example time before unit (e.g., minutes)
-//        ),
-//        mission = null,
-//        pillar = null,
-//        missionFrequency = null
-//    )
-//    Logger.w("inserting status: ${newTask.todayTask}")
-//    return newTask
+}
+//getnew reminder
+fun getNewReminder(todayTaskId: Long): TodayTaskReminder{
+    return TodayTaskReminder(
+        todayTaskId = todayTaskId, // Example task ID
+        timeOfDay = "08:00", // Example time
+        alarmTone = "Default Tone", // Example alarm tone
+        timeBefore = 10, // Example time before
+        timeBeforeUnit = 1 // Example time before unit (e.g., minutes)
+    )
 }

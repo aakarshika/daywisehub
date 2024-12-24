@@ -79,14 +79,11 @@ class MissionRepository(private val database: AppDatabase) {
         ))
     }
 
-
-
-
-    suspend fun insertDefaultPillars(user: User) {
+    suspend fun insertDefaultPillars(userId: Long) {
         missionDao.upsertPillar(
             Pillar(
                 pillarId = 1L,
-                pillarUserId = user.id,
+                pillarUserId = userId,
                 pillarDescription = "Take care of your body. It is the only one you have!",
                 pillarBenefits = "Proper attention to physical wellness at least 3-5 times a week is recommended for our body",
                 pillarName = "HEALTH",
@@ -100,7 +97,7 @@ class MissionRepository(private val database: AppDatabase) {
         missionDao.upsertPillar(
             Pillar(
                 pillarId = 2L,
-                pillarUserId = user.id,
+                pillarUserId = userId,
                 pillarDescription = "Money isn't everything, but it is some things..",
                 pillarBenefits = "Improve your skills, stay connected, and constantly walk towards your dreams",
                 pillarName = "WEALTH",
@@ -114,7 +111,7 @@ class MissionRepository(private val database: AppDatabase) {
         missionDao.upsertPillar(
             Pillar(
                 pillarId = 3L,
-                pillarUserId = user.id,
+                pillarUserId = userId,
                 pillarDescription = "We all need love from our family, friends, neighbours, and internet trolls..",
                 pillarBenefits = "Keep your social life alive by making it a priority",
                 pillarName = "LOVE",
@@ -128,7 +125,7 @@ class MissionRepository(private val database: AppDatabase) {
         missionDao.upsertPillar(
             Pillar(
                 pillarId = 4L,
-                pillarUserId = user.id,
+                pillarUserId = userId,
                 pillarDescription = "Meditate, Create, Dream, Build, Destroy..",
                 pillarBenefits = "Mental Peace needs attention. Multi-dimensional growth is needed to feel sustained and alive",
                 pillarName = "LIFE",

@@ -1,5 +1,6 @@
 package com.example.todoapp.screen.metrics.components
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,15 +16,57 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.unit.dp
+import com.example.todoapp.db.data.mood.TodayMood
+import com.example.todoapp.db.data.mood.TodayMoodWithDetails
+import com.example.todoapp.db.data.todotask.TodayTask
+import com.example.todoapp.db.models.MyDate
+import com.example.todoapp.repo.TodayMoodRepository
+import kotlinx.datetime.LocalDate
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.compose.resources.painterResource
+import todoapp.shared.generated.resources.Res
+import todoapp.shared.generated.resources.happiness
+import todoapp.shared.generated.resources.happy
+import todoapp.shared.generated.resources.sad
+import todoapp.shared.generated.resources.angry
+import todoapp.shared.generated.resources.afraid
+import todoapp.shared.generated.resources.surprised
+import todoapp.shared.generated.resources.disgusted
+
+
 val Red80 = Color(0xFFFFCBD2)
 
+private fun getDrawableIdFromMoodIcon(moodIcon: String): DrawableResource {
+    val drawableMap = mapOf(
+        "happy" to Res.drawable.happy,
+        "sad" to Res.drawable.sad,
+        "angry" to Res.drawable.angry,
+        "afraid" to Res.drawable.afraid,
+        "surprised" to Res.drawable.surprised,
+        "disgusted" to Res.drawable.disgusted
+    )
+    return drawableMap[moodIcon] ?: Res.drawable.happy
+}
+
 @Composable
-fun MoodHeader() {
+fun MoodHeader(
+    selection: LocalDate,
+    moodViewModel: MoodViewModel
+) {
+    val todayMoodList:List<TodayMoodWithDetails>? by moodViewModel.todayMoodStatuses.collectAsState(emptyList())
+    LaunchedEffect(selection){
+        moodViewModel.loadDailyMoodStatus()
+    }
+
 
     Box(modifier = Modifier
         .fillMaxWidth()
@@ -65,13 +108,27 @@ fun MoodHeader() {
                 Row(
                     modifier = Modifier.fillMaxHeight().align(Alignment.Start)
                 ){
-                    listOf(1,2,3,4,5,6).forEach {
+                    todayMoodList?.forEach {
                         Icon(
-                            tint = Red80,
-                            painter = rememberVectorPainter(Icons.Default.Face),
+                            tint = if (it.todayMood?.tmMoodStatus != "ACTIVE") Color.Gray else Color.Red,
+                            painter = painterResource(
+                                getDrawableIdFromMoodIcon(it.mood.moodIcon)
+                            ),
                             modifier = Modifier
                                 .size(40.dp)
-                                .align(Alignment.CenterVertically),
+                                .align(Alignment.CenterVertically)
+                                .padding(3.dp)
+                                .clickable {
+                                    moodViewModel.upsertTodayMood(
+                                        TodayMood(
+                                            tmId = it.todayMood?.tmId?:0L,
+                                            tmDate = MyDate.fromLocalDate(selection),
+                                            tmMoodId = it.mood.moodId,
+                                            tmMoodStatus = if (it.todayMood?.tmMoodStatus != "ACTIVE") "ACTIVE" else "INACTIVE"
+                                        )
+                                    )
+
+                                },
                             contentDescription = "mood-icon-smile"
                         )
                     }

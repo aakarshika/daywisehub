@@ -58,11 +58,12 @@ fun AppBar(
 fun App(){
 
     PreComposeApp {
+        Text(
+            "Hello, World!",
+        )
         val modifier = Modifier
         KoinF.setupKoin()
 
-        val initViewModel = KoinF.di?.get<InitViewModel>()
-        val userViewModel = KoinF.di?.get<UserViewModel>()
 
         var isInitialized = remember { mutableStateOf(false) }
         var userId = remember { mutableStateOf(-2L) }
@@ -74,13 +75,13 @@ fun App(){
             val coroutineScope = rememberCoroutineScope()
             if(isInitialized.value){
                 InitScreen2(
-                    userViewModel = userViewModel!!,
+                    userViewModel = KoinF.di?.get<UserViewModel>()!!,
                     userId = userId.value
                 )
 
             } else {
                 InitScreen(
-                    initViewModel = initViewModel!!,
+                    initViewModel = KoinF.di?.get<InitViewModel>()!!,
                     onInitSuccess = { userid->
                         userId.value = userid
                         isInitialized.value = true

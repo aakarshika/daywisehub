@@ -41,13 +41,19 @@ import kotlinx.datetime.LocalDate
 @Composable
  fun BottomHighlightsSpace(
     selection: LocalDate,
+    calMode: String,
     bottomHighlightsViewModel: BottomHighlightsViewModel,
-    onExpandClicked: () -> Unit
+    onExpandClicked: () -> Unit,
+    diaryLoaded: () -> Unit
 ) {
     val selectedTaskList: List<TodayTaskWithFewDetails>? by bottomHighlightsViewModel.dayTasks.collectAsState(emptyList())
 
     LaunchedEffect(selection) {
         bottomHighlightsViewModel.loadTaskDetails()
+    }
+    LaunchedEffect(Unit){
+        diaryLoaded()
+
     }
     val allTasks = (selectedTaskList?: listOf() )
 //        .sortedBy { t-> t.missionWithDetails.pillar?.pillarName }

@@ -17,13 +17,14 @@ fun InitScreen(
     onInitSuccess: (userId: Long) -> Unit
 ) {
     val loginStatus by initViewModel.loginStatus.collectAsState(null)
+
     LaunchedEffect(Unit) {
         initViewModel.loadLoginState()
     }
 
-    if (loginStatus?.isLoggedIn == true && loginStatus?.userId !=null) {
-        LaunchedEffect(Unit) {
-            onInitSuccess(loginStatus!!.userId)
+    LaunchedEffect(loginStatus) {
+        if (loginStatus?.isLoggedIn == true && loginStatus?.userId !=null) {
+           onInitSuccess(loginStatus!!.userId)
         }
     }
     var username by remember { mutableStateOf("") }
