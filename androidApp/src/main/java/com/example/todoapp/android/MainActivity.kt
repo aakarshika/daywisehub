@@ -11,7 +11,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.todoapp.app.App
 import com.example.todoapp.di.KoinF
-import com.example.todoapp.screen.metrics.components.GeneralItem
+import com.example.todoapp.screen.diary.diaryitem.components.GeneralItem
 import com.example.todoapp.screen.missions.defaultMissionWithDetails
 import org.koin.android.ext.koin.androidContext
 

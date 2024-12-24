@@ -2,15 +2,11 @@ package com.example.todoapp.repo
 
 import co.touchlab.kermit.Logger
 import com.example.todoapp.db.AppDatabase
-import com.example.todoapp.db.data.todotask.HabitTaskWithFewDetails
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.todotask.TodayTaskDao
-import com.example.todoapp.db.data.todotask.TodayTaskReminder
-import com.example.todoapp.db.data.todotask.TodayTaskWithDetails
 import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
 import com.example.todoapp.db.models.MyDate
-import com.example.todoapp.screen.globalViewModels.UserInitManager
-import com.example.todoapp.screen.metrics.ComboTask
+import com.example.todoapp.screen.diary.ComboTask
 import com.kizitonwose.calendar.core.minusDays
 import com.kizitonwose.calendar.core.plusDays
 import kotlinx.coroutines.flow.Flow

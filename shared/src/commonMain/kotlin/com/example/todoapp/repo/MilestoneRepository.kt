@@ -3,7 +3,7 @@ package com.example.todoapp.repo
 import com.example.todoapp.db.AppDatabase
 import com.example.todoapp.db.data.mission.milestone.MilestoneDao
 import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
-import com.example.todoapp.screen.globalViewModels.UserInitManager
+import com.example.todoapp.screen.init.UserInitManager
 import kotlinx.coroutines.flow.Flow
 
 class MilestoneRepository(private val database: AppDatabase) {

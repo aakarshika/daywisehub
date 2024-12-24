@@ -8,12 +8,8 @@ import com.example.todoapp.db.data.mission.milestone.MilestoneWithFewDetails
 import com.example.todoapp.db.data.mission.missionstuff.MissionFrequency
 import com.example.todoapp.db.data.mission.missionstuff.MissionPillarMapping
 import com.example.todoapp.db.data.pillar.Pillar
-import com.example.todoapp.db.data.user.User
-import com.example.todoapp.db.data.user.UserDao
-import com.example.todoapp.screen.globalViewModels.UserInitManager
+import com.example.todoapp.screen.init.UserInitManager
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.map
 
 class MissionRepository(private val database: AppDatabase) {
 

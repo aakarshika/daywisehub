@@ -1,6 +1,5 @@
 package com.example.todoapp.screen.missions
 
-import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,7 +22,6 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -34,14 +32,10 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
-import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.mission.MissionWithDetails
-import com.example.todoapp.db.data.mission.missionstuff.MissionFrequency
-import com.example.todoapp.db.data.pillar.Pillar
-import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.db.models.MyDate.Companion.daysBetween
 import com.example.todoapp.db.models.MyDate.Companion.now
-import com.example.todoapp.screen.basicblocks.WriteText
+import com.example.todoapp.screen.basicutils.components.WriteText
 import com.example.todoapp.screen.missions.calendar.progress.MissionProgressCalendar
 
 

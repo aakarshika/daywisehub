@@ -7,7 +7,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import co.touchlab.kermit.Logger
 import com.example.todoapp.db.models.MyDate
-import com.example.todoapp.screen.metrics.ComboTask
+import com.example.todoapp.screen.diary.ComboTask
 import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.LocalDate
 

@@ -2,8 +2,9 @@ package  com.example.todoapp.screen.init
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
+import com.example.todoapp.di.KoinF
 import com.example.todoapp.screen.NavScreens
-import com.example.todoapp.screen.globalViewModels.UserViewModel
+import com.example.todoapp.screen.metrics.CalDiaryViewModel
 
 @Composable
 fun InitScreen2(
@@ -16,7 +17,7 @@ fun InitScreen2(
     }
     if(user!=null){
         Column {
-            NavScreens()
+            NavScreens(KoinF.di?.get<CalDiaryViewModel>()!!)
         }
     }
 }

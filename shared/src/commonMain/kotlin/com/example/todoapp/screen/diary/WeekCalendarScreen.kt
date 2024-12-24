@@ -1,4 +1,4 @@
-package com.example.todoapp.screen.metrics
+package com.example.todoapp.screen.diary
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -9,20 +9,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,29 +26,20 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.todoapp.app.MyScreen
-import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
-import com.example.todoapp.di.KoinF
 import com.example.todoapp.getScreenHeight
-import com.example.todoapp.getScreenWidth
 import com.example.todoapp.getTopCalHeight
-import com.example.todoapp.screen.diary.DiaryViewModel
-import com.example.todoapp.screen.metrics.bottomhighlights.BottomHighlightsSpace
-import com.example.todoapp.screen.metrics.bottomhighlights.BottomHighlightsViewModel
-import com.example.todoapp.screen.metrics.bottomhighlights.DateHighlights
-import com.example.todoapp.screen.missions.Orange80
-import com.example.todoapp.screen.missions.Red80
-import com.kizitonwose.calendar.compose.VerticalCalendar
+import com.example.todoapp.screen.metrics.CalendarGradientA
+import com.example.todoapp.screen.metrics.CalendarGradientB
+import com.example.todoapp.screen.metrics.WeekDayGola
+import com.example.todoapp.screen.missions.calendar.progress.MonthHeader
+import com.kizitonwose.calendar.compose.HorizontalCalendar
 import com.kizitonwose.calendar.compose.WeekCalendar
 import com.kizitonwose.calendar.compose.rememberCalendarState
 import com.kizitonwose.calendar.compose.weekcalendar.rememberWeekCalendarState
 import com.kizitonwose.calendar.core.CalendarDay
-import com.kizitonwose.calendar.core.CalendarMonth
 import com.kizitonwose.calendar.core.DayPosition
-import com.kizitonwose.calendar.core.WeekDay
 import com.kizitonwose.calendar.core.YearMonth
 import com.kizitonwose.calendar.core.atEndOfMonth
 import com.kizitonwose.calendar.core.atStartOfMonth
@@ -66,32 +50,46 @@ import com.kizitonwose.calendar.core.now
 import com.kizitonwose.calendar.core.plusYears
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.daysUntil
 import kotlinx.datetime.number
-import org.koin.core.parameter.parametersOf
 
 
 @Composable
-fun MetricsScreen(
-//    metricsViewModel: MetricsViewModel,
-    currentDate: LocalDate,
-    changeDate: (LocalDate) -> Unit
-) {
+fun WeekCaledarScreen(selectedDate: LocalDate, changeDate: (LocalDate) -> Unit) {
+
+    var diaryViewMode by remember { mutableStateOf("week") }
+
     Box(modifier = Modifier.fillMaxSize()) {
-        CalendarArea(
-            selectedDate = currentDate,
-            onDateClicked = { date ->
-                changeDate(date)
-            },
-        )
-    }
+            CalendarArea(
+                selectedDate = selectedDate,
+                diaryViewMode = diaryViewMode,
+                onDateClicked = { date ->
+                    changeDate(date)
+                },
+                onCollapseClicked = {diaryViewMode = "month"},
+                onExpandClicked = {diaryViewMode = "week"}
+            )
+        }
 }
 
 @Composable
 private fun CalendarArea(
     selectedDate: LocalDate,
     onDateClicked: (LocalDate) -> Unit,
+    onCollapseClicked: () -> Unit,
+    onExpandClicked: () -> Unit,
+    diaryViewMode: String
 ) {
+
+    val expandAlpha by animateFloatAsState(
+        targetValue = if (diaryViewMode == "week") 1f else 0f
+    )
+    val screenHeightDp = getScreenHeight()
+    val calBigHeight by animateDpAsState(
+        targetValue = if (diaryViewMode == "week") 0.dp else 300.dp
+    )
+    val calWeekHeight by animateDpAsState(
+        targetValue = if (diaryViewMode == "week") getTopCalHeight() else 0.dp
+    )
 
     val currentDate = remember { LocalDate.now() }
     val currentMonth = remember { YearMonth.now() }
@@ -118,11 +116,40 @@ private fun CalendarArea(
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
+                .alpha(expandAlpha)
         ) {
-            VerticalCalendar(
+            WeekCalendar(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight(),
+                    .height(calWeekHeight)
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures(
+                            onVerticalDrag = { change, dragAmount ->
+                                change.consume()
+                            },
+                            onDragEnd = { onCollapseClicked() }
+                        )
+                    },
+                state = weekState,
+                calendarScrollPaged = false,
+                dayContent = { day ->
+                    WeekDayGola(
+                        day,
+                        isSelected = selectedDate == day.date,
+                        onDateClicked
+                    )
+                }
+            )
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .alpha(1f - expandAlpha)
+        ) {
+            HorizontalCalendar(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(calBigHeight),
                 state = state,
                 calendarScrollPaged = false,
                 dayContent = { day ->
@@ -156,6 +183,7 @@ private fun CalendarArea(
         }
     }
 }
+
 
 @Composable
 private fun MonthDay(
@@ -254,88 +282,3 @@ private fun MonthDay(
     }
 }
 
-@Composable
-private fun MonthHeader(month: CalendarMonth) {
-    Row(modifier = Modifier.fillMaxWidth().background(color =
-    if (month.yearMonth.month.number % 2 == 0) CalendarGradientA else CalendarGradientB)) {
-        Text(
-            modifier = Modifier.weight(1f),
-            textAlign = TextAlign.Center,
-            text = "${month.yearMonth.month.name} ${month.yearMonth.year}",
-        )
-    }
-}
-
-@Composable
-fun WeekDayGola(
-    day: WeekDay,
-    isSelected: Boolean,
-    onDateClicked: (LocalDate) -> Unit
-){
-
-//    val dayTasks: List<TodayTaskWithDetails>,
-    val dayMilestones: List<MilestoneWithDetails>
-
-//    val allTasks = (dayTasks?: listOf() ).sortedBy { t-> t.mission.pillarName }.sortedBy { t-> t.task.taskStatus }
-//    val allTasksCompleted = allTasks.filter { t->  t.task.taskStatus==TaskStatus.COMPLETED }
-//    val top3Tasks = allTasks.filter { t-> t.taskUiData.taskUi.taskPageTag == "TOP3" }
-//    val top3TasksCompleted = allTasks.filter { t-> t.taskUiData.taskUi.taskPageTag == "TOP3" && t.task.taskStatus==TaskStatus.COMPLETED }
-
-    val date = day.date
-
-    Box(modifier = Modifier.padding(5.dp)){
-        if(isSelected && date.daysUntil(LocalDate.now())==0){
-            RoundBox(""+date.dayOfMonth+date.month.name, todayHighlight = true){
-                onDateClicked(date)
-            }
-        } else if(isSelected){
-            RoundButton(date.dayOfMonth, todayHighlight = true){
-                onDateClicked(date)
-            }
-        } else if(date.daysUntil(LocalDate.now())==0){
-            RoundBox(""+date.dayOfMonth+date.month.name, todayHighlight = false){
-                onDateClicked(date)
-            }
-        } else {
-            RoundButton(date.dayOfMonth, todayHighlight = false){
-                onDateClicked(date)
-            }
-        }
-    }
-}
-val CalendarGradientA = Color(0xFFFFFBF0)
-val CalendarGradientB = Color(0xFFFCECE7)
-
-@Composable
-fun RoundBox(dateS: String,
-             todayHighlight: Boolean = false,
-             onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        shape = CircleShape,
-        colors = ButtonDefaults.buttonColors(containerColor = if(todayHighlight) Red80 else  Orange80), // Orange color
-        modifier = Modifier.height(50.dp).wrapContentWidth() // Adjust the size as needed
-    ) {
-        Text(
-            text = dateS,
-            color = Color.White,
-            style = MaterialTheme.typography.bodyLarge
-        )
-    }
-}
-@Composable
-fun RoundButton(number: Int, todayHighlight: Boolean = false,
-                onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        shape = CircleShape,
-        colors = ButtonDefaults.buttonColors(containerColor = if(todayHighlight) Red80 else  Orange80), // Orange color
-        modifier = Modifier.height(50.dp).wrapContentWidth() // Adjust the size as needed
-    ) {
-        Text(
-            text = number.toString(),
-            color = Color.White,
-            style = MaterialTheme.typography.bodyLarge
-        )
-    }
-}

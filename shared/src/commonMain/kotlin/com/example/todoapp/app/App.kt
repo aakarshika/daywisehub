@@ -14,7 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import com.example.todoapp.di.KoinF
-import com.example.todoapp.screen.globalViewModels.UserViewModel
+import com.example.todoapp.screen.init.UserViewModel
 import com.example.todoapp.screen.init.InitScreen
 import com.example.todoapp.screen.init.InitScreen2
 import com.example.todoapp.screen.init.InitViewModel

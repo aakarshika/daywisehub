@@ -58,9 +58,9 @@ import com.example.todoapp.db.data.mission.milestone.MilestoneWithFewDetails
 import com.example.todoapp.db.data.mission.missionstuff.MissionFrequency
 import com.example.todoapp.db.data.pillar.Pillar
 import com.example.todoapp.db.models.MyDate
-import com.example.todoapp.screen.basicblocks.FrequencyPeriodButton
-import com.example.todoapp.screen.basicblocks.WriteText
-import com.example.todoapp.screen.basicblocks.WritingTextField
+import com.example.todoapp.screen.basicutils.components.FrequencyPeriodButton
+import com.example.todoapp.screen.basicutils.components.WriteText
+import com.example.todoapp.screen.basicutils.components.WritingTextField
 import com.example.todoapp.screen.missions.calendar.blueprint.MissionBlueprintCalendarScreen
 
 val Orange80 = Color(0xFFFFD4B8)
