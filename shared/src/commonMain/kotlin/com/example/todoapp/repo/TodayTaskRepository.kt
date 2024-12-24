@@ -45,15 +45,20 @@ class TodayTaskRepository(private val database: AppDatabase) {
     suspend fun insertFullTask(task: TodayTaskWithFewDetails): Long {
         return todayTaskDao.insertFullTask(task)
     }
+    //upsert todaytask
+    suspend fun updateTodayTask(todayTask: TodayTask) {
+         todayTaskDao.updateTodayTask(todayTask)
+    }
 
     suspend fun getHabitMissions(date: MyDate): Flow<List<ComboTask>> {
         return todayTaskDao.getHabitMissions(date.dateString)
     }
 
 
-    suspend fun getTaskProgressForPastAround(missionId: Long, date: LocalDate): Flow<List<TodayTask>> {
+    suspend fun getTaskProgressForPastAround(missionId: Long, date: LocalDate): Flow<List<TodayTask>?> {
         val from_date = MyDate.fromLocalDate(date.minusDays(8)).dateString
         val to_date = MyDate.fromLocalDate(date.plusDays(2)).dateString
+        Logger.e("getTaskProgressForPastAround $missionId $from_date $to_date")
         return todayTaskDao.getTaskProgressForPastAround(missionId,from_date, to_date)
     }
 

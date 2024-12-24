@@ -20,7 +20,7 @@ import com.example.todoapp.screen.metrics.ComboTask
 import com.example.todoapp.screen.metrics.cal.clickable
 
 @Composable
-fun GeneralItemTopButton(
+fun GeneralItemTop3Star(
     RowHeight: Int,
     todoTask: ComboTask,
     editingMode:String,
@@ -30,12 +30,6 @@ fun GeneralItemTopButton(
 
     Box(modifier = Modifier.fillMaxWidth().height(RowHeight.dp)){
         Row(modifier = Modifier.fillMaxWidth()
-            .clickable  {
-                if(editingMode == "prioritize") {
-                    if (isChecked) taskIsTop(todoTask, false)
-                    else taskIsTop(todoTask, true)
-                }
-            }
         ){
             columnWeights.forEachIndexed { i, item->
                 Box(
@@ -51,12 +45,7 @@ fun GeneralItemTopButton(
                             ) {
                                 CustomTop3Button(
                                     checked = isChecked,
-                                    onCheckedChange = {
-                                        if (editingMode == "prioritize") {
-                                            if (isChecked) taskIsTop(todoTask, false)
-                                            else taskIsTop(todoTask, true)
-                                        }
-                                    },
+                                    onCheckedChange = {},
                                     modifier = Modifier,
                                     checkedColor = Orange80,
                                     uncheckedColor = if(editingMode == "prioritize") Orange80 else Color.Transparent,

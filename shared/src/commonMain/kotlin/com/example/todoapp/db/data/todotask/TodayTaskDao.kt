@@ -73,10 +73,9 @@ interface TodayTaskDao {
     fun getHabitMissions(date: String): Flow<List<ComboTask>>
 
     @Query("""SELECT tt.*
-        FROM mission m
-        LEFT JOIN today_task  tt ON tt.task_mission_id = m.mission_id 
-        where m.mission_id = :missionId 
-        and tt.task_date between :dateString and :dateString1
+        FROM today_task  tt 
+        JOIN mission m ON tt.task_mission_id = m.mission_id
+        where m.mission_id = :missionId and tt.task_date between :dateString and :dateString1
         """)
     fun getTaskProgressForPastAround(
         missionId: Long,

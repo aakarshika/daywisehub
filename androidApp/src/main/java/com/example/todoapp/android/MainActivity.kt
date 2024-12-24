@@ -40,9 +40,3 @@ fun DefaultPreview() {
         GreetingView("Hello, Android!")
     }
 }
-
-@Preview
-@Composable
-fun  PreviewGeneralItem(){
-    GeneralItem(defaultMissionWithDetails.mission!!)
-}
