@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.room)
+
     id("com.google.devtools.ksp")
     alias(libs.plugins.jetbrainsCompose)
 }

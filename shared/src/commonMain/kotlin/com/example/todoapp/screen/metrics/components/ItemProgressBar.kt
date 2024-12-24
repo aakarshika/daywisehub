@@ -38,30 +38,30 @@ import com.example.todoapp.getScreenWidth
 import com.example.todoapp.screen.basicblocks.CustomCheckbox
 import com.example.todoapp.screen.basicblocks.DiaryLineText
 import com.example.todoapp.screen.basicblocks.WriteText
+import com.example.todoapp.screen.metrics.ComboTask
 import com.example.todoapp.screen.metrics.cal.clickable
 import com.example.todoapp.screen.missions.getPillarColor
 import kotlinx.datetime.LocalDate
 import kotlin.random.Random
 
+
+val totalProgressWidth = 500f
+
 @Composable
 fun ItemProgressBar(
     rowHeight: Int,
     selection: LocalDate,
-    todoTask: TodayTask?,
-    pillar: Pillar,
-    mission: Mission,
-    missionFrequency: MissionFrequency,
-    editingMode: String,
+    ct: ComboTask,
+    editingMode:String,
     onTaskProgressUpdated: (Float) -> Unit,
 ) {
-    val totalProgressWidth = 500f
-    val isTaskCompleted = todoTask?.taskStatus == "COMPLETED"
+    val isTaskCompleted = ct.todayTask?.taskStatus == "COMPLETED"
     var taskProgress = remember { mutableStateOf(0f) }
 
     LaunchedEffect(selection) {
         taskProgress.value = when {
             isTaskCompleted -> totalProgressWidth
-            todoTask?.taskProgressVal != null -> todoTask.taskProgressVal * totalProgressWidth
+            ct.todayTask?.taskProgressVal != null -> ct.todayTask.taskProgressVal * totalProgressWidth
             else -> 0f
         }
     }
@@ -77,14 +77,12 @@ fun ItemProgressBar(
         ProgressBarForeground(
             rowHeight = rowHeight,
             taskProgress = taskProgress.value,
-            totalProgressWidth = totalProgressWidth,
-            pillarColor = getPillarColor(pillar.pillarName)
+            pillarColor = getPillarColor(ct.pillar?.pillarName)
         )
 
         ProgressBarMetrics(
             taskProgress = taskProgress.value,
-            totalProgressWidth = totalProgressWidth,
-            missionFrequency = missionFrequency
+            missionFrequency = ct.missionFrequency
         )
     }
 }
@@ -118,12 +116,11 @@ fun ProgressBarWithDrag(
 fun ProgressBarForeground(
     rowHeight: Int,
     taskProgress: Float,
-    totalProgressWidth: Float,
     pillarColor: Color
 ) {
-    val paddingStart = 48.dp
+    val paddingStart = 40.dp
     Row(
-        modifier = Modifier.padding(top = (rowHeight - 25).dp, start = paddingStart),
+        modifier = Modifier.padding(top = (rowHeight - 25).dp, start = paddingStart, end = paddingStart),
         horizontalArrangement = Arrangement.End
     ) {
         Box(
@@ -144,15 +141,14 @@ fun ProgressBarForeground(
 @Composable
 fun ProgressBarMetrics(
     taskProgress: Float,
-    totalProgressWidth: Float,
-    missionFrequency: MissionFrequency
+    missionFrequency: MissionFrequency?
 ) {
-    val completedFrequency = ((taskProgress / totalProgressWidth) * (missionFrequency.frequency ?: 1)).toFloat()
+    val completedFrequency = ((taskProgress / totalProgressWidth) * (missionFrequency?.frequency ?: 1)).toFloat()
     val displayedValue = (completedFrequency * 10).toInt() / 10f
-    val totalFrequency = (missionFrequency.frequency ?: 1).toFloat()
+    val totalFrequency = (missionFrequency?.frequency ?: 1).toFloat()
 
     Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 6.dp, end = 5.dp).wrapContentHeight(),
         horizontalArrangement = Arrangement.End
     ) {
         WriteText(
@@ -161,7 +157,7 @@ fun ProgressBarMetrics(
             color = Color.Black
         )
         WriteText(
-            text = " ${missionFrequency.frequencyUnit}",
+            text = " ${missionFrequency?.frequencyUnit?:1}",
             fontSize = 9f,
             color = Color.Gray
         )

@@ -12,7 +12,7 @@ fun InitScreen2(
 ) {
     val user by userViewModel.user.collectAsState(null)
     LaunchedEffect(Unit) {
-        userViewModel?.loadUserByIdOnce(userId)
+        userViewModel.loadUserByIdOnce(userId)
     }
     if(user!=null){
         Column {

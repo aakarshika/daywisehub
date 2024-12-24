@@ -1,5 +1,6 @@
 package com.example.todoapp.screen.metrics.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,20 +24,18 @@ import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
 import com.example.todoapp.screen.basicblocks.CustomCheckbox
 import com.example.todoapp.screen.basicblocks.WriteText
+import com.example.todoapp.screen.metrics.ComboTask
 import com.example.todoapp.screen.metrics.cal.clickable
 import com.example.todoapp.screen.missions.getPillarColor
 
 @Composable
 fun GeneralItemCheckbox(
     RowHeight: Int,
-    todoTask: TodayTask?,
-    pillar: Pillar?,
+    ct: ComboTask?,
     editingMode :String,
-    taskErased: (TodayTask?, Boolean) -> Unit,
+    taskErased: (ComboTask?, Boolean) -> Unit,
 ) {
-    val isChecked = todoTask?.taskStatus== "COMPLETED"
-
-    val ld = LocalDensity.current
+    val isChecked = ct?.todayTask?.taskStatus== "COMPLETED"
 
     Box(modifier = Modifier.fillMaxWidth().height(RowHeight.dp)){
         Row(modifier = Modifier.fillMaxWidth()
@@ -48,16 +47,16 @@ fun GeneralItemCheckbox(
                 ){
                     if(i == 0) {
                         Box(modifier = Modifier
-                            .fillMaxSize()
+                            .fillMaxWidth().height(RowHeight.dp)
                         ) {
                             Column(
                                 modifier = Modifier
-                                    .fillMaxSize()
+                                    .fillMaxWidth().height(RowHeight.dp)
                                     .clickable {
                                         if (isChecked) taskErased(
-                                            todoTask,
+                                            ct,
                                             false
-                                        ) else taskErased(todoTask,  true)
+                                        ) else taskErased(ct,  true)
                                     }
                                     .padding(start = 10.dp, top = 5.dp)
                             ) {
@@ -65,19 +64,29 @@ fun GeneralItemCheckbox(
                                     checked = isChecked,
                                     onCheckedChange = {
                                         if (isChecked) taskErased(
-                                            todoTask,
+                                            ct,
                                             false
-                                        ) else taskErased(todoTask,  true)
+                                        ) else taskErased(ct,  true)
                                     },
                                     modifier = Modifier
                                         .size(20.dp)
                                         .clip(CircleShape)
                                     ,
-                                    checkedColor = getPillarColor(pillar?.pillarName),
+                                    checkedColor = getPillarColor(ct?.pillar?.pillarName),
                                     uncheckedColor = Color.Transparent,
                                     disabledColor = Color.Transparent
                                 )
                             }
+                        }
+                    }
+                    if(i == 2){
+                        Box(modifier = Modifier
+                            .fillMaxWidth().height(RowHeight.dp)
+                        ) {
+                            ProgressBarMetrics(
+                                taskProgress = (ct?.todayTask?.taskProgressVal ?: 0f)*totalProgressWidth,
+                                missionFrequency = ct?.missionFrequency!!
+                            )
                         }
                     }
                 }

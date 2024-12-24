@@ -25,11 +25,11 @@ class TodayMoodRepository(private val database: AppDatabase) {
         return todayMoodDao.getTodayMood(selected_date)
     }
 
-    suspend fun insertDefaultMoods(user: User) {
+    suspend fun insertDefaultMoods(userId: Long) {
         todayMoodDao.upsertMood(
             Mood(
                 moodId = 0L,
-                moodUserId = user.id,
+                moodUserId = userId,
                 moodName = "HAPPY",
                 moodIcon = "happy"
             )
@@ -37,7 +37,7 @@ class TodayMoodRepository(private val database: AppDatabase) {
         todayMoodDao.upsertMood(
             Mood(
                 moodId = 0L,
-                moodUserId = user.id,
+                moodUserId = userId,
                 moodName = "SAD",
                 moodIcon = "sad"
             )
@@ -45,7 +45,7 @@ class TodayMoodRepository(private val database: AppDatabase) {
         todayMoodDao.upsertMood(
             Mood(
                 moodId = 0L,
-                moodUserId = user.id,
+                moodUserId = userId,
                 moodName = "ANGRY",
                 moodIcon = "angry"
             )
@@ -53,7 +53,7 @@ class TodayMoodRepository(private val database: AppDatabase) {
         todayMoodDao.upsertMood(
             Mood(
                 moodId = 0L,
-                moodUserId = user.id,
+                moodUserId = userId,
                 moodName = "AFRAID",
                 moodIcon = "afraid"
             )
@@ -61,7 +61,7 @@ class TodayMoodRepository(private val database: AppDatabase) {
         todayMoodDao.upsertMood(
             Mood(
                 moodId = 0L,
-                moodUserId = user.id,
+                moodUserId = userId,
                 moodName = "SURPRISE",
                 moodIcon = "surprised"
             )
@@ -69,7 +69,7 @@ class TodayMoodRepository(private val database: AppDatabase) {
         todayMoodDao.upsertMood(
             Mood(
                 moodId = 0L,
-                moodUserId = user.id,
+                moodUserId = userId,
                 moodName = "DISGUSTED",
                 moodIcon = "disgusted"
             )
