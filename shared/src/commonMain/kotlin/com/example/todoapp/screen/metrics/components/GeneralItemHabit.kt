@@ -36,27 +36,26 @@ import kotlinx.datetime.LocalDate
 
 @Composable
 fun GeneralItemHabit(
+    RowHeight: Int,
     selection: LocalDate,
     hTask: ComboTask,
     taskProgressWeekList:List<TodayTask>?,
     editingMode :String,
     taskIsHabit: (ComboTask?, Boolean) -> Unit,
 ) {
-    Box(modifier = Modifier.fillMaxWidth().height(RowHeight)){
-        Row(modifier = Modifier.fillMaxWidth().padding(end = 5.dp), horizontalArrangement = Arrangement.End) {
+    Box(modifier = Modifier.fillMaxWidth().height(RowHeight.dp)){
+        Row(modifier = Modifier.fillMaxWidth().height(RowHeight.dp).align(Alignment.TopEnd).padding(top= 1.dp,end = 5.dp), horizontalArrangement = Arrangement.End) {
             (1..6).forEach {
                 val boxDate = MyDate.fromLocalDate(selection.minusDays(5 - (it)))
                 val t = taskProgressWeekList?.find { it.taskDate.dateString == boxDate.dateString }
                 if(it==5){
                     Box(
                         modifier = Modifier
-                            .padding(start=4.dp, top = 5.dp)
-                            .height(15.dp).width(9.dp).clip(RoundedCornerShape(2.dp))
-                            .align(Alignment.CenterVertically)
-                            .background(Color.LightGray)
+                            .height(7.dp).width(9.dp).clip(RoundedCornerShape(2.dp))
+                            .background(Blue80)
                     ){Box(
                         modifier = Modifier
-                            .height(13.dp).width(7.dp).clip(RoundedCornerShape(2.dp))
+                            .height(5.dp).width(7.dp).clip(RoundedCornerShape(2.dp))
                             .align(Alignment.Center)
                             .background(
                                 if (hTask.todayTask?.taskStatus == "COMPLETED") com.example.todoapp.screen.missions.Orange80
@@ -66,9 +65,7 @@ fun GeneralItemHabit(
                 } else {
                     Box(
                         modifier = Modifier
-                            .padding(start = 4.dp, top = 5.dp)
-                            .height(13.dp).width(7.dp).clip(RoundedCornerShape(2.dp))
-                            .align(Alignment.CenterVertically)
+                            .height(5.dp).width(7.dp).clip(RoundedCornerShape(2.dp))
                             .background(
                                 if (t?.taskStatus == "COMPLETED") com.example.todoapp.screen.missions.Orange80
                                 else Color.White

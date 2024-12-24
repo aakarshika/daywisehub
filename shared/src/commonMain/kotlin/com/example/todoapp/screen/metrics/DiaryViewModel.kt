@@ -74,12 +74,18 @@ class DiaryViewModel(
                 TodayTaskWithFewDetails(
                     todayTask = task.todayTask!!,
                     todayTaskReminder = task.todayTaskReminder,
-                    mission = task.mission,
-                    pillar = task.pillar,
-                    missionFrequency = task.missionFrequency
+                    mission = null,
+                    pillar = null,
+                    missionFrequency = null
                 )
             )
             Logger.w("inserted Task: $t")
+        }
+    }
+    //update todaytask
+    fun updateTodayTask(task: TodayTask) {
+        viewModelScope.launch {
+            todayTaskRepository.updateTodayTask(task)
         }
     }
 

@@ -13,7 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
-val columnWeights = listOf(1f, 5f, 1f, 1f)
+val columnWeights = listOf(1f, 5f, 2f)
 val columnNames = listOf("Reminder", "", "Top", "Habit")
 @Composable
 fun PlannerHeadingItems(doStuff: (String)-> Unit ) {
