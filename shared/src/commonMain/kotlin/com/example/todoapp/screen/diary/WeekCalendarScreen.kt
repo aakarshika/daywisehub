@@ -116,7 +116,7 @@ private fun CalendarArea(
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .alpha(expandAlpha)
+//                .alpha(expandAlpha)
         ) {
             WeekCalendar(
                 modifier = Modifier
@@ -141,46 +141,46 @@ private fun CalendarArea(
                 }
             )
         }
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .alpha(1f - expandAlpha)
-        ) {
-            HorizontalCalendar(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(calBigHeight),
-                state = state,
-                calendarScrollPaged = false,
-                dayContent = { day ->
-                    MonthDay(
-                        day,
-                        isSelected = selectedDate == day.date,
-                        onDateClicked
-                    )
-                },
-                monthBody = { month, content ->
-                    Box(
-                        modifier = Modifier.background(
-                            brush = Brush.verticalGradient(
-                                colors = if (month.yearMonth.month.number % 2 == 0)
-                                    listOf(CalendarGradientA, CalendarGradientB)
-                                else
-                                    listOf(CalendarGradientB, CalendarGradientA)
-                            )
-                        )
-                    ) {
-                        content()
-                    }
-                },
-                monthContainer = { month, container ->
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        MonthHeader(month)
-                        Box(modifier = Modifier.fillMaxWidth()) { container() }
-                    }
-                }
-            )
-        }
+//        Box(
+//            modifier = Modifier
+//                .align(Alignment.BottomCenter)
+//                .alpha(1f - expandAlpha)
+//        ) {
+//            HorizontalCalendar(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .height(calBigHeight),
+//                state = state,
+//                calendarScrollPaged = false,
+//                dayContent = { day ->
+//                    MonthDay(
+//                        day,
+//                        isSelected = selectedDate == day.date,
+//                        onDateClicked
+//                    )
+//                },
+//                monthBody = { month, content ->
+//                    Box(
+//                        modifier = Modifier.background(
+//                            brush = Brush.verticalGradient(
+//                                colors = if (month.yearMonth.month.number % 2 == 0)
+//                                    listOf(CalendarGradientA, CalendarGradientB)
+//                                else
+//                                    listOf(CalendarGradientB, CalendarGradientA)
+//                            )
+//                        )
+//                    ) {
+//                        content()
+//                    }
+//                },
+//                monthContainer = { month, container ->
+//                    Column(modifier = Modifier.fillMaxWidth()) {
+//                        MonthHeader(month)
+//                        Box(modifier = Modifier.fillMaxWidth()) { container() }
+//                    }
+//                }
+//            )
+//        }
     }
 }
 

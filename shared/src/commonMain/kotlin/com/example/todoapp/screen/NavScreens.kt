@@ -50,6 +50,7 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
         backStackEntry?.route?.route ?: MyScreen.Diary.name
     )
 
+
     Scaffold(
         bottomBar = {
             NavigationBar {
