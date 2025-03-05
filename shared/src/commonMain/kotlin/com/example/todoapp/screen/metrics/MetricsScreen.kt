@@ -35,9 +35,11 @@ import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
 import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.screen.basicutils.components.WriteText
+import com.example.todoapp.screen.diary.diaryitem.components.Blue80
 import com.example.todoapp.screen.metrics.metriccomponents.TaskTypeDropdown
 import com.example.todoapp.screen.metrics.metriccomponents.options
 import com.example.todoapp.screen.missions.Orange80
+import com.example.todoapp.screen.missions.Pink80
 import com.example.todoapp.screen.missions.Red80
 import com.example.todoapp.screen.missions.getPillarColor
 import com.kizitonwose.calendar.compose.VerticalCalendar
@@ -80,7 +82,6 @@ fun MetricsScreen(
             TaskTypeDropdown(
                 optionsSelected = { selectedPillars ->
                     Logger.e("TaskTypeDropdown     $selectedPillars")
-
 //                    metricsViewModel.loadTasks(selectedPillars)
                     selectionOptions = selectedPillars
 

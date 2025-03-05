@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
@@ -28,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import com.example.todoapp.screen.missions.getPillarColor
+
 val options = listOf("HEALTH", "WEALTH", "LOVE", "LIFE")
 
 @Composable
@@ -98,7 +101,7 @@ fun TaskTypeDropdown(optionsSelected: (List<String>) -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = if (allSelected) Icons.Default.CheckCircle else Icons.Default.AddCircle,
+                    imageVector = if (allSelected) Icons.Default.CheckCircle else Icons.Default.Face,
                     contentDescription = if (allSelected) "Checked" else "Unchecked",
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
@@ -126,9 +129,9 @@ fun TaskTypeDropdown(optionsSelected: (List<String>) -> Unit) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = if (isChecked) Icons.Default.CheckCircle else Icons.Default.AddCircle,
+                        imageVector = if (isChecked) Icons.Default.CheckCircle else Icons.Default.Face,
                         contentDescription = if (isChecked) "Checked" else "Unchecked",
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = getPillarColor(option),
                         modifier = Modifier.size(24.dp)
                     )
                     Text(

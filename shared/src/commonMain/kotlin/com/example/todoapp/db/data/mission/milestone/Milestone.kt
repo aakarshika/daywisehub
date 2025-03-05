@@ -15,6 +15,7 @@ import com.example.todoapp.db.models.MyDate
         entity = Mission::class,
         parentColumns = ["mission_id"],
         childColumns = ["mile_mission_id"],
+        onDelete = ForeignKey.CASCADE
     )],
     indices = [Index(value = ["mile_mission_id"])]
 )

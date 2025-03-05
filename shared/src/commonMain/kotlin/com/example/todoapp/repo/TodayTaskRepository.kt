@@ -18,6 +18,11 @@ class TodayTaskRepository(private val database: AppDatabase) {
     }
 
 
+
+    suspend fun getAllTasksForMission(missionId: Long): Flow<List<TodayTaskWithFewDetails>> {
+        return todayTaskDao.getAllTasksForMission(missionId)
+    }
+
     suspend fun getAllTasks(): Flow<List<TodayTaskWithFewDetails>> {
         return todayTaskDao.getTodayTaskWithDetails()
     }

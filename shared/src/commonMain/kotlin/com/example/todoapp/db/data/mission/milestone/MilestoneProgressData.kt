@@ -13,6 +13,7 @@ import com.example.todoapp.db.models.MyDate
         entity = Milestone::class,
         parentColumns = ["milestone_id"],
         childColumns = ["mpd_milestone_id"],
+        onDelete = ForeignKey.CASCADE
     )],
     indices = [Index(value = ["mpd_milestone_id"])]
 )

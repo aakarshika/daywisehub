@@ -35,8 +35,11 @@ import androidx.compose.ui.unit.dp
 import com.example.todoapp.db.data.mission.MissionWithDetails
 import com.example.todoapp.db.models.MyDate.Companion.daysBetween
 import com.example.todoapp.db.models.MyDate.Companion.now
+import com.example.todoapp.di.KoinF
 import com.example.todoapp.screen.basicutils.components.WriteText
+import com.example.todoapp.screen.missions.calendar.progress.DayMissionProgressViewModel
 import com.example.todoapp.screen.missions.calendar.progress.MissionProgressCalendar
+import org.koin.core.parameter.parametersOf
 
 
 val taskWidth = 320.dp
@@ -217,7 +220,9 @@ private fun ExpandedListItem(
                             modifier = Modifier
                                 .align(Alignment.End)
                         ) {
-                            MissionProgressCalendar(mission)
+                            MissionProgressCalendar(
+                                KoinF.di?.get<DayMissionProgressViewModel> { parametersOf(mission?.mission?.missionId) }!!,
+                                mission)
                         }
                     }
                 }

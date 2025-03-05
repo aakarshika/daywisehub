@@ -45,6 +45,18 @@ interface TodayTaskDao {
         LEFT JOIN mission_pillar_mapping mp ON m.mission_id = mp.mission_mapping_id 
         LEFT JOIN pillar p ON mp.pillar_mapping_id = p.pillar_id
         LEFT JOIN mission_frequency mf ON tt.task_mission_id = mf.fs_mission_id
+        WHERE m.mission_id = :missionId
+        """)
+    fun getAllTasksForMission(missionId: Long): Flow<List<TodayTaskWithFewDetails>>
+
+
+    @Query("""SELECT tt.*,tr.*,m.*,p.*,mf.* 
+        FROM today_task  tt
+        LEFT JOIN today_task_reminder tr ON tt.today_task_id = tr.rem_task_id
+        LEFT JOIN mission m ON tt.task_mission_id = m.mission_id
+        LEFT JOIN mission_pillar_mapping mp ON m.mission_id = mp.mission_mapping_id 
+        LEFT JOIN pillar p ON mp.pillar_mapping_id = p.pillar_id
+        LEFT JOIN mission_frequency mf ON tt.task_mission_id = mf.fs_mission_id
         """)
     fun getTodayTaskWithDetails(): Flow<List<TodayTaskWithFewDetails>>
 

@@ -15,6 +15,10 @@ class MilestoneRepository(private val database: AppDatabase) {
     suspend fun getAllMilestonesForDate(date: String): Flow<List<MilestoneWithDetails>> {
         return milestoneDao.getAllMilestonesForDate(UserInitManager.getUserId(), date)
     }
+
+    suspend fun getAllMilestonesForMission(missionId:Long): Flow<List<MilestoneWithDetails>> {
+        return milestoneDao.getAllMilestonesForMission(missionId)
+    }
     suspend fun getAllMilestonesForDateAndMission(date: String, missionId:Long): Flow<List<MilestoneWithDetails>> {
         return milestoneDao.getAllMilestonesForDateAndMission(date, missionId)
     }

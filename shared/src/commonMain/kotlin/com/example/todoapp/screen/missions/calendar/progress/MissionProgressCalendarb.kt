@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -31,7 +30,6 @@ import androidx.compose.ui.unit.sp
 import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.mission.MissionWithDetails
 import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
-import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.di.KoinF
 import com.example.todoapp.screen.missions.MissionItemViewModel
@@ -48,55 +46,28 @@ import com.kizitonwose.calendar.core.daysOfWeek
 import com.kizitonwose.calendar.core.firstDayOfWeekFromLocale
 import com.kizitonwose.calendar.core.minusYears
 import com.kizitonwose.calendar.core.plusYears
-import kotlinx.datetime.LocalDate
 import kotlinx.datetime.number
 import org.koin.core.parameter.parametersOf
 
 
 @Composable
-fun MissionProgressCalendar(
-    viewModel: DayMissionProgressViewModel,
-    missionn: MissionWithDetails) {
-    val miles: List<MilestoneWithDetails>? by viewModel.milestones.collectAsState(emptyList())
-    val tasks: List<TodayTaskWithFewDetails>? by viewModel.tasks.collectAsState(emptyList())
+fun MissionProgressCalendarb(missionn: MissionWithDetails) {
 
-    var dateWiseMiles by remember { mutableStateOf<Map<String, List<MilestoneWithDetails>?>?>(mapOf()) }
-    dateWiseMiles=
-        miles?.sortedBy { it.pillar?.pillarId }
-            ?.groupBy { mile-> mile.milestoneWithDetails.milestone.expectedCompletionDate.dateString }
-            ?: mapOf()
-    var dateWiseTasks by remember { mutableStateOf<Map<String, List<TodayTaskWithFewDetails>>>(mapOf()) }
-    dateWiseTasks=
-        tasks?.sortedBy { it.pillar?.pillarId }
-            ?.sortedBy { it.todayTask.taskStatus == "COMPLETED" }
-            ?.groupBy { task ->  task.todayTask.taskDate.dateString }
-            ?: mapOf()
-    LaunchedEffect(Unit) {
-        viewModel.loadMileDetails()
-        viewModel.loadTaskDetails()
-    }
     Box(
         modifier = Modifier
             .fillMaxSize(),
     ) {
         Column {
-            CalendarArea(
-                    miles=dateWiseMiles,
-                    tasks=dateWiseTasks,
-                    selectedMission = missionn)
+            CalendarArea(selectedMission = missionn)
         }
     }
 }
 
 @Composable
 private fun CalendarArea(
-    miles: Map<String,List<MilestoneWithDetails>?>?,
-    tasks: Map<String,List<TodayTaskWithFewDetails>?>?,
     selectedMission: MissionWithDetails?
 ) {
 
-    Logger.e("milessssss $miles")
-    Logger.e("taskssss $tasks")
     val currentMonth = remember { YearMonth.now() }
     val currentYear = remember { currentMonth.year }
 
@@ -115,17 +86,11 @@ private fun CalendarArea(
         state = state,
         calendarScrollPaged = false,
         dayContent = { day ->
-            val date = MyDate.fromLocalDate(day.date).dateString
-
-
-            key(day.date, miles, tasks) {
-                DayMission(
-                    day,
-                    miles = miles?.get(date) ?: listOf(),
-                    tasks = tasks?.get(date) ?: listOf(),
-                    selectedMission
-                )
-            }
+            val date = MyDate.fromLocalDate(day.date)
+            DayMission(day,
+                KoinF.di?.get<DayMissionProgressViewModel> { parametersOf(date,selectedMission?.mission?.missionId) }!!,
+                selectedMission
+            )
         },
         monthHeader = { month ->
         },
@@ -148,7 +113,7 @@ private fun CalendarArea(
         },
         monthContainer = { month, container ->
             Column(modifier = Modifier.fillMaxWidth()) { // Wrap month in a Column
-                MonthHeader(month) // Display month header
+                MonthHeader2(month) // Display month header
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -160,7 +125,7 @@ private fun CalendarArea(
     )
 }
 @Composable
-fun MonthHeader(month: CalendarMonth) {
+fun MonthHeader2(month: CalendarMonth) {
     Row(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = "${month.yearMonth.month.name} ${month.yearMonth.year}",
@@ -173,15 +138,15 @@ fun MonthHeader(month: CalendarMonth) {
 @Composable
 private fun DayMission(
     day: CalendarDay,
-    miles: List<MilestoneWithDetails>?,
-    tasks: List<TodayTaskWithFewDetails>?,
+    viewModel: DayMissionProgressViewModel,
     selectedMission: MissionWithDetails?,
 ) {
 
-    Logger.e( "${day.date}")
-    Logger.e( "mmmm${miles}")
-    Logger.e( "tttt${tasks}")
-    Box(modifier = Modifier.wrapContentSize()) {    Box(
+    Box(modifier = Modifier.wrapContentSize()) {
+        LaunchedEffect(Unit) {
+            viewModel.loadMileDetails()
+        }
+            Box(
                 modifier = Modifier
                     .aspectRatio(1f)
                     .size(20.dp)
@@ -197,30 +162,55 @@ private fun DayMission(
                         .size(80.dp)
                         .align(Alignment.Center)
                 ) {
+                    val miles: List<MilestoneWithDetails>? by viewModel.milestones.collectAsState(emptyList())
 
-                    if(tasks != null && tasks!!.size>0 &&
-                        tasks.get(0).todayTask.taskStatus  == "COMPLETED"){
-                        Icon(Icons.Default.Face,
-                            "dfg",
-                            modifier = Modifier.size(70.dp),
-                            tint = when (day.position) {
-                                DayPosition.MonthDate ->
-                                    getPillarColor(pillarName = selectedMission?.pillar?.pillarName)
-                                DayPosition.InDate, DayPosition.OutDate -> Color.Transparent
-                            }
-                        )
-                    }
-                    if(miles != null && miles!!.size>0 &&
-                        miles.get(0).milestoneWithDetails.milestone.expectedCompletionDate.dateString  == MyDate.fromLocalDate(day.date).dateString){
+                    if(miles != null && miles!!.size>0){
                         Icon(Icons.Default.Settings,
                             "sfgh",
                             modifier = Modifier.size(70.dp),
-                            tint = when (day.position) {
-                                    DayPosition.MonthDate ->
-                                        getPillarColor(pillarName = selectedMission?.pillar?.pillarName).darken(0.2f)
-                                    DayPosition.InDate, DayPosition.OutDate -> Color.Transparent
-                                }
-                        )
+                            tint =
+                        when (day.position) {
+                            DayPosition.MonthDate ->
+                                if (miles!!.get(0).milestoneWithDetails.milestone.status == "COMPLETED") {
+                                    getPillarColor(pillarName = selectedMission?.pillar?.pillarName).darken(0.2f)
+                                } else Gray
+                            DayPosition.InDate, DayPosition.OutDate -> Color.Transparent})
+//                    } else if(dayTasks != null && dayTasks.size>0) {
+//                        Canvas(
+//                            modifier = Modifier
+//                                .size(78.dp)
+//                        ) {
+//                            val dayTask = dayTasks.get(0)
+//                            val dayTaskFreq = dayTask?.mission?.frequencySetValue ?: 1f
+//                            val strokeWidth = 24f // Thickness of the ring
+//                            val fillWidth = 50f // Thickness of the ring
+//                            val startAngle = -90f // Start from the top
+//                            val sweepAngle: Float = 360f / dayTaskFreq
+//                            var currentAngle = startAngle
+//                            dayTask.let { task ->
+//                                if (task?.mission?.frequencyPeriod == "DAILY" && task.task.taskStatus != TaskStatus.COMPLETED) {
+//                                    val dayTaskFreqDone = task.taskUiData.stampPoints.size
+//                                }
+//                                drawArc(
+//                                    color = when (day.position) {
+//                                        DayPosition.MonthDate ->
+//                                            if (task?.task?.taskStatus == TaskStatus.COMPLETED) {
+//                                                getPillarColor(pillarName = task.mission.pillarName).darken()
+//                                            } else if (task != null) {
+//                                                Gray
+//                                            } else Color.Transparent
+//
+//                                        DayPosition.InDate, DayPosition.OutDate -> Color.Transparent
+//                                    },
+//                                    startAngle = currentAngle,
+//                                    sweepAngle = sweepAngle,
+//                                    useCenter = false,
+//                                    style = Stroke(width = fillWidth),
+//                                    size = Size(size.width, size.height)
+//                                )
+//                                currentAngle += sweepAngle
+//                            }
+//                        }
                     }
                     Box(
                         modifier = Modifier

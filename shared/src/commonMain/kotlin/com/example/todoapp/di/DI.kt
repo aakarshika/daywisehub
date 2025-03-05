@@ -50,7 +50,7 @@ fun vmModule(): Module {
         factory { MissionsControllerViewModel(get()) }
         factory { (missionId: Long) -> MissionItemViewModel(get(), missionId) } // for dynamic MissionItemViewModel
 
-        factory { (day: MyDate, missionId: Long) -> DayMissionProgressViewModel(get(), day, missionId) }
+        factory { (missionId: Long) -> DayMissionProgressViewModel(get(),get(),  missionId) }
         factory { (day: LocalDate) -> DiaryViewModel(get(), day) }
         factory { (day: LocalDate, missionId: Long) -> HabitItemViewModel(get(), day, missionId) }
         factory { (day: LocalDate) -> BottomHighlightsViewModel(get(), day) }

@@ -65,6 +65,14 @@ import com.example.todoapp.screen.missions.calendar.blueprint.MissionBlueprintCa
 
 val Orange80 = Color(0xFFFFD4B8)
 val Red80 = Color(0xFFFFCBD2)
+val Pink80 = Color(0xFFF6D3FF)
+val Blue80 = Color(0xFFD4EBFF)
+val Orange180 = Color(0xFFFCBE98)
+val Red180 = Color(0xFFFFB9C3)
+val Pink180 = Color(0xFFF4CDFF)
+val Blue180 = Color(0xFFC7E4FF)
+
+
 
 fun Color.darken(amount: Float = 0.2f): Color {
     val red = (this.red * (1 - amount)).coerceIn(0f, 1f)
@@ -178,7 +186,7 @@ fun EditMissionPopup(
                                             pillarOptions.forEach { pillar ->
                                                 Row {
                                                     var pillarTotal =
-                                                        pillarTotalValCount[pillar.pillarName] ?: 0
+                                                        pillarTotalValCount[pillar.pillarName] ?: 1
                                                     if (pillar.pillarName == pillarSelected.value?.pillarName) {
 //                                                    pillarTotal = if(pillarTotalInitial>0) pillarTotalInitial else 0
                                                         repeat(pillarValAdded) {
@@ -701,7 +709,7 @@ fun EditMissionPopup(
                                         val newMilestone = Milestone(
                                             text = "My ${getOrdinal((milestones.value?.size ?: 0) + 1)} Milestone",
                                             priority = "HIGH",
-                                            expectedCompletionDate = MyDate("2022-01-01"),
+                                            expectedCompletionDate = MyDate("2025-3-3"),
                                             milestoneOrder = milestones.value?.size ?: 1,
                                             status = "ACTIVE",
                                             missionId = mission.value?.missionId ?: 0L
@@ -710,7 +718,7 @@ fun EditMissionPopup(
                                             progressValue = 0f,
                                             progressUnit = 0f,
                                             progressText = "",
-                                            mileStartDate = MyDate("2022-01-01"),
+                                            mileStartDate = MyDate("2024-1-1"),
                                             actualCompletionDate = null,
                                             completionTaskId = null,
                                             milestoneId = 0L
