@@ -18,13 +18,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import co.touchlab.kermit.Logger
 import com.example.todoapp.app.MyScreen
 import com.example.todoapp.di.KoinF
 import com.example.todoapp.screen.diary.DiaryScreen
 import com.example.todoapp.screen.diary.DiaryViewModel
 import com.example.todoapp.screen.metrics.CalDiaryViewModel
 import com.example.todoapp.screen.metrics.MetricsScreen
-import com.example.todoapp.screen.diary.WeekCaledarScreen
+import com.example.todoapp.screen.diary.WeekCalendarScreen
+import com.example.todoapp.screen.diary.diaryitem.components.diarymood.MoodViewModel
+import com.example.todoapp.screen.diary.diaryitem.components.waterintake.WaterIntakeViewModel
+import com.example.todoapp.screen.metrics.MetricsViewModel
 import com.example.todoapp.screen.metrics.bottomhighlights.BottomHighlightsViewModel
 import com.example.todoapp.screen.metrics.bottomhighlights.DateHighlights
 import com.example.todoapp.screen.missions.MissionsControllerScreen
@@ -54,24 +58,24 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(
+                    selected = currentScreen == MyScreen.Diary,
+                    onClick = {
+                        if (currentScreen != MyScreen.Diary) {
+                            navigator.navigate(MyScreen.Diary.name)
+                        }
+                    },
+                    label = { Text("Diary") },
+                    icon = { Icon(Icons.Default.Menu, contentDescription = "Diary") }
+                )
+                NavigationBarItem(
                     selected = currentScreen == MyScreen.Missions,
                     onClick = {
                         if(currentScreen != MyScreen.Missions) {
                             navigator.navigate(MyScreen.Missions.name)
                         }
-                              },
+                    },
                     label = { Text("Missions") },
                     icon = { Icon(Icons.Default.AddCircle, contentDescription = "Missions") }
-                )
-                NavigationBarItem(
-                    selected = currentScreen == MyScreen.Diary,
-                    onClick = {
-                        if (currentScreen != MyScreen.Diary) {
-                            navigator.popBackStack()
-                        }
-                    },
-                    label = { Text("Diary") },
-                    icon = { Icon(Icons.Default.Menu, contentDescription = "Diary") }
                 )
                 NavigationBarItem(
                     selected = currentScreen == MyScreen.Calendar,
@@ -100,20 +104,24 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                 scene(route = MyScreen.Diary.name) {
                     Scaffold(
                         topBar = {
-                            WeekCaledarScreen(currentDate, changeDate={ date:LocalDate ->
-                                calDateViewModel.selectDate(date)
-                            })
                         }
                     ){
                         DiaryScreen(
                             KoinF.di?.get<DiaryViewModel> {
                                 parametersOf(currentDate)
                             } ?: error("DiaryViewModel not found"),
+                            KoinF.di?.get<MoodViewModel> { parametersOf(currentDate) }!!,
+                            KoinF.di?.get<WaterIntakeViewModel> { parametersOf(currentDate) }!!,
                             currentDate,
                             goToTomorrow={
                                 calDateViewModel.selectNextDate() },
                             goToYesterday={
-                                calDateViewModel.selectPreviousDate() }
+                                calDateViewModel.selectPreviousDate() },
+                            changeDate={ date:LocalDate ->
+                                Logger.e("DATE changed $date selected date  ")
+
+                                calDateViewModel.selectDate(date)
+                            }
                         )
                     }
                 }
@@ -145,7 +153,7 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                         }
                     ) {
                         MetricsScreen(
-//                            KoinF.di?.get<MetricsViewModel> ?: error("MetricsViewModel not found"),
+                            KoinF.di?.get<MetricsViewModel>()!!,
                             currentDate,
                             changeDate = { date: LocalDate ->
                                 calDateViewModel.selectDate(date)

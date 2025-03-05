@@ -21,10 +21,15 @@ interface TodayMoodDao {
     @Query("""
         SELECT * 
         FROM mood m 
-        left join today_mood tm 
-            on m.mood_id = tm.tm_mood_id 
-            and tm.tm_date = :selectedDate
+        left join today_mood tm on tm.tm_mood_id = m.mood_id and tm.tm_date = :selectedDate
         """)
     fun getTodayMood(selectedDate: String): Flow<List<TodayMoodWithDetails>>
+
+    @Query("""
+        SELECT * 
+        FROM mood m 
+        
+        """)
+    fun getAllMoods(): Flow<List<TodayMoodWithDetails>>
 
 }

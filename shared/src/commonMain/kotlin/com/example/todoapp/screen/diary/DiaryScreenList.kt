@@ -1,26 +1,41 @@
 package com.example.todoapp.screen.diary
 
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.MutableState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.room.Embedded
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.mission.missionstuff.MissionFrequency
+import com.example.todoapp.db.data.mood.TodayMood
+import com.example.todoapp.db.data.mood.TodayMoodWithDetails
+import com.example.todoapp.db.data.mood.WaterIntake
 import com.example.todoapp.db.data.pillar.Pillar
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.todotask.TodayTaskReminder
+import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.di.KoinF
-import com.example.todoapp.screen.diary.diarymood.MoodHeader
+import com.example.todoapp.screen.diary.diaryitem.components.diarymood.MoodHeader
 import com.example.todoapp.screen.diary.diaryitem.components.WeatherHeader
 import com.example.todoapp.screen.diary.diaryitem.HabitItemViewModel
 import com.example.todoapp.screen.diary.diaryitem.components.MenuItem
-import com.example.todoapp.screen.diary.diarymood.MoodViewModel
 import com.example.todoapp.screen.diary.diaryitem.components.NotebookLine
 import com.example.todoapp.screen.diary.diaryitem.DiaryItem
+import com.example.todoapp.screen.diary.diaryitem.components.dateheader.DateHeader
+import com.example.todoapp.screen.diary.diaryitem.components.dateheader.WeekDayHeader
+import com.example.todoapp.screen.diary.diaryitem.components.waterintake.WaterIntakeHeader
 import kotlinx.datetime.LocalDate
 import org.koin.core.parameter.parametersOf
 
@@ -78,13 +93,14 @@ fun LazyListScope.TodoMenuItems(
     }
 }
 
-fun LazyListScope.MoodHeaderItem(
-    selection: LocalDate
-) {
+fun LazyListScope.MoodHeaderItem(todayMoodList: List<TodayMoodWithDetails>?,
+                                 selection: LocalDate,
+                                 upsertMood : (TodayMood) -> Unit) {
     item {
         MoodHeader(
+            todayMoodList,
             selection,
-            KoinF.di?.get<MoodViewModel> { parametersOf(selection) }!!
+            upsertMood
         )
     }
 }
@@ -95,8 +111,50 @@ fun LazyListScope.WeatherHeaderItem() {
     }
 }
 
+fun LazyListScope.SundayHeaderItem(cDate: LocalDate) {
+    item {
+        WeekDayHeader(cDate)
+    }
+}
+fun LazyListScope.DateHeaderItem(cDate: LocalDate,
+                                 changeDate: (LocalDate) -> Unit) {
+    item {
+        DateHeader(cDate, changeDate = { changeDate ( it ) })
+    }
+}
+fun LazyListScope.WaterIntakeHeaderItem(waterIntake: WaterIntake?,
+                                        selection: LocalDate,
+                                        upsertWaterIntake : (WaterIntake) -> Unit) {
+    item {
+        WaterIntakeHeader(waterIntake?.waterIntakeProgress?:0.0, selection, upsertWaterIntake = {progress->
+            upsertWaterIntake((waterIntake ?: WaterIntake(
+                waterIntakeId = 0,
+                waterIntakeUserId = 1,
+                waterIntakeProgress = progress,
+                waterDate = MyDate.fromLocalDate(selection)
+            )).copy(waterIntakeProgress = progress))
+        })
+    }
+}
 
-
+fun LazyListScope.HeadingText(headingtext: String, color: Color) {
+    item {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Box(
+                modifier = Modifier.fillMaxSize()
+                    .padding(start = 20.dp, end = 20.dp)
+                    .background(color)
+            ){
+                Text(
+                    text = headingtext,
+                    modifier = Modifier
+                        .align(Alignment.Center),
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+        }
+    }
+}
 
 fun LazyListScope.TodoListItems(
     selection: LocalDate,

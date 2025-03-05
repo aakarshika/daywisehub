@@ -20,6 +20,9 @@ class TodayMoodRepository(private val database: AppDatabase) {
         return todayMoodDao.upsertTodayMood(todayMood)
     }
 
+    suspend fun getAllMoods(): Flow<List<TodayMoodWithDetails>> {
+        return todayMoodDao.getAllMoods()
+    }
     suspend fun getTodayMood(date: LocalDate): Flow<List<TodayMoodWithDetails>> {
         val selected_date = MyDate.fromLocalDate(date).dateString
         return todayMoodDao.getTodayMood(selected_date)

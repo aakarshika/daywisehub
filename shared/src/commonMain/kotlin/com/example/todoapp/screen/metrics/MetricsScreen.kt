@@ -1,10 +1,8 @@
 package com.example.todoapp.screen.metrics
 
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,85 +13,101 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.todoapp.app.MyScreen
+import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
-import com.example.todoapp.di.KoinF
-import com.example.todoapp.getScreenHeight
-import com.example.todoapp.getScreenWidth
-import com.example.todoapp.getTopCalHeight
-import com.example.todoapp.screen.diary.DiaryViewModel
-import com.example.todoapp.screen.metrics.bottomhighlights.BottomHighlightsSpace
-import com.example.todoapp.screen.metrics.bottomhighlights.BottomHighlightsViewModel
-import com.example.todoapp.screen.metrics.bottomhighlights.DateHighlights
+import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
+import com.example.todoapp.db.models.MyDate
+import com.example.todoapp.screen.basicutils.components.WriteText
+import com.example.todoapp.screen.metrics.metriccomponents.TaskTypeDropdown
+import com.example.todoapp.screen.metrics.metriccomponents.options
 import com.example.todoapp.screen.missions.Orange80
 import com.example.todoapp.screen.missions.Red80
+import com.example.todoapp.screen.missions.getPillarColor
 import com.kizitonwose.calendar.compose.VerticalCalendar
-import com.kizitonwose.calendar.compose.WeekCalendar
 import com.kizitonwose.calendar.compose.rememberCalendarState
-import com.kizitonwose.calendar.compose.weekcalendar.rememberWeekCalendarState
 import com.kizitonwose.calendar.core.CalendarDay
 import com.kizitonwose.calendar.core.CalendarMonth
 import com.kizitonwose.calendar.core.DayPosition
 import com.kizitonwose.calendar.core.WeekDay
 import com.kizitonwose.calendar.core.YearMonth
-import com.kizitonwose.calendar.core.atEndOfMonth
-import com.kizitonwose.calendar.core.atStartOfMonth
 import com.kizitonwose.calendar.core.daysOfWeek
 import com.kizitonwose.calendar.core.firstDayOfWeekFromLocale
 import com.kizitonwose.calendar.core.minusYears
-import com.kizitonwose.calendar.core.now
 import com.kizitonwose.calendar.core.plusYears
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.daysUntil
 import kotlinx.datetime.number
-import org.koin.core.parameter.parametersOf
 
 
 @Composable
 fun MetricsScreen(
-//    metricsViewModel: MetricsViewModel,
+    metricsViewModel: MetricsViewModel,
     currentDate: LocalDate,
     changeDate: (LocalDate) -> Unit
 ) {
-    Box(modifier = Modifier.fillMaxSize()) {
-        CalendarArea(
-            selectedDate = currentDate,
-            onDateClicked = { date ->
-                changeDate(date)
-            },
-        )
+    val allTasks: List<TodayTaskWithFewDetails>? by metricsViewModel.allTasks.collectAsState(emptyList())
+    var dateWiseTasks by remember { mutableStateOf<Map<MyDate, List<TodayTaskWithFewDetails>>>(mapOf()) }
+    var selectionOptions by remember { mutableStateOf<List<String>>(options) }
+     dateWiseTasks=
+        allTasks?.groupBy { task ->  task.todayTask.taskDate }
+           ?: mapOf()
+
+    LaunchedEffect( Unit) {
+        metricsViewModel.loadAllTasks()
+    }
+
+    Column {
+        Box(modifier = Modifier.fillMaxWidth().wrapContentHeight()){
+            TaskTypeDropdown(
+                optionsSelected = { selectedPillars ->
+                    Logger.e("TaskTypeDropdown     $selectedPillars")
+
+//                    metricsViewModel.loadTasks(selectedPillars)
+                    selectionOptions = selectedPillars
+
+                    Logger.e("dateWiseTasks     $dateWiseTasks")
+                }
+            )
+
+        }
+        Box(modifier = Modifier.fillMaxSize()) {
+            CalendarArea(
+                selectedDate = currentDate,
+                dateWiseTasks = dateWiseTasks,
+                selectionOptions = selectionOptions,
+                onDateClicked = { date ->
+                    changeDate(date)
+                },
+            )
+        }
     }
 }
 
 @Composable
 private fun CalendarArea(
     selectedDate: LocalDate,
+    dateWiseTasks: Map<MyDate, List<TodayTaskWithFewDetails>?>? = null,
+    selectionOptions: List<String> ,
     onDateClicked: (LocalDate) -> Unit,
 ) {
 
-    val currentDate = remember { LocalDate.now() }
     val currentMonth = remember { YearMonth.now() }
 
     val startMonth = remember { currentMonth.minusYears(3) }
@@ -107,13 +121,6 @@ private fun CalendarArea(
         firstVisibleMonth = currentMonth,
         firstDayOfWeek = firstDayOfWeek
     )
-    val weekState = rememberWeekCalendarState(
-        startDate = startMonth.atStartOfMonth(),
-        endDate = endMonth.atEndOfMonth(),
-        firstVisibleWeekDate = currentDate,
-        firstDayOfWeek = daysOfWeek.first()
-    )
-
     Box {
         Box(
             modifier = Modifier
@@ -126,11 +133,16 @@ private fun CalendarArea(
                 state = state,
                 calendarScrollPaged = false,
                 dayContent = { day ->
-                    MonthDay(
-                        day,
-                        isSelected = selectedDate == day.date,
-                        onDateClicked
-                    )
+                    // The key parameter forces recomposition when dateWiseTasks changes
+                    key(day.date, dateWiseTasks) {
+                        MonthDay(
+                            day,
+                            dateWiseTasks?.get(MyDate.fromLocalDate(day.date)) ?: listOf(),
+                            selectionOptions = selectionOptions,
+                            isSelected = selectedDate == day.date,
+                            onDateClicked
+                        )
+                    }
                 },
                 monthBody = { month, content ->
                     Box(
@@ -160,15 +172,12 @@ private fun CalendarArea(
 @Composable
 private fun MonthDay(
     day: CalendarDay,
+    ttasks: List<TodayTaskWithFewDetails>?,
+    selectionOptions: List<String>,
     isSelected: Boolean,
     onDateClicked: (LocalDate) -> Unit
 ) {
-//    val allTasks =  listOf() .sortedBy { t-> t.mission.pillarName }.sortedBy { t-> t.task.taskStatus }
-//    val allTasksCompleted = allTasks.filter { t->  t.task.taskStatus==TaskStatus.COMPLETED }
-//    val top3Tasks = allTasks.filter { t-> t.taskUiData.taskUi.taskPageTag == "TOP3" }
-//    val top3TasksCompleted = allTasks.filter { t-> t.taskUiData.taskUi.taskPageTag == "TOP3" && t.task.taskStatus==TaskStatus.COMPLETED }
-
-
+    val todayTasks: List<TodayTaskWithFewDetails> = ttasks?.filter { selectionOptions.contains(it.pillar?.pillarName)}?: listOf()
     Box(modifier = Modifier.wrapContentSize()) {
 
         Box(
@@ -176,11 +185,11 @@ private fun MonthDay(
                 .aspectRatio(1f)
                 .size(80.dp)
                 .testTag("MonthDay")
-                .padding(6.dp)
-                .clip(RoundedCornerShape(4.dp))
+                .padding(if (isSelected) 5.dp else 10.dp)
+                .clip(RoundedCornerShape(if (isSelected) 15.dp else 20.dp))
                 .background(
                     color = when (day.position) {
-                        DayPosition.MonthDate -> if (isSelected) Color.White else Color.Transparent
+                        DayPosition.MonthDate -> if (todayTasks.size>0 && todayTasks.all { it.todayTask.taskStatus=="COMPLETED" }) Red80 else if (isSelected) Color.White else Color.Transparent
                         DayPosition.InDate, DayPosition.OutDate -> Color.Transparent
                     }
                 )
@@ -191,37 +200,38 @@ private fun MonthDay(
                 ),
             contentAlignment = Alignment.Center,
         ) {
-//            Box(
-//                modifier = Modifier
-//                    .size(80.dp)
-//                    .align(Alignment.Center)
-//            ) {
-//
-//                Canvas(
-//                    modifier = Modifier
-//                        .size(80.dp)
-//                ) {
-//
-//                    val strokeWidth = 24f // Thickness of the ring
-//                    val startAngle = -90f // Start from the top
-//                    val sweepAngle = 360f / allTasks.size
-//
-//                    var currentAngle = startAngle
-//                    allTasks.forEach { task ->
-//                        drawArc(
-//                            color = if (task.task.taskStatus == TaskStatus.COMPLETED) {
-//                                getPillarColor(pillarName = task.mission.pillarName).darken()
-//                            } else Color.White,
-//                            startAngle = currentAngle,
-//                            sweepAngle = sweepAngle,
-//                            useCenter = false,
-//                            style = Stroke(width = strokeWidth),
-//                            size = Size(size.width, size.height)
-//                        )
-//                        currentAngle += sweepAngle
-//                    }
-//                }
-//            }
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .align(Alignment.Center)
+            ) {
+                if (todayTasks != null) {
+                    Canvas(
+                        modifier = Modifier
+                            .size(80.dp)
+                    ) {
+
+                        val strokeWidth = 24f // Thickness of the ring
+                        val startAngle = -90f // Start from the top
+                        val sweepAngle = 360f / todayTasks.size
+
+                        var currentAngle = startAngle
+                        todayTasks.forEach { task ->
+                            drawArc(
+                                color = if (task.todayTask.taskStatus == "COMPLETED") {
+                                    getPillarColor(pillarName = task.pillar?.pillarName)
+                                } else Color.White,
+                                startAngle = currentAngle,
+                                sweepAngle = sweepAngle,
+                                useCenter = false,
+                                style = Stroke(width = strokeWidth),
+                                size = Size(size.width, size.height)
+                            )
+                            currentAngle += sweepAngle
+                        }
+                    }
+                }
+            }
             val textColor = when (day.position) {
                 DayPosition.MonthDate -> if (isSelected) Color.Gray else Color.Black
                 DayPosition.InDate, DayPosition.OutDate -> Color.Transparent
@@ -231,25 +241,6 @@ private fun MonthDay(
                 color = textColor,
                 fontSize = 16.sp,
             )
-        }
-
-        Row(modifier = Modifier.align(Alignment.TopCenter).padding(top = 55.dp)) {
-//            if (allTasks.size > 0 && allTasks.size == allTasksCompleted.size) {
-//                Icon(
-//                    Icons.Default.ThumbUp,
-//                    modifier = Modifier.size(12.dp).padding(top = 2.dp),
-//                    contentDescription = "AllCompleted",
-//                    tint = Color.DarkGray
-//                )
-//            }
-//            if (top3Tasks.size == 3 && top3Tasks.size == top3TasksCompleted.size) {
-//                Icon(
-//                    Icons.Default.Star,
-//                    modifier = Modifier.size(14.dp),
-//                    contentDescription = "top3Completed",
-//                    tint = Color.DarkGray
-//                )
-//            }
         }
     }
 }
@@ -283,59 +274,31 @@ fun WeekDayGola(
 
     val date = day.date
 
-    Box(modifier = Modifier.padding(5.dp)){
-        if(isSelected && date.daysUntil(LocalDate.now())==0){
-            RoundBox(""+date.dayOfMonth+date.month.name, todayHighlight = true){
-                onDateClicked(date)
-            }
-        } else if(isSelected){
-            RoundButton(date.dayOfMonth, todayHighlight = true){
-                onDateClicked(date)
-            }
-        } else if(date.daysUntil(LocalDate.now())==0){
-            RoundBox(""+date.dayOfMonth+date.month.name, todayHighlight = false){
-                onDateClicked(date)
-            }
-        } else {
-            RoundButton(date.dayOfMonth, todayHighlight = false){
-                onDateClicked(date)
-            }
+    Box(modifier = Modifier.padding(2.dp)){
+        RoundButton((date.dayOfWeek.name).substring(0,1), todayHighlight = isSelected){
+            onDateClicked(date)
         }
     }
 }
 val CalendarGradientA = Color(0xFFFFFBF0)
 val CalendarGradientB = Color(0xFFFCECE7)
 
+
 @Composable
-fun RoundBox(dateS: String,
-             todayHighlight: Boolean = false,
-             onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        shape = CircleShape,
-        colors = ButtonDefaults.buttonColors(containerColor = if(todayHighlight) Red80 else  Orange80), // Orange color
-        modifier = Modifier.height(50.dp).wrapContentWidth() // Adjust the size as needed
-    ) {
-        Text(
-            text = dateS,
-            color = Color.White,
-            style = MaterialTheme.typography.bodyLarge
-        )
-    }
-}
-@Composable
-fun RoundButton(number: Int, todayHighlight: Boolean = false,
+fun RoundButton(number: String, todayHighlight: Boolean = false,
                 onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        shape = CircleShape,
-        colors = ButtonDefaults.buttonColors(containerColor = if(todayHighlight) Red80 else  Orange80), // Orange color
-        modifier = Modifier.height(50.dp).wrapContentWidth() // Adjust the size as needed
+    Box(
+        modifier = Modifier.size(25.dp)
+            .clip(CircleShape)
+            .background(if(todayHighlight) Red80 else  Orange80)
+            .clickable {
+                onClick()
+            }
     ) {
-        Text(
-            text = number.toString(),
+        WriteText(
+            text = number,
             color = Color.White,
-            style = MaterialTheme.typography.bodyLarge
+            modifier = Modifier.align(Alignment.Center)
         )
     }
 }

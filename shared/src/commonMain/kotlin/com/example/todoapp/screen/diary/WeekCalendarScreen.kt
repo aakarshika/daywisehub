@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -28,11 +29,14 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import co.touchlab.kermit.Logger
 import com.example.todoapp.getScreenHeight
 import com.example.todoapp.getTopCalHeight
+import com.example.todoapp.screen.diary.diaryitem.components.diarymood.Red80
 import com.example.todoapp.screen.metrics.CalendarGradientA
 import com.example.todoapp.screen.metrics.CalendarGradientB
 import com.example.todoapp.screen.metrics.WeekDayGola
+import com.example.todoapp.screen.missions.Orange80
 import com.example.todoapp.screen.missions.calendar.progress.MonthHeader
 import com.kizitonwose.calendar.compose.HorizontalCalendar
 import com.kizitonwose.calendar.compose.WeekCalendar
@@ -54,42 +58,33 @@ import kotlinx.datetime.number
 
 
 @Composable
-fun WeekCaledarScreen(selectedDate: LocalDate, changeDate: (LocalDate) -> Unit) {
+fun WeekCalendarScreen(selectedDate: LocalDate, changeDate: (LocalDate) -> Unit) {
 
     var diaryViewMode by remember { mutableStateOf("week") }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-            CalendarArea(
-                selectedDate = selectedDate,
-                diaryViewMode = diaryViewMode,
-                onDateClicked = { date ->
-                    changeDate(date)
-                },
-                onCollapseClicked = {diaryViewMode = "month"},
-                onExpandClicked = {diaryViewMode = "week"}
-            )
-        }
+    Row(modifier = Modifier.fillMaxSize()) {
+        CalendarArea(
+            selectedDate = selectedDate,
+            diaryViewMode = diaryViewMode,
+            onDateClicked = { date ->
+                Logger.e("DATE CLICKED $date cal area")
+
+                changeDate(date)
+            },
+            changeToMonth = {diaryViewMode = "month"},
+            changeToWeek = {diaryViewMode = "week"}
+        )
+    }
 }
 
 @Composable
 private fun CalendarArea(
     selectedDate: LocalDate,
     onDateClicked: (LocalDate) -> Unit,
-    onCollapseClicked: () -> Unit,
-    onExpandClicked: () -> Unit,
+    changeToWeek: () -> Unit,
+    changeToMonth: () -> Unit,
     diaryViewMode: String
 ) {
-
-    val expandAlpha by animateFloatAsState(
-        targetValue = if (diaryViewMode == "week") 1f else 0f
-    )
-    val screenHeightDp = getScreenHeight()
-    val calBigHeight by animateDpAsState(
-        targetValue = if (diaryViewMode == "week") 0.dp else 300.dp
-    )
-    val calWeekHeight by animateDpAsState(
-        targetValue = if (diaryViewMode == "week") getTopCalHeight() else 0.dp
-    )
 
     val currentDate = remember { LocalDate.now() }
     val currentMonth = remember { YearMonth.now() }
@@ -116,70 +111,55 @@ private fun CalendarArea(
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .alpha(expandAlpha)
         ) {
-            WeekCalendar(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(calWeekHeight)
-                    .pointerInput(Unit) {
-                        detectVerticalDragGestures(
-                            onVerticalDrag = { change, dragAmount ->
-                                change.consume()
-                            },
-                            onDragEnd = { onCollapseClicked() }
-                        )
-                    },
-                state = weekState,
-                calendarScrollPaged = false,
-                dayContent = { day ->
-                    WeekDayGola(
-                        day,
-                        isSelected = selectedDate == day.date,
-                        onDateClicked
-                    )
-                }
-            )
-        }
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .alpha(1f - expandAlpha)
-        ) {
-            HorizontalCalendar(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(calBigHeight),
-                state = state,
-                calendarScrollPaged = false,
-                dayContent = { day ->
-                    MonthDay(
-                        day,
-                        isSelected = selectedDate == day.date,
-                        onDateClicked
-                    )
-                },
-                monthBody = { month, content ->
-                    Box(
-                        modifier = Modifier.background(
-                            brush = Brush.verticalGradient(
-                                colors = if (month.yearMonth.month.number % 2 == 0)
-                                    listOf(CalendarGradientA, CalendarGradientB)
-                                else
-                                    listOf(CalendarGradientB, CalendarGradientA)
+            if (diaryViewMode == "week") {
+                //week calendar
+                WeekCalendar(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(getTopCalHeight())
+                        .pointerInput(Unit) {
+                            detectVerticalDragGestures(
+                                onVerticalDrag = { change, dragAmount ->
+                                    change.consume()
+                                },
+                                onDragEnd = { changeToMonth() }
                             )
+                        },
+                    state = weekState,
+                    calendarScrollPaged = true,
+                    dayContent = { day ->
+                        WeekDayGola(
+                            day,
+                            isSelected = selectedDate == day.date,
+                            onDateClicked = {
+                                Logger.e("DATE CLICKED $it")
+                                onDateClicked(it)
+                            }
                         )
-                    ) {
-                        content()
                     }
-                },
-                monthContainer = { month, container ->
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        MonthHeader(month)
-                        Box(modifier = Modifier.fillMaxWidth()) { container() }
+                )
+            }
+            else {
+                //month calendar
+                HorizontalCalendar(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight(),
+                    state = state,
+                    calendarScrollPaged = true,
+                    dayContent = { day ->
+                        MonthDay(
+                            day,
+                            isSelected = selectedDate == day.date,
+                            onDateClicked = {
+                                onDateClicked(it)
+                                changeToWeek()
+                            }
+                        )
                     }
-                }
-            )
+                )
+            }
         }
     }
 }
@@ -191,65 +171,27 @@ private fun MonthDay(
     isSelected: Boolean,
     onDateClicked: (LocalDate) -> Unit
 ) {
-//    val allTasks =  listOf() .sortedBy { t-> t.mission.pillarName }.sortedBy { t-> t.task.taskStatus }
-//    val allTasksCompleted = allTasks.filter { t->  t.task.taskStatus==TaskStatus.COMPLETED }
-//    val top3Tasks = allTasks.filter { t-> t.taskUiData.taskUi.taskPageTag == "TOP3" }
-//    val top3TasksCompleted = allTasks.filter { t-> t.taskUiData.taskUi.taskPageTag == "TOP3" && t.task.taskStatus==TaskStatus.COMPLETED }
-
-
     Box(modifier = Modifier.wrapContentSize()) {
 
         Box(
             modifier = Modifier
                 .aspectRatio(1f)
-                .size(80.dp)
+                .size(30.dp)
                 .testTag("MonthDay")
-                .padding(6.dp)
-                .clip(RoundedCornerShape(4.dp))
+                .padding(2.dp)
+                .clip(RoundedCornerShape(5.dp))
                 .background(
                     color = when (day.position) {
-                        DayPosition.MonthDate -> if (isSelected) Color.White else Color.Transparent
+                        DayPosition.MonthDate -> if (isSelected) Red80 else Orange80
                         DayPosition.InDate, DayPosition.OutDate -> Color.Transparent
                     }
                 )
-                // Disable clicks on inDates/outDates
                 .clickable(
                     enabled = day.position == DayPosition.MonthDate,
                     onClick = { onDateClicked(day.date) },
                 ),
             contentAlignment = Alignment.Center,
         ) {
-//            Box(
-//                modifier = Modifier
-//                    .size(80.dp)
-//                    .align(Alignment.Center)
-//            ) {
-//
-//                Canvas(
-//                    modifier = Modifier
-//                        .size(80.dp)
-//                ) {
-//
-//                    val strokeWidth = 24f // Thickness of the ring
-//                    val startAngle = -90f // Start from the top
-//                    val sweepAngle = 360f / allTasks.size
-//
-//                    var currentAngle = startAngle
-//                    allTasks.forEach { task ->
-//                        drawArc(
-//                            color = if (task.task.taskStatus == TaskStatus.COMPLETED) {
-//                                getPillarColor(pillarName = task.mission.pillarName).darken()
-//                            } else Color.White,
-//                            startAngle = currentAngle,
-//                            sweepAngle = sweepAngle,
-//                            useCenter = false,
-//                            style = Stroke(width = strokeWidth),
-//                            size = Size(size.width, size.height)
-//                        )
-//                        currentAngle += sweepAngle
-//                    }
-//                }
-//            }
             val textColor = when (day.position) {
                 DayPosition.MonthDate -> if (isSelected) Color.Gray else Color.Black
                 DayPosition.InDate, DayPosition.OutDate -> Color.Transparent
@@ -257,28 +199,10 @@ private fun MonthDay(
             Text(
                 text = day.date.dayOfMonth.toString(),
                 color = textColor,
-                fontSize = 16.sp,
+                fontSize = 14.sp,
             )
         }
 
-        Row(modifier = Modifier.align(Alignment.TopCenter).padding(top = 55.dp)) {
-//            if (allTasks.size > 0 && allTasks.size == allTasksCompleted.size) {
-//                Icon(
-//                    Icons.Default.ThumbUp,
-//                    modifier = Modifier.size(12.dp).padding(top = 2.dp),
-//                    contentDescription = "AllCompleted",
-//                    tint = Color.DarkGray
-//                )
-//            }
-//            if (top3Tasks.size == 3 && top3Tasks.size == top3TasksCompleted.size) {
-//                Icon(
-//                    Icons.Default.Star,
-//                    modifier = Modifier.size(14.dp),
-//                    contentDescription = "top3Completed",
-//                    tint = Color.DarkGray
-//                )
-//            }
-        }
     }
 }
 

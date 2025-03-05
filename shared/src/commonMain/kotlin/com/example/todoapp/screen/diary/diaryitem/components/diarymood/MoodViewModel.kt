@@ -1,4 +1,4 @@
-package com.example.todoapp.screen.diary.diarymood
+package com.example.todoapp.screen.diary.diaryitem.components.diarymood
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -15,15 +15,27 @@ import kotlinx.datetime.LocalDate
 
 class MoodViewModel(
     private val todayMoodRepository: TodayMoodRepository,
-    private val cDate: LocalDate = LocalDate.now(),
+    private val c1Date: LocalDate = LocalDate.now(),
 ) : ViewModel() {
     val todayMoodStatuses: MutableSharedFlow<List<TodayMoodWithDetails>?> = MutableSharedFlow(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val allMoods: MutableSharedFlow<List<TodayMoodWithDetails>?> = MutableSharedFlow(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
-    fun loadDailyMoodStatus() {
+    init {
+        viewModelScope.launch {
+            todayMoodRepository.getAllMoods()
+                .collectLatest {
+                    Logger.i("all moods collected  ${it}")
+                    allMoods.tryEmit(it)
+                }
+        }
+    }
+    fun loadDailyMoodStatus(cDate: LocalDate) {
+
         viewModelScope.launch {
             Logger.d { "Load daily mood status for ${cDate.toString()}" }
             todayMoodRepository.getTodayMood(cDate)
                 .collectLatest {
+                    Logger.i("mood status collected  ${cDate} ${it}")
                     todayMoodStatuses.tryEmit(it)
                 }
         }
@@ -31,6 +43,7 @@ class MoodViewModel(
 
     fun upsertTodayMood(todayMood: TodayMood) {
         viewModelScope.launch {
+            Logger.i("upsert today mood: $todayMood")
             todayMoodRepository.upsertTodayMood(todayMood)
         }
     }
