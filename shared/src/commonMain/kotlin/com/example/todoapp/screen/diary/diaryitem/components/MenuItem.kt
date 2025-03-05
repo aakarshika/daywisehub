@@ -24,6 +24,7 @@ fun MenuItem(
     editingMode :String,
     prioritizeClicked: ( String ) -> Unit,
     addRandomTask: (  ) -> Unit,
+    generateTodaysTasks: (  ) -> Unit
 ) {
     Box(modifier = Modifier.fillMaxWidth().height(RowHeight.dp)){
         Row(modifier = Modifier.fillMaxWidth()
@@ -57,8 +58,11 @@ fun MenuItem(
                         Box(modifier = Modifier) {
                             Row {
                                 Box(modifier = Modifier.clickable {
+                                    generateTodaysTasks()
+                                }) { Text("               $$ ") }
+                                Box(modifier = Modifier.clickable {
                                     addRandomTask()
-                                }) { Text("               +    ") }
+                                }) { Text("     +    ") }
 
 //            Box(modifier = Modifier.clickable {
 //                Logger.e("check/draw")

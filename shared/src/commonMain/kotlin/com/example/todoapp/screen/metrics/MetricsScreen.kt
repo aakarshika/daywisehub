@@ -66,7 +66,9 @@ fun MetricsScreen(
     var dateWiseTasks by remember { mutableStateOf<Map<MyDate, List<TodayTaskWithFewDetails>>>(mapOf()) }
     var selectionOptions by remember { mutableStateOf<List<String>>(options) }
      dateWiseTasks=
-        allTasks?.groupBy { task ->  task.todayTask.taskDate }
+        allTasks?.sortedBy { it.pillar?.pillarId }
+            ?.sortedBy { it.todayTask.taskStatus == "COMPLETED" }
+            ?.groupBy { task ->  task.todayTask.taskDate }
            ?: mapOf()
 
     LaunchedEffect( Unit) {

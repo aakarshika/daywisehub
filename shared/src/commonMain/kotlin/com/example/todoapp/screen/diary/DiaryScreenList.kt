@@ -88,6 +88,8 @@ fun LazyListScope.TodoMenuItems(
                 editingTaskMode.value = it
             }, addRandomTask = {
                 diaryViewModel.addRandomTask(selection)
+            }, generateTodaysTasks= {
+                diaryViewModel.generateTodaysTasks(selection)
             }
         )
     }

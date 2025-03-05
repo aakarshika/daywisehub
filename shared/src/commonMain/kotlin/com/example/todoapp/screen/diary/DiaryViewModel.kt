@@ -77,6 +77,20 @@ class DiaryViewModel(
         }
     }
 
+    fun generateTodaysTasks(date: LocalDate) {
+        Logger.w("generateTodaysTasks adding random Task for $date")
+        viewModelScope.launch {
+            val taskId = todayTaskRepository.addRandomMissionForDay(date)
+        }
+
+        viewModelScope.launch {
+            val taskId = todayTaskRepository.addRandomMissionForDay(date)
+        }
+
+        viewModelScope.launch {
+            val taskId = todayTaskRepository.addRandomMissionForDay(date)
+        }
+    }
     fun addRandomTask(date: LocalDate) {
         Logger.w("VM adding random Task for $date")
         viewModelScope.launch {
