@@ -29,5 +29,6 @@ data class TodayTask(
     @ColumnInfo(name = "task_type") val taskType: String,// comment, today task, highlight, system generated.
     @ColumnInfo(name = "task_text") val taskText: String?, //task text, picture, link, - for system generated task.
     @ColumnInfo(name = "task_picture_url") val taskPictureUrl: String?,
-    @ColumnInfo(name = "task_link") val taskLink: String?
-)
+    @ColumnInfo(name = "task_link") val taskLink: String?,
+    @ColumnInfo(name = "task_active") val active: String = "Y"
+    )

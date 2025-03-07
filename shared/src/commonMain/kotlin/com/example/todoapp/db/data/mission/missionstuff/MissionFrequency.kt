@@ -13,6 +13,7 @@ import com.example.todoapp.db.data.mission.Mission
         entity = Mission::class,
         parentColumns = ["mission_id"],
         childColumns = ["fs_mission_id"],
+        onDelete = ForeignKey.CASCADE
     )],
     indices = [Index(value = ["fs_mission_id"])]
 )

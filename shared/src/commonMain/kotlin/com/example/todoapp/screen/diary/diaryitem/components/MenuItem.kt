@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Logger
 import com.example.todoapp.screen.diary.ComboTask
+import com.example.todoapp.screen.missions.Blue80
 import kotlinx.datetime.LocalDate
 
 @Composable
@@ -34,26 +35,6 @@ fun MenuItem(
                     modifier = Modifier.wrapContentHeight().fillMaxWidth()
                         .weight(columnWeights[i])
                 ){
-                    Box(modifier = Modifier.fillMaxWidth()){
-                        Column(modifier = Modifier
-                            .height((RowHeight+5).dp)
-                            .fillMaxWidth()
-                            ) {
-                                (1..(RowHeight/26)).forEach {
-                                    Box(modifier = Modifier.height(1.dp).fillMaxWidth().background(
-                                        Blue80
-                                    ))
-                                    Box(modifier = Modifier.height(25.dp).fillMaxWidth())
-                                }
-                                Box(modifier = Modifier.height(1.dp).fillMaxWidth().background(
-                                    Blue80
-                                ))
-                                Box(modifier = Modifier.height(25.dp).fillMaxWidth())
-                                Box(modifier = Modifier.height(1.dp).fillMaxWidth().background(
-                                    Blue80
-                                ))
-                        }
-                    }
                     if(i == 1) {
                         Box(modifier = Modifier) {
                             Row {
@@ -63,13 +44,6 @@ fun MenuItem(
                                 Box(modifier = Modifier.clickable {
                                     addRandomTask()
                                 }) { Text("     +    ") }
-
-//            Box(modifier = Modifier.clickable {
-//                Logger.e("check/draw")
-//                if (magicMode.value == "CHECK")
-//                    magicMode.value = "DRAW" else
-//                    magicMode.value = "CHECK"
-//            }) { Text(if (magicMode.value == "CHECK") " CHECK " else " DRAW ") }
 
                                 Box(modifier = Modifier.clickable {
                                     Logger.e("Is Priority?")

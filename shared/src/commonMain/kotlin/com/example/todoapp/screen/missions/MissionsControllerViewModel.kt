@@ -21,57 +21,6 @@ class MissionsControllerViewModel constructor(
     val randPaddings = List(100) {
         Pair(Random.nextInt(0, 31).dp, Random.nextInt(0, 11).dp)
     }
-    val pillars = listOf(
-            Pillar(
-                pillarId = 1L,
-                pillarUserId = 1L,
-                pillarDescription = "Take care of your body. It is the only one you have!",
-                pillarBenefits = "Proper attention to physical wellness at least 3-5 times a week is recommended for our body",
-                pillarName = "HEALTH",
-                uiData = "health_icon",
-                pillarFrequency = 4,
-                pillarFrequencyPeriod = "WEEKLY",
-                pillarFrequencyUnit = "TIMES",
-                pillarRelativeImportance = 10
-            ),
-            Pillar(
-                pillarId = 2L,
-                pillarUserId = 1L,
-                pillarDescription = "Money isn't everything, but it is some things..",
-                pillarBenefits = "Improve your skills, stay connected, and constantly walk towards your dreams",
-                pillarName = "WEALTH",
-                uiData = "wealth_icon",
-                pillarFrequency = 3,
-                pillarFrequencyPeriod = "WEEKLY",
-                pillarFrequencyUnit = "TIMES",
-                pillarRelativeImportance = 7
-            ),
-            Pillar(
-                pillarId = 3L,
-                pillarUserId = 1L,
-                pillarDescription = "We all need love from our family, friends, neighbours, and internet trolls..",
-                pillarBenefits = "Keep your social life alive by making it a priority",
-                pillarName = "LOVE",
-                uiData = "love_icon",
-                pillarFrequency = 1,
-                pillarFrequencyPeriod = "DAILY",
-                pillarFrequencyUnit = "TIMES",
-                pillarRelativeImportance = 10
-            ),
-            Pillar(
-                pillarId = 4L,
-                pillarUserId = 1L,
-                pillarDescription = "Meditate, Create, Dream, Build, Destroy..",
-                pillarBenefits = "Mental Peace needs attention. Multi-dimensional growth is needed to feel sustained and alive",
-                pillarName = "LIFE",
-                uiData = "life_icon",
-                pillarFrequency = 4,
-                pillarFrequencyPeriod = "WEEKLY",
-                pillarFrequencyUnit = "TIMES",
-                pillarRelativeImportance = 8
-            )
-    )
-
     private val _missionIds = MutableSharedFlow<List<Long>>(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     val missionIds: SharedFlow<List<Long>> get() = _missionIds
 

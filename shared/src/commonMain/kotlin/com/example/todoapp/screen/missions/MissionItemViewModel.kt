@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.mission.MissionWithDetails
-import com.example.todoapp.db.data.mission.milestone.MilestoneWithFewDetails
+import com.example.todoapp.db.data.mission.milestone.Milestone
 import com.example.todoapp.db.data.mission.missionstuff.MissionFrequency
 import com.example.todoapp.db.data.pillar.Pillar
 import com.example.todoapp.repo.MissionRepository
@@ -26,7 +26,7 @@ class MissionItemViewModel(
     val mission: MutableSharedFlow<Mission?> = MutableSharedFlow(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     val pillar: MutableSharedFlow<Pillar?> = MutableSharedFlow(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     val missionFrequency: MutableSharedFlow<MissionFrequency?> = MutableSharedFlow(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-    val milestones: MutableSharedFlow<List<MilestoneWithFewDetails>?> = MutableSharedFlow(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val milestones: MutableSharedFlow<List<Milestone>?> = MutableSharedFlow(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
 
     fun loadMissionDetails() {

@@ -48,48 +48,49 @@ fun DiaryLineText(
         letterSpacing = TextUnit(letterSpacing, TextUnitType.Sp),
         textDecoration = textDecoration,
         fontSize = TextUnit( fontSize, type = TextUnitType.Sp),
-        modifier = modifier.drawWithContent {
-            drawContent() // Draw the text
-//            val textLayoutResult = layoutResult ?: return@drawWithContent
-            val lay = layout.value
-            if(layout.value!= null) {
-                if(lay!!.lineCount >0) {
-                    val lineHeight = lay.size.height / lay.lineCount
-                    var totalLengthOfStrike = 0f
-                    (0..lay.lineCount-1).forEach {
-                        totalLengthOfStrike += lay.getLineRight(it)
-                    }
-                    var highlightLength = strikePercentage * totalLengthOfStrike
-
-                    var lineEndX = 0f
-                    (0..lay.lineCount-1).forEach { i->
-                        if(highlightLength > lay.getLineRight(i)){
-                            //draw coloreded line full
-                            lineEndX = lay.getLineRight(i)
-                        } else {
-                            //draw colored upto highlightLength
-                            lineEndX = highlightLength
-                        }
-                        if(lineEndX>0f) {
-                            drawLine(
-                                color = strikeColor,
-                                strokeWidth = 3f,
-                                start = Offset(0f, (lineHeight * i) + (lineHeight / 2f)),
-                                end = Offset(lineEndX, (lineHeight * i) + (lineHeight / 2f))
-                            )
-                        }
-                        highlightLength = highlightLength - lay.getLineRight(i)
-                    }
-
-                    (0..lay.lineCount-1).forEach {
-                        drawLine(
-                            color = Color.Transparent,
-                            strokeWidth = 2f,
-                            start = Offset(0f, (lineHeight*it)+(lineHeight / 2f)),
-                            end = Offset(lay.getLineRight(it), (lineHeight*it)+(lineHeight / 2f))
-                        )
-                    }
-                }
-            }
-        })
+//        modifier = modifier.drawWithContent {
+//            drawContent() // Draw the text
+////            val textLayoutResult = layoutResult ?: return@drawWithContent
+//            val lay = layout.value
+//            if(layout.value!= null) {
+//                if(lay!!.lineCount >0) {
+//                    val lineHeight = lay.size.height / lay.lineCount
+//                    var totalLengthOfStrike = 0f
+//                    (0..lay.lineCount-1).forEach {
+//                        totalLengthOfStrike += lay.getLineRight(it)
+//                    }
+//                    var highlightLength = strikePercentage * totalLengthOfStrike
+//
+//                    var lineEndX = 0f
+//                    (0..lay.lineCount-1).forEach { i->
+//                        if(highlightLength > lay.getLineRight(i)){
+//                            //draw coloreded line full
+//                            lineEndX = lay.getLineRight(i)
+//                        } else {
+//                            //draw colored upto highlightLength
+//                            lineEndX = highlightLength
+//                        }
+//                        if(lineEndX>0f) {
+//                            drawLine(
+//                                color = strikeColor,
+//                                strokeWidth = 3f,
+//                                start = Offset(0f, (lineHeight * i) + (lineHeight / 2f)),
+//                                end = Offset(lineEndX, (lineHeight * i) + (lineHeight / 2f))
+//                            )
+//                        }
+//                        highlightLength = highlightLength - lay.getLineRight(i)
+//                    }
+//
+//                    (0..lay.lineCount-1).forEach {
+//                        drawLine(
+//                            color = Color.Transparent,
+//                            strokeWidth = 2f,
+//                            start = Offset(0f, (lineHeight*it)+(lineHeight / 2f)),
+//                            end = Offset(lay.getLineRight(it), (lineHeight*it)+(lineHeight / 2f))
+//                        )
+//                    }
+//                }
+//            }
+//        })
+    )
 }

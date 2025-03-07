@@ -171,7 +171,7 @@ private fun DayMission(
                             tint =
                         when (day.position) {
                             DayPosition.MonthDate ->
-                                if (miles!!.get(0).milestoneWithDetails.milestone.status == "COMPLETED") {
+                                if (miles!!.get(0).milestone.status == "COMPLETED") {
                                     getPillarColor(pillarName = selectedMission?.pillar?.pillarName).darken(0.2f)
                                 } else Gray
                             DayPosition.InDate, DayPosition.OutDate -> Color.Transparent})

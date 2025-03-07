@@ -1,20 +1,32 @@
 package com.example.todoapp.screen.diary
 
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.room.Embedded
 import com.example.todoapp.db.data.mission.Mission
@@ -33,11 +45,20 @@ import com.example.todoapp.screen.diary.diaryitem.HabitItemViewModel
 import com.example.todoapp.screen.diary.diaryitem.components.MenuItem
 import com.example.todoapp.screen.diary.diaryitem.components.NotebookLine
 import com.example.todoapp.screen.diary.diaryitem.DiaryItem
+import com.example.todoapp.screen.diary.diaryitem.components.GeneralItem
+import com.example.todoapp.screen.diary.diaryitem.components.NotesItem
 import com.example.todoapp.screen.diary.diaryitem.components.dateheader.DateHeader
 import com.example.todoapp.screen.diary.diaryitem.components.dateheader.WeekDayHeader
 import com.example.todoapp.screen.diary.diaryitem.components.waterintake.WaterIntakeHeader
 import kotlinx.datetime.LocalDate
+import org.jetbrains.compose.resources.painterResource
 import org.koin.core.parameter.parametersOf
+import todoapp.shared.generated.resources.Res
+import todoapp.shared.generated.resources.block_a
+import todoapp.shared.generated.resources.block_b
+import todoapp.shared.generated.resources.glass_a
+import todoapp.shared.generated.resources.glass_b
+import todoapp.shared.generated.resources.glass_c
 
 data class ComboTask(
     @Embedded val todayTask: TodayTask?,
@@ -131,10 +152,26 @@ fun LazyListScope.WaterIntakeHeaderItem(waterIntake: WaterIntake?,
         WaterIntakeHeader(waterIntake?.waterIntakeProgress?:0.0, selection, upsertWaterIntake = {progress->
             upsertWaterIntake((waterIntake ?: WaterIntake(
                 waterIntakeId = 0,
-                waterIntakeUserId = 1,
                 waterIntakeProgress = progress,
                 waterDate = MyDate.fromLocalDate(selection)
             )).copy(waterIntakeProgress = progress))
+        })
+    }
+}
+fun LazyListScope.Notes(waterIntake: WaterIntake?,
+                                        selection: LocalDate,
+                                        upsertWaterIntake : (WaterIntake) -> Unit) {
+    item {
+        val rowHeight = remember { mutableStateOf(52) }
+
+        NotesItem(rowHeight.value,waterIntake, selection,textArranged = { lineCount ->
+            rowHeight.value = 26*(lineCount+1)
+        }, upsertWaterIntake = {n:String->
+            upsertWaterIntake((waterIntake ?: WaterIntake(
+                waterIntakeId = 0,
+                notes = n,
+                waterDate = MyDate.fromLocalDate(selection)
+            )).copy(notes = n))
         })
     }
 }
@@ -142,11 +179,25 @@ fun LazyListScope.WaterIntakeHeaderItem(waterIntake: WaterIntake?,
 fun LazyListScope.HeadingText(headingtext: String, color: Color) {
     item {
         Box(modifier = Modifier.fillMaxWidth()) {
+
             Box(
-                modifier = Modifier.fillMaxSize()
-                    .padding(start = 20.dp, end = 20.dp)
-                    .background(color)
+                modifier = Modifier.height(30.dp).fillMaxWidth()
+                    .padding(horizontal = 60.dp)
             ){
+//                Icon(
+//                    tint = color,
+//                    painter = painterResource(listOf(Res.drawable.block_a, Res.drawable.block_b ).random()),
+//                    modifier = Modifier.fillMaxSize(),
+//                    contentDescription = "fdghj"
+//                )
+                Image(
+                    painterResource(listOf(Res.drawable.block_a, Res.drawable.block_b ).random()),
+                    contentDescription = "sdfgh",
+                    colorFilter = ColorFilter.tint(color),
+                    contentScale = ContentScale.FillBounds,
+                    modifier = Modifier
+                        .fillMaxSize()
+                )
                 Text(
                     text = headingtext,
                     modifier = Modifier

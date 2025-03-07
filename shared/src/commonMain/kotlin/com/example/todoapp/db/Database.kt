@@ -10,7 +10,6 @@ import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.mission.MissionDao
 import com.example.todoapp.db.data.mission.milestone.Milestone
 import com.example.todoapp.db.data.mission.milestone.MilestoneDao
-import com.example.todoapp.db.data.mission.milestone.MilestoneProgressData
 import com.example.todoapp.db.data.mission.missionstuff.MissionFrequency
 import com.example.todoapp.db.data.mission.missionstuff.MissionPillarMapping
 import com.example.todoapp.db.data.mood.Mood
@@ -35,7 +34,6 @@ import kotlinx.coroutines.IO
     MissionPillarMapping::class,
     MissionFrequency::class,
     Milestone::class,
-    MilestoneProgressData::class,
     TodayTask::class,
     TodayTaskReminder::class,
     SubTask::class,

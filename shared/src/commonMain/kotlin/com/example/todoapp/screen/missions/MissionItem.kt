@@ -43,7 +43,7 @@ import org.koin.core.parameter.parametersOf
 
 
 val taskWidth = 320.dp
-val taskMinHeight = 88.dp
+val taskMinHeight = 100.dp
 @Composable
 fun MissionItem(missionId: Long,
                     missionItemViewModel: MissionItemViewModel,
@@ -56,7 +56,6 @@ fun MissionItem(missionId: Long,
 ) {
     val height by animateDpAsState(targetValue = if (isSelected) 200.dp else 10.dp)
     val width by animateDpAsState(targetValue = if (isSelected) 100.dp else 1.dp)
-    val elevation by animateDpAsState(targetValue = if (isSelected) 10.dp else 6.dp)
 
     val mission by missionItemViewModel.mission.collectAsState(null)
     val pillar by missionItemViewModel.pillar.collectAsState(null)
@@ -96,7 +95,7 @@ fun MissionItem(missionId: Long,
                         .background(color = getPillarColor(pillar?.pillarName).copy(alpha = 0.5f))
                 ) {
                     if (isSelected && missionWithDetails != null) {
-                        missionWithDetails?.let { ExpandedListItem(it, onEditClick, onCloseClick ) }
+                        ExpandedListItem(missionWithDetails, onEditClick, onCloseClick )
                     } else {
                         missionWithDetails?.let { SmallListItem(it, onEditClick, onViewClick) }
                     }
@@ -113,12 +112,14 @@ fun getPillarColor(pillarName: String?): Color {
     else  Color(0xFFCCC2DC)
 }
 
-
-fun getThemeColor(theme: String?): Color {
-    return if (theme == "HABIT") Color(0xFFF6D3FF)
-    else if (theme == "TOP3") Color(0xFFFFD4B8)
+fun getDarkPillarColor(pillarName: String?): Color {
+    return if (pillarName == "HEALTH") Color(0xFFF4CDFF)
+    else if (pillarName == "WEALTH") Color(0xFFFCBE98)
+    else if (pillarName == "LOVE") Color(0xFFFFB9C3)
+    else if (pillarName == "LIFE") Color(0xFFC7E4FF)
     else  Color(0xFFCCC2DC)
 }
+
 
 @Composable
 private fun SmallListItem(
@@ -128,7 +129,7 @@ private fun SmallListItem(
 ) {
     Box(modifier = Modifier
         .clickable {
-            mission?.let { onViewClick(it.mission?.missionId?:0L) }
+            mission.let { onViewClick(it.mission?.missionId?:0L) }
         }
         .padding(10.dp)
     ){
@@ -156,6 +157,13 @@ private fun SmallListItem(
                 Row(
                     modifier = Modifier
                 ) {
+                    WriteText(
+                        text = "Goal: ${mission.missionFrequency?.frequency.toString()} ${mission.missionFrequency?.frequencyUnit}" +
+                                " ${mission.missionFrequency?.frequencyPeriod}",
+                        color = Color.Black,
+                        fontSize = 12f,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }
@@ -206,25 +214,40 @@ private fun ExpandedListItem(
                     )
                 }
 
-                Box(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(150.dp)
+                        .wrapContentHeight()
                 ) {
+
                     Column(
                         modifier = Modifier
-                            .width((7 * 22).dp)
-                            .height(150.dp)
                     ) {
                         Box(
                             modifier = Modifier
-                                .align(Alignment.End)
+                                .width((8 * 22).dp)
+                                .height(150.dp)
+                                .align(Alignment.Start)
                         ) {
                             MissionProgressCalendar(
                                 KoinF.di?.get<DayMissionProgressViewModel> { parametersOf(mission?.mission?.missionId) }!!,
                                 mission)
                         }
+
+                        Row(
+                            modifier = Modifier
+                        ) {
+                            MilestoneList(mission)
+                        }
+                        WriteText(
+                            text = "Goal: ${mission.missionFrequency?.frequency.toString()} ${mission.missionFrequency?.frequencyUnit}" +
+                                    " ${mission.missionFrequency?.frequencyPeriod}",
+                            color = Color.Black,
+                            fontSize = 13f,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
+
                 }
 
             }
@@ -250,17 +273,17 @@ private fun ExpandedListItem(
 fun MilestoneList(mission: MissionWithDetails) {
 
     val nextMilestones = mission.milestones?.filter {milestone->
-        val daysToMilestone = daysBetween(now(), milestone.milestone.expectedCompletionDate)
+        val daysToMilestone = daysBetween(now(), milestone.expectedCompletionDate)
 
-        milestone.milestone.status != "COMPLETED"
+        milestone.status != "COMPLETED"
                 && daysToMilestone>=0
                 && daysToMilestone<=45
     }
 
     val completedMilestones = mission.milestones?.filter {milestone->
-        val daysToMilestone = daysBetween(now(), milestone.milestone.expectedCompletionDate)
+        val daysToMilestone = daysBetween(now(), milestone.expectedCompletionDate)
 
-        milestone.milestone.status == "COMPLETED"
+        milestone.status == "COMPLETED"
                 || daysToMilestone<=0
 
     }
@@ -271,21 +294,16 @@ fun MilestoneList(mission: MissionWithDetails) {
         // Display milestone information
         nextMilestones?.take(1)?.forEach { milestone ->
             // Calculate the due date
-            val daysToMilestone = daysBetween(now(), milestone.milestone.expectedCompletionDate)
+            val daysToMilestone = daysBetween(now(), milestone.expectedCompletionDate)
 
             Row{
                 WriteText(
-                    text = "${milestone.milestone.text}",
+                    text = "${milestone.text}",
                     fontSize = 12f,
                     color = getPillarColor(mission.pillar?.pillarName).darken(0.5f)
                 )
-            }
-            Row(
-                modifier = Modifier
-                    .align(Alignment.End)
-            ){
                 WriteText(
-                    text = "in ",
+                    text = " in ",
                     fontSize = 10f,
                     color = Color.Gray
                 )

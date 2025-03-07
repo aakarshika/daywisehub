@@ -14,6 +14,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.painterResource
+import todoapp.shared.generated.resources.Res
+import todoapp.shared.generated.resources.crown_a
+import todoapp.shared.generated.resources.crown_b
+import todoapp.shared.generated.resources.crown_c
 
 @Composable
 fun CustomTop3Button(
@@ -32,7 +37,7 @@ fun CustomTop3Button(
     )
 
     // Choose the icon based on the checked state
-    val iconRes = if (checked) Icons.Default.Favorite else Icons.Default.FavoriteBorder
+    val iconRes = painterResource( Res.drawable.crown_a)
 
     // Determine the tint color based on the state
     val tintColor = if (!enabled) disabledColor else if (checked) checkedColor else uncheckedColor

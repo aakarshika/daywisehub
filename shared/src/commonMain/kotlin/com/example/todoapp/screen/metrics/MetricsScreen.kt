@@ -1,6 +1,7 @@
 package com.example.todoapp.screen.metrics
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -17,6 +18,9 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,8 +29,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -35,9 +42,9 @@ import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
 import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.screen.basicutils.components.WriteText
-import com.example.todoapp.screen.diary.diaryitem.components.Blue80
 import com.example.todoapp.screen.metrics.metriccomponents.TaskTypeDropdown
 import com.example.todoapp.screen.metrics.metriccomponents.options
+import com.example.todoapp.screen.missions.Orange180
 import com.example.todoapp.screen.missions.Orange80
 import com.example.todoapp.screen.missions.Pink80
 import com.example.todoapp.screen.missions.Red80
@@ -56,6 +63,11 @@ import com.kizitonwose.calendar.core.plusYears
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.number
+import org.jetbrains.compose.resources.painterResource
+import todoapp.shared.generated.resources.Res
+import todoapp.shared.generated.resources.circle_filled_a
+import todoapp.shared.generated.resources.circle_filled_b
+import todoapp.shared.generated.resources.crown_a
 
 
 @Composable
@@ -181,6 +193,8 @@ private fun MonthDay(
     onDateClicked: (LocalDate) -> Unit
 ) {
     val todayTasks: List<TodayTaskWithFewDetails> = ttasks?.filter { selectionOptions.contains(it.pillar?.pillarName)}?: listOf()
+    val t3 = (todayTasks.filter { it.todayTask.taskPageTag == "TOP3"})
+    val top3completed = t3.isNotEmpty() && t3.all{ it.todayTask.taskStatus == "COMPLETED" }
     Box(modifier = Modifier.wrapContentSize()) {
 
         Box(
@@ -245,6 +259,22 @@ private fun MonthDay(
                 fontSize = 16.sp,
             )
         }
+
+        if(top3completed){
+            Box(modifier = Modifier
+                .padding(start = 5.dp)
+                .size(25.dp)
+                .align(Alignment.TopStart)){
+
+                Image(
+                    painterResource(Res.drawable.crown_a),
+                    contentDescription = "sdfgf",
+                    colorFilter = ColorFilter.tint(Color.Gray),
+                    modifier = Modifier
+                        .fillMaxSize()
+                )
+            }
+        }
     }
 }
 
@@ -267,18 +297,10 @@ fun WeekDayGola(
     onDateClicked: (LocalDate) -> Unit
 ){
 
-//    val dayTasks: List<TodayTaskWithDetails>,
-    val dayMilestones: List<MilestoneWithDetails>
-
-//    val allTasks = (dayTasks?: listOf() ).sortedBy { t-> t.mission.pillarName }.sortedBy { t-> t.task.taskStatus }
-//    val allTasksCompleted = allTasks.filter { t->  t.task.taskStatus==TaskStatus.COMPLETED }
-//    val top3Tasks = allTasks.filter { t-> t.taskUiData.taskUi.taskPageTag == "TOP3" }
-//    val top3TasksCompleted = allTasks.filter { t-> t.taskUiData.taskUi.taskPageTag == "TOP3" && t.task.taskStatus==TaskStatus.COMPLETED }
-
     val date = day.date
 
     Box(modifier = Modifier.padding(2.dp)){
-        RoundButton((date.dayOfWeek.name).substring(0,1), todayHighlight = isSelected){
+        RoundButton((date), todayHighlight = isSelected){
             onDateClicked(date)
         }
     }
@@ -288,20 +310,47 @@ val CalendarGradientB = Color(0xFFFCECE7)
 
 
 @Composable
-fun RoundButton(number: String, todayHighlight: Boolean = false,
+fun RoundButton(date: LocalDate, todayHighlight: Boolean = false,
                 onClick: () -> Unit) {
+
     Box(
-        modifier = Modifier.size(25.dp)
-            .clip(CircleShape)
-            .background(if(todayHighlight) Red80 else  Orange80)
+        modifier = Modifier.size(35.dp)
+            .padding(top = 7.dp, start = 5.dp)
             .clickable {
                 onClick()
             }
     ) {
+        Icon(
+            painter = painterResource(listOf( Res.drawable.circle_filled_a,Res.drawable.circle_filled_b).random()),
+            contentDescription = "circle_filled",
+            tint = if(todayHighlight) Red80 else  Orange80,
+            modifier = Modifier.fillMaxSize()
+        )
         WriteText(
-            text = number,
-            color = Color.White,
-            modifier = Modifier.align(Alignment.Center)
+            text = ""+date.dayOfMonth,
+            color = Color.Black,
+            fontSize = 14f,
+            modifier = Modifier.padding(top = 2.dp, start = 2.dp).align(Alignment.Center)
+        )
+    }
+    Box(
+        modifier = Modifier.size(16.dp)
+            .clickable {
+                onClick()
+            }
+        ) {
+        Icon(
+            painter = painterResource(listOf( Res.drawable.circle_filled_a,Res.drawable.circle_filled_b).random()),
+            contentDescription = "circle_filled",
+            tint = if(todayHighlight) Red80 else  Color.White,
+            modifier = Modifier.fillMaxSize()
+        )
+        WriteText(
+            text = date.dayOfWeek.name.substring(0,1),
+            fontSize = 10f,
+            fontWeight = FontWeight.Bold,
+            color = Color.Black,
+            modifier = Modifier.align(Alignment.TopCenter)
         )
     }
 }

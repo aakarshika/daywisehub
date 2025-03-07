@@ -2,6 +2,7 @@ package com.example.todoapp.repo
 
 import co.touchlab.kermit.Logger
 import com.example.todoapp.db.AppDatabase
+import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.todotask.TodayTaskDao
 import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
@@ -31,6 +32,11 @@ class TodayTaskRepository(private val database: AppDatabase) {
         return todayTaskDao.getAllTasksForDate1(date.dateString)
     }
 
+    suspend fun getTasksPastMonth(): Flow<List<TodayTask>> {
+        return todayTaskDao.getTasksPastMonth()
+    }
+
+
     suspend fun getAllTasksForDate2(date: MyDate): Flow<List<TodayTaskWithFewDetails>> {
         return todayTaskDao.getAllTasksForDate2(date.dateString)
     }
@@ -59,10 +65,20 @@ class TodayTaskRepository(private val database: AppDatabase) {
     suspend fun getTaskProgressForPastAround(missionId: Long, date: LocalDate): Flow<List<TodayTask>?> {
         val from_date = MyDate.fromLocalDate(date.minusDays(8)).dateString
         val to_date = MyDate.fromLocalDate(date.plusDays(2)).dateString
-        Logger.e("getTaskProgressForPastAround $missionId $from_date $to_date")
         return todayTaskDao.getTaskProgressForPastAround(missionId,from_date, to_date)
     }
 
+
+
+    suspend fun addMissionForDay(date: LocalDate, mission: Mission): Long {
+        return todayTaskDao.addMissionForDay(date,mission)
+    }
+    suspend fun deleteTaskForToday(taskId: Long) {
+        return todayTaskDao.deleteTaskForToday(taskId)
+    }
+    suspend fun activateTaskForToday(taskId: Long) {
+        return todayTaskDao.activateTaskForToday(taskId)
+    }
 
     suspend fun addRandomMissionForDay(currentDate: LocalDate): Long {
         return todayTaskDao.addRandomMission(currentDate)

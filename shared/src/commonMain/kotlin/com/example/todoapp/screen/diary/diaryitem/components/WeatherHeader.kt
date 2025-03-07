@@ -21,7 +21,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.unit.dp
-val Blue80 = Color(0xFFD4EBFF)
+import com.example.todoapp.screen.missions.Blue180
+import com.example.todoapp.screen.missions.Blue80
+
 
 @Composable
 fun WeatherHeader() {
@@ -39,7 +41,7 @@ fun WeatherHeader() {
                 ){
                     listOf(1,2,3,4,5,6).forEach {
                         Icon(
-                            tint = Blue80,
+                            tint = Blue180,
                             painter = rememberVectorPainter(Icons.Default.Face),
                             modifier = Modifier
                                 .size(40.dp)

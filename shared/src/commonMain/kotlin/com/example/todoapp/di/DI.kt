@@ -16,6 +16,7 @@ import com.example.todoapp.screen.diary.DiaryViewModel
 import com.example.todoapp.screen.diary.diaryitem.HabitItemViewModel
 import com.example.todoapp.screen.diary.diaryitem.components.diarymood.MoodViewModel
 import com.example.todoapp.screen.diary.diaryitem.components.waterintake.WaterIntakeViewModel
+import com.example.todoapp.screen.diary.planning.PlanningViewModel
 import com.example.todoapp.screen.metrics.MetricsViewModel
 import com.example.todoapp.screen.missions.MissionItemViewModel
 import com.example.todoapp.screen.missions.MissionsControllerViewModel
@@ -58,6 +59,7 @@ fun vmModule(): Module {
 
         factory { (day: LocalDate) -> MoodViewModel(get(), day) }
         factory { (day: LocalDate) -> WaterIntakeViewModel(get(), day) }
+        factory { PlanningViewModel(get(), get()) }
 
 
         single { CalDiaryViewModel(get()) }

@@ -28,8 +28,7 @@ import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.mood.TodayMood
 import com.example.todoapp.db.data.mood.TodayMoodWithDetails
 import com.example.todoapp.db.models.MyDate
-import com.example.todoapp.screen.basicutils.components.WriteText
-import com.example.todoapp.screen.diary.diaryitem.components.Blue80
+import com.example.todoapp.screen.missions.Red180
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -38,22 +37,28 @@ import todoapp.shared.generated.resources.happy
 import todoapp.shared.generated.resources.sad
 import todoapp.shared.generated.resources.angry
 import todoapp.shared.generated.resources.afraid
+import todoapp.shared.generated.resources.angryemoji
+import todoapp.shared.generated.resources.boredemoji
+import todoapp.shared.generated.resources.confusedemoji
 import todoapp.shared.generated.resources.surprised
 import todoapp.shared.generated.resources.disgusted
+import todoapp.shared.generated.resources.dreamyemoji
+import todoapp.shared.generated.resources.happyemoji
+import todoapp.shared.generated.resources.sademoji
 
 
 val Red80 = Color(0xFFFFCBD2)
 
 private fun getDrawableIdFromMoodIcon(moodIcon: String): DrawableResource {
     val drawableMap = mapOf(
-        "happy" to Res.drawable.happy,
-        "sad" to Res.drawable.sad,
-        "angry" to Res.drawable.angry,
-        "afraid" to Res.drawable.afraid,
-        "surprised" to Res.drawable.surprised,
-        "disgusted" to Res.drawable.disgusted
+        "happy" to Res.drawable.happyemoji,
+        "sad" to Res.drawable.sademoji,
+        "angry" to Res.drawable.angryemoji,
+        "dreamy" to Res.drawable.dreamyemoji,
+        "bored" to Res.drawable.boredemoji,
+        "confused" to Res.drawable.confusedemoji
     )
-    return drawableMap[moodIcon] ?: Res.drawable.happy
+    return drawableMap[moodIcon] ?: Res.drawable.sad
 }
 
 @Composable
@@ -74,9 +79,8 @@ fun MoodHeader(
                     LazyRow(modifier = Modifier.align(Alignment.Center)) {
                         items(todayMoodList ?: listOf()) {
                             val status = it.todayMood?.tmMoodStatus
-                            Logger.e("Mood status ${status}")
                             Icon(
-                                tint = if (status == "ACTIVE") Red80 else Color.LightGray,
+                                tint = if (status == "ACTIVE") Red180 else Color.LightGray,
                                 painter = painterResource(
                                     getDrawableIdFromMoodIcon(it.mood.moodIcon)
                                 ),
@@ -92,7 +96,6 @@ fun MoodHeader(
                                         )).copy(
                                             tmMoodStatus = if (status == "ACTIVE") "INACTIVE" else "ACTIVE"
                                         )
-                                        Logger.i("Mood upserting ${status} ${newMood.toString()}")
                                         upsertMood(newMood)
                                     },
                                 contentDescription = "mood-icon-smile"

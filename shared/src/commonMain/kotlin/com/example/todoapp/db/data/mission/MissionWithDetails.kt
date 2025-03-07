@@ -4,7 +4,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Junction
 import androidx.room.Relation
-import com.example.todoapp.db.data.mission.milestone.MilestoneWithFewDetails
+import com.example.todoapp.db.data.mission.milestone.Milestone
 import com.example.todoapp.db.data.mission.missionstuff.MissionFrequency
 import com.example.todoapp.db.data.mission.missionstuff.MissionPillarMapping
 import com.example.todoapp.db.data.pillar.Pillar
@@ -14,7 +14,7 @@ data class MissionWithDetails(
     @Embedded val mission: Mission?,
     @Embedded val pillar: Pillar?,
     @Embedded val missionFrequency: MissionFrequency?,
-    @Embedded val milestones: List<MilestoneWithFewDetails>? = listOf(),
+    @Embedded val milestones: List<Milestone>? = listOf(),
 ){
     override fun toString(): String {
         return if(missionFrequency?.isDailyHabit == true)
@@ -28,3 +28,5 @@ data class MissionWithDetails(
                 ")"
     }
 }
+
+

@@ -86,7 +86,6 @@ private fun CalendarArea(
     diaryViewMode: String
 ) {
 
-    val currentDate = remember { LocalDate.now() }
     val currentMonth = remember { YearMonth.now() }
 
     val startMonth = remember { currentMonth.minusYears(3) }
@@ -103,7 +102,7 @@ private fun CalendarArea(
     val weekState = rememberWeekCalendarState(
         startDate = startMonth.atStartOfMonth(),
         endDate = endMonth.atEndOfMonth(),
-        firstVisibleWeekDate = currentDate,
+        firstVisibleWeekDate = selectedDate,
         firstDayOfWeek = daysOfWeek.first()
     )
 

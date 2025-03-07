@@ -31,13 +31,13 @@ class DiaryViewModel(
                     dayTasks.emit(it)
                 }
         }
-        viewModelScope.launch {
-            todayTaskRepository.getHabitMissions(MyDate.fromLocalDate(currentDate))
-                .collectLatest {
-                    Logger.i("habits collected  ${currentDate} ${it}")
-                    habitList.tryEmit(it)
-                }
-        }
+//        viewModelScope.launch {
+//            todayTaskRepository.getHabitMissions(MyDate.fromLocalDate(currentDate))
+//                .collectLatest {
+//                    Logger.i("habits collected  ${currentDate} ${it}")
+//                    habitList.tryEmit(it)
+//                }
+//        }
     }
 
     fun updateTaskStatus(todayTaskId: Long, taskStatus: String) {

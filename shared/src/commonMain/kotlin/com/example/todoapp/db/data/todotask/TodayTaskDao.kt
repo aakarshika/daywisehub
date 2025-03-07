@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import co.touchlab.kermit.Logger
+import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.screen.diary.ComboTask
 import kotlinx.coroutines.flow.Flow
@@ -69,9 +70,14 @@ interface TodayTaskDao {
         LEFT JOIN mission_pillar_mapping mp ON m.mission_id = mp.mission_mapping_id 
         LEFT JOIN pillar p ON mp.pillar_mapping_id = p.pillar_id
         LEFT JOIN mission_frequency mf ON tt.task_mission_id = mf.fs_mission_id
-        where tt.task_date = :date and mf.is_daily_habit != true
+        where tt.task_date = :date and tt.task_active = 'Y'
         """)
     fun getAllTasksForDate1(date: String): Flow<List<ComboTask>>
+
+    @Query("""SELECT tt.*
+        FROM today_task  tt
+        """)
+    fun getTasksPastMonth(): Flow<List<TodayTask>>
 
 
     @Query("""SELECT tt.*,tr.*,m.*,p.*,mf.* 
@@ -150,6 +156,22 @@ interface TodayTaskDao {
     }
 
 
+    @Query("""
+        update  today_task
+        set task_active = 'Y'
+        WHERE today_task_id = :todayTaskId
+    """)
+    suspend fun activateTaskForToday(todayTaskId: Long)
+
+
+
+    @Query("""
+        update  today_task
+        set task_active = 'N'
+        WHERE today_task_id = :todayTaskId
+    """)
+    suspend fun deleteTaskForToday(todayTaskId: Long)
+
 
     //update task status by id
     @Query("""
@@ -169,6 +191,7 @@ interface TodayTaskDao {
 
     @Transaction
     suspend fun insertFullTask(task: TodayTaskWithFewDetails): Long {
+        Logger.e("insertFullTask  $task")
         if (task.todayTask.todayTaskId > 0L) {
             updateTodayTask(task.todayTask)
             upsertTodayTaskReminder(task.todayTaskReminder!!)
@@ -183,13 +206,23 @@ interface TodayTaskDao {
         }
     }
 
+    suspend fun addMissionForDay(date: LocalDate, mission: Mission): Long{
+        if(mission.missionId>0) {
+            val newTask = prepareTaskObject(mission.missionId, date)
+            Logger.e("newTask prepared from ${mission.missionId}: $newTask")
+            val tid = insertFullTask(newTask)
+            Logger.e("inserted taskid: $tid")
+            return tid
+        }
+        return -1L
+    }
     suspend fun addRandomMission(currentDate: LocalDate): Long{
         Logger.e("adding RandomMission for date $currentDate")
         val newMissionId = getNewMissionForDay(MyDate.fromLocalDate(currentDate).dateString)
         Logger.e("adding RandomMission newMissionId: $newMissionId")
         if(newMissionId>0) {
             val newTask = prepareTaskObject(newMissionId, currentDate)
-            Logger.e("newTask prepared: $newTask")
+            Logger.e("newTask prepared: ${newTask.todayTask}")
             val tid = insertFullTask(newTask)
             Logger.e("inserted taskid: $tid")
             return tid

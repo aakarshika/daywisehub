@@ -46,7 +46,7 @@ fun MissionsControllerScreen(viewModel: MissionsControllerViewModel) {
 
         val triggerMissionId = remember { mutableStateOf(-1L) }
         val tt = remember { mutableStateOf<MissionWithDetails?>(null) }
-        val pillarOptions = viewModel.pillars
+        val pillarOptions = pillars
 
 //        val pillarCountMap = missionIds.itemList.groupBy { it.pillar?.pillarName }
 //            .mapValues { missionList->

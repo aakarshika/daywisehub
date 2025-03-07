@@ -14,6 +14,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.painterResource
+import todoapp.shared.generated.resources.Res
+import todoapp.shared.generated.resources.check_square
+import todoapp.shared.generated.resources.square
+import todoapp.shared.generated.resources.square_b
+import todoapp.shared.generated.resources.square_check_a
+import todoapp.shared.generated.resources.square_check_b
 
 @Composable
 fun CustomCheckbox(
@@ -32,7 +39,7 @@ fun CustomCheckbox(
     )
 
     // Choose the icon based on the checked state
-    val iconRes = if (checked) Icons.Default.CheckCircle else Icons.Default.AddCircle
+    val iconRes = if (checked) painterResource(Res.drawable.check_square) else painterResource(Res.drawable.square_b)
 
     // Determine the tint color based on the state
     val tintColor = if (!enabled) disabledColor else if (checked) checkedColor else uncheckedColor

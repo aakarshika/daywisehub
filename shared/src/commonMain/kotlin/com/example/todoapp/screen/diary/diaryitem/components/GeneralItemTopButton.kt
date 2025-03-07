@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.Composable
@@ -35,17 +36,17 @@ fun GeneralItemTopButton(
                 }
             }
         ){
-            columnWeights.forEachIndexed { i, item->
+            columnWeightsLeftShifted.forEachIndexed { i, item->
                 Box(
                     modifier = Modifier.wrapContentHeight().fillMaxWidth()
-                        .weight(columnWeights[i])
+                        .weight(columnWeightsLeftShifted[i])
                 ){
                     if(i == 0) {
                         Box(modifier = Modifier.fillMaxWidth()) {
                             Column(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
-                                    .size(15.dp)
+                                    .size(14.dp)
                             ) {
                                 CustomTop3Button(
                                     checked = isChecked,
@@ -56,8 +57,8 @@ fun GeneralItemTopButton(
                                         }
                                     },
                                     modifier = Modifier,
-                                    checkedColor = Orange80,
-                                    uncheckedColor = if(editingMode == "prioritize") Orange80 else Color.Transparent,
+                                    checkedColor = Color.Gray,
+                                    uncheckedColor = if(editingMode == "prioritize") Color.LightGray else Color.Transparent,
                                     disabledColor = Color.Transparent
                                 )
                             }

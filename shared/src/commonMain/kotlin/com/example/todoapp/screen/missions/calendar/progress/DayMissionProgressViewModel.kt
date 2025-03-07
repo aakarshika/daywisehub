@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
-import com.example.todoapp.db.data.mission.milestone.MilestoneWithFewDetails
 import com.example.todoapp.db.data.mission.missionstuff.MissionFrequency
 import com.example.todoapp.db.data.pillar.Pillar
 import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails

@@ -53,8 +53,6 @@ import androidx.compose.ui.unit.sp
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.mission.MissionWithDetails
 import com.example.todoapp.db.data.mission.milestone.Milestone
-import com.example.todoapp.db.data.mission.milestone.MilestoneProgressData
-import com.example.todoapp.db.data.mission.milestone.MilestoneWithFewDetails
 import com.example.todoapp.db.data.mission.missionstuff.MissionFrequency
 import com.example.todoapp.db.data.pillar.Pillar
 import com.example.todoapp.db.models.MyDate
@@ -72,7 +70,12 @@ val Red180 = Color(0xFFFFB9C3)
 val Pink180 = Color(0xFFF4CDFF)
 val Blue180 = Color(0xFFC7E4FF)
 
+val Yellow180 = Color(0xFFFAE0A0)
+val Yellow80 = Color(0xFFFAE8BC)
 
+val GREEN80 =  Color(0xFFE1F5D1)
+
+val DARKGREEN180 =  Color(0xFFCADEB1)
 
 fun Color.darken(amount: Float = 0.2f): Color {
     val red = (this.red * (1 - amount)).coerceIn(0f, 1f)
@@ -618,8 +621,7 @@ fun EditMissionPopup(
                         }
                         // Milestones List
                         milestones.value?.forEachIndexed { index, milestoneWithDetails ->
-                            val mile = milestoneWithDetails.milestone
-                            val milestoneProgressData = milestoneWithDetails.milestoneProgressData
+                            val mile = milestoneWithDetails
 
                             Column(modifier = Modifier) {
                                 Row(
@@ -636,10 +638,7 @@ fun EditMissionPopup(
                                                     milestones.value =
                                                         milestones.value?.mapIndexed { i, m ->
                                                             if (i == index)
-                                                                MilestoneWithFewDetails(
-                                                                    milestone = mile.copy(text = it),
-                                                                    milestoneProgressData = milestoneProgressData
-                                                                )
+                                                                mile.copy(text = it)
                                                             else milestones.value!![i]
                                                         }
                                                 },
@@ -653,19 +652,16 @@ fun EditMissionPopup(
 
                                             Box(modifier = Modifier.background(Pink180)) {
                                                 WritingTextField(
-                                                    taskName = mile.expectedCompletionDate.dateString,
+                                                    taskName = mile.expectedCompletionDate?.dateString?:MyDate.now().dateString,
                                                     valueChanged = { xx ->
                                                         milestones.value =
                                                             milestones.value?.mapIndexed { i, m ->
                                                                 if (i == index)
-                                                                    MilestoneWithFewDetails(
-                                                                        milestone = mile.copy(
+                                                                    mile.copy(
                                                                             expectedCompletionDate = MyDate(
                                                                                 xx
                                                                             )
-                                                                        ),
-                                                                        milestoneProgressData = milestoneProgressData
-                                                                    )
+                                                                        )
                                                                 else milestones.value!![i]
                                                             }
                                                     },
@@ -709,25 +705,20 @@ fun EditMissionPopup(
                                         val newMilestone = Milestone(
                                             text = "My ${getOrdinal((milestones.value?.size ?: 0) + 1)} Milestone",
                                             priority = "HIGH",
-                                            expectedCompletionDate = MyDate("2025-3-3"),
+                                            expectedCompletionDate = MyDate("2025-3-13"),
                                             milestoneOrder = milestones.value?.size ?: 1,
                                             status = "ACTIVE",
-                                            missionId = mission.value?.missionId ?: 0L
-                                        )
-                                        val milestoneProgressData = MilestoneProgressData(
+                                            missionId = mission.value?.missionId ?: 0L,
                                             progressValue = 0f,
                                             progressUnit = 0f,
                                             progressText = "",
-                                            mileStartDate = MyDate("2024-1-1"),
+                                            mileStartDate = MyDate("2025-1-1"),
                                             actualCompletionDate = null,
                                             completionTaskId = null,
                                             milestoneId = 0L
                                         )
                                         milestones.value = milestones.value?.plus(
-                                            MilestoneWithFewDetails(
-                                                milestone = newMilestone,
-                                                milestoneProgressData = milestoneProgressData
-                                            )
+                                            newMilestone
                                         )
 
                                     }

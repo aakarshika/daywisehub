@@ -22,10 +22,12 @@ fun WriteText(
     fontSize:Float= 18f,
     maxLines: Int = Int. MAX_VALUE,
     textDecoration:TextDecoration = TextDecoration.None,
+    fontWeight:FontWeight = FontWeight.Light,
+
 ) {
     Text(text= text,
 //        fontFamily = anniFontFamily,
-        fontWeight = FontWeight.Light,
+        fontWeight = fontWeight,
         fontStyle = fontStyle,
         style = MaterialTheme.typography.bodyMedium,
         color = color,

@@ -28,24 +28,24 @@ fun GeneralItemTop3Star(
     Box(modifier = Modifier.fillMaxWidth().height(RowHeight.dp)){
         Row(modifier = Modifier.fillMaxWidth()
         ){
-            columnWeights.forEachIndexed { i, item->
+            columnWeightsLeftShifted.forEachIndexed { i, item->
                 Box(
                     modifier = Modifier.wrapContentHeight().fillMaxWidth()
-                        .weight(columnWeights[i])
+                        .weight(columnWeightsLeftShifted[i])
                 ){
                     if(i == 0) {
                         Box(modifier = Modifier.fillMaxWidth()) {
                             Column(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
-                                    .size(15.dp)
+                                    .size(14.dp)
                             ) {
                                 CustomTop3Button(
                                     checked = isChecked,
                                     onCheckedChange = {},
                                     modifier = Modifier,
-                                    checkedColor = Orange80,
-                                    uncheckedColor = if(editingMode == "prioritize") Orange80 else Color.Transparent,
+                                    checkedColor = Color.Gray,
+                                    uncheckedColor = if(editingMode == "prioritize") Color.LightGray else Color.Transparent,
                                     disabledColor = Color.Transparent
                                 )
                             }

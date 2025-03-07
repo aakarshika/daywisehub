@@ -116,7 +116,6 @@ fun ProgressBarForeground(
             modifier = Modifier
                 .height(2.dp)
                 .weight(1f)
-                .background(Color.Transparent)
         )
     }
 }

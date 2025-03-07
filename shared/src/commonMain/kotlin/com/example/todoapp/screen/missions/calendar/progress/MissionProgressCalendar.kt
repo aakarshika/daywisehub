@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -34,8 +36,12 @@ import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
 import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.di.KoinF
+import com.example.todoapp.screen.missions.DARKGREEN180
 import com.example.todoapp.screen.missions.MissionItemViewModel
+import com.example.todoapp.screen.missions.Yellow180
+import com.example.todoapp.screen.missions.Yellow80
 import com.example.todoapp.screen.missions.darken
+import com.example.todoapp.screen.missions.getDarkPillarColor
 import com.example.todoapp.screen.missions.getPillarColor
 import com.kizitonwose.calendar.compose.VerticalCalendar
 import com.kizitonwose.calendar.compose.rememberCalendarState
@@ -48,9 +54,17 @@ import com.kizitonwose.calendar.core.daysOfWeek
 import com.kizitonwose.calendar.core.firstDayOfWeekFromLocale
 import com.kizitonwose.calendar.core.minusYears
 import com.kizitonwose.calendar.core.plusYears
+import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 import kotlinx.datetime.number
+import org.jetbrains.compose.resources.painterResource
 import org.koin.core.parameter.parametersOf
+import todoapp.shared.generated.resources.Res
+import todoapp.shared.generated.resources.circle_badge
+import todoapp.shared.generated.resources.circle_filled_a
+import todoapp.shared.generated.resources.square_b
+import todoapp.shared.generated.resources.square_check_b
 
 
 @Composable
@@ -63,14 +77,22 @@ fun MissionProgressCalendar(
     var dateWiseMiles by remember { mutableStateOf<Map<String, List<MilestoneWithDetails>?>?>(mapOf()) }
     dateWiseMiles=
         miles?.sortedBy { it.pillar?.pillarId }
-            ?.groupBy { mile-> mile.milestoneWithDetails.milestone.expectedCompletionDate.dateString }
+            ?.groupBy { mile-> mile.milestone.expectedCompletionDate.dateString }
             ?: mapOf()
-    var dateWiseTasks by remember { mutableStateOf<Map<String, List<TodayTaskWithFewDetails>>>(mapOf()) }
-    dateWiseTasks=
-        tasks?.sortedBy { it.pillar?.pillarId }
-            ?.sortedBy { it.todayTask.taskStatus == "COMPLETED" }
-            ?.groupBy { task ->  task.todayTask.taskDate.dateString }
-            ?: mapOf()
+
+    //{date: [t1], date: [t2], date: [t3],..}
+    val dateWiseTasks by remember(tasks) {
+        mutableStateOf(
+            tasks
+                ?.sortedWith(
+                    compareBy<TodayTaskWithFewDetails> { it.todayTask.taskStatus != "COMPLETED" }
+                        .thenBy { it.pillar?.pillarId }
+                )
+                ?.groupBy { it.todayTask.taskDate.dateString }
+        )
+    }
+
+
     LaunchedEffect(Unit) {
         viewModel.loadMileDetails()
         viewModel.loadTaskDetails()
@@ -95,8 +117,6 @@ private fun CalendarArea(
     selectedMission: MissionWithDetails?
 ) {
 
-    Logger.e("milessssss $miles")
-    Logger.e("taskssss $tasks")
     val currentMonth = remember { YearMonth.now() }
     val currentYear = remember { currentMonth.year }
 
@@ -110,44 +130,67 @@ private fun CalendarArea(
         firstVisibleMonth = currentMonth,
         firstDayOfWeek = firstDayOfWeek,
     )
+
+    //some more calculation - for every saturday - lastdayofweek - i need to get the number tasks done in that week.
+
+
     VerticalCalendar(
         modifier = Modifier.fillMaxWidth(),
         state = state,
-        calendarScrollPaged = false,
-        dayContent = { day ->
-            val date = MyDate.fromLocalDate(day.date).dateString
+        calendarScrollPaged = false,dayContent = { day ->
+            val date = MyDate.fromLocalDate(day.date)
 
+            // Weekly Task List (Last 7 Days from Saturday)
+            val weeklyTaskList = if (day.date.dayOfWeek == DayOfWeek.SATURDAY) {
+                (1..7).flatMap { n ->
+                    tasks?.get(date.subtractDays(n).dateString).orEmpty()
+                }
+            } else {
+                emptyList()
+            }
 
-            key(day.date, miles, tasks) {
-                DayMission(
-                    day,
-                    miles = miles?.get(date) ?: listOf(),
-                    tasks = tasks?.get(date) ?: listOf(),
-                    selectedMission
-                )
+            Box(modifier = Modifier.width(if(day.date.dayOfWeek == DayOfWeek.SATURDAY) 40.dp else 20.dp)) {
+                key(day.date, miles, tasks) {
+                    DayMission(
+                        day,
+                        miles = miles?.get(date.dateString) ?: listOf(),
+                        tasks = tasks?.get(date.dateString) ?: listOf(),
+                        weeklyTaskList,
+                        selectedMission
+                    )
+                }
             }
         },
         monthHeader = { month ->
         },
         monthBody = { month, content ->
-            Box(
-                modifier = Modifier.background(
-                    brush = Brush.verticalGradient(
-                        colors = if (month.yearMonth.month.number % 2 == 0) listOf(
-                            Color.White.copy(alpha = 0.40f),
-                            Color.White.copy(alpha = 0.25f)
-                        ) else listOf(
-                            Color.White.copy(alpha = 0.25f),
-                            Color.White.copy(alpha = 0.40f)
+
+                Box(
+                    modifier = Modifier.background(
+                        brush = Brush.verticalGradient(
+                            colors = if (month.yearMonth.month.number % 2 == 0) listOf(
+                                Color.White.copy(alpha = 0.70f),
+                                Color.White.copy(alpha = 0.65f)
+                            ) else listOf(
+                                Color.White.copy(alpha = 0.65f),
+                                Color.White.copy(alpha = 0.70f)
+                            )
                         )
                     )
-                )
-            ) {
-                content() // Render the provided content!
-            }
+                ) {
+                    content() // Render the provided content!
+                }
         },
         monthContainer = { month, container ->
+
+            // Monthly Task List (Tasks from the same month)
+            val monthlyTaskList = (tasks?.filterKeys { dateString ->
+                MyDate(dateString).toLocalDate().month == month.yearMonth.month
+            }?.values?.flatMap { it?: listOf() })?: listOf()
             Column(modifier = Modifier.fillMaxWidth()) { // Wrap month in a Column
+                val weeklycompleted  = monthlyTaskList!!.filter { t-> t.todayTask.taskStatus == "COMPLETED" }
+                val freq = (selectedMission?.missionFrequency?.frequency?:1)
+
                 MonthHeader(month) // Display month header
                 Box(
                     modifier = Modifier
@@ -155,6 +198,20 @@ private fun CalendarArea(
                 ) {
                     container() // Render the month content
                 }
+                Box(
+                    modifier = Modifier
+                        .height(10.dp)
+                        .fillMaxWidth()
+                        .background(
+                            color =
+                            if(selectedMission?.missionFrequency?.frequencyPeriod == "MONTHLY")
+                                if(weeklycompleted.size >= freq) DARKGREEN180
+                                else if(weeklycompleted.size > 0 ) Yellow180
+                                else if(monthlyTaskList.size > 0 ) Yellow80
+                                else Color.Transparent
+                            else Color.Transparent
+                        )
+                )
             }
         }
     )
@@ -175,34 +232,59 @@ private fun DayMission(
     day: CalendarDay,
     miles: List<MilestoneWithDetails>?,
     tasks: List<TodayTaskWithFewDetails>?,
+    weeklytasklist: List<TodayTaskWithFewDetails>,
     selectedMission: MissionWithDetails?,
 ) {
+    val isSaturday = if(day.date.dayOfWeek == DayOfWeek.SATURDAY) true else false
 
-    Logger.e( "${day.date}")
-    Logger.e( "mmmm${miles}")
-    Logger.e( "tttt${tasks}")
-    Box(modifier = Modifier.wrapContentSize()) {    Box(
+    Box(modifier = Modifier
+        .width(if(isSaturday) 80.dp else 20.dp)
+        .height(20.dp)
+    ) {
+        if(isSaturday ){
+            val weeklycompleted  = weeklytasklist.filter { t-> t.todayTask.taskStatus == "COMPLETED" }
+            val freq = (selectedMission?.missionFrequency?.frequency?:1)
+            Box(
                 modifier = Modifier
-                    .aspectRatio(1f)
-                    .size(20.dp)
-                    .testTag("MonthDay")
-                    .clip(CircleShape)
+                    .height(20.dp)
+                    .width(10.dp)
+                    .align(Alignment.TopEnd)
                     .background(
-                        color =  Color.Transparent
-                    ),
-                contentAlignment = Alignment.Center,
+                        color =
+                        if(selectedMission?.missionFrequency?.frequencyPeriod == "WEEKLY")
+                            if(weeklycompleted.size >= freq) DARKGREEN180
+                            else if(weeklycompleted.size > 0 ) Yellow180
+                            else if(weeklytasklist.size > 0 ) Yellow80
+                            else Color.Transparent
+                        else Color.Transparent
+                    )
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .align(Alignment.Center)
-                ) {
+//                Icon(
+//                    painterResource(Res.drawable.square_check_b),
+//                    "dfg",
+//                    tint = when (day.position) {
+//                        DayPosition.MonthDate ->
+//                            getPillarColor(pillarName = selectedMission?.pillar?.pillarName)
+//
+//                        DayPosition.InDate, DayPosition.OutDate -> Color.Transparent
+//                    }
+//                )
+            }
+        }
+        Box(
+            modifier = Modifier.wrapContentSize()
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .align(Alignment.TopStart)
+            ) {
 
                     if(tasks != null && tasks!!.size>0 &&
                         tasks.get(0).todayTask.taskStatus  == "COMPLETED"){
-                        Icon(Icons.Default.Face,
+                        Icon(
+                            painterResource(Res.drawable.circle_badge),
                             "dfg",
-                            modifier = Modifier.size(70.dp),
                             tint = when (day.position) {
                                 DayPosition.MonthDate ->
                                     getPillarColor(pillarName = selectedMission?.pillar?.pillarName)
@@ -211,20 +293,20 @@ private fun DayMission(
                         )
                     }
                     if(miles != null && miles!!.size>0 &&
-                        miles.get(0).milestoneWithDetails.milestone.expectedCompletionDate.dateString  == MyDate.fromLocalDate(day.date).dateString){
-                        Icon(Icons.Default.Settings,
+                        miles.get(0).milestone.expectedCompletionDate.dateString  == MyDate.fromLocalDate(day.date).dateString){
+                        Icon(painterResource(Res.drawable.square_b),
                             "sfgh",
-                            modifier = Modifier.size(70.dp),
                             tint = when (day.position) {
                                     DayPosition.MonthDate ->
-                                        getPillarColor(pillarName = selectedMission?.pillar?.pillarName).darken(0.2f)
+                                        getDarkPillarColor(pillarName = selectedMission?.pillar?.pillarName)
                                     DayPosition.InDate, DayPosition.OutDate -> Color.Transparent
                                 }
                         )
                     }
                     Box(
                         modifier = Modifier
-                            .size(20.dp)
+                            .wrapContentSize()
+                            .align(Alignment.Center)
                     ) {
                         val textColor = when (day.position) {
                             DayPosition.MonthDate -> Color.Black
@@ -239,6 +321,6 @@ private fun DayMission(
                         )
                     }
                 }
-            }
+        }
     }
 }

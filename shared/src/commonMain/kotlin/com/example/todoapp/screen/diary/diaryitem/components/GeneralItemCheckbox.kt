@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import com.example.todoapp.screen.basicutils.components.CustomCheckbox
 import com.example.todoapp.screen.diary.ComboTask
 import com.example.todoapp.screen.basicutils.cal.clickable
+import com.example.todoapp.screen.missions.getDarkPillarColor
 import com.example.todoapp.screen.missions.getPillarColor
 
 @Composable
@@ -49,7 +50,7 @@ fun GeneralItemCheckbox(
                                             false
                                         ) else taskErased(ct,  true)
                                     }
-                                    .padding(start = 10.dp, top = 5.dp)
+                                    .padding(start = 20.dp, top = 2.dp)
                             ) {
                                 CustomCheckbox(
                                     checked = isChecked,
@@ -61,9 +62,8 @@ fun GeneralItemCheckbox(
                                     },
                                     modifier = Modifier
                                         .size(20.dp)
-                                        .clip(CircleShape)
                                     ,
-                                    checkedColor = getPillarColor(ct?.pillar?.pillarName),
+                                    checkedColor = getDarkPillarColor(ct?.pillar?.pillarName),
                                     uncheckedColor = Color.Transparent,
                                     disabledColor = Color.Transparent
                                 )

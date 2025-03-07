@@ -4,9 +4,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
@@ -16,10 +18,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Logger
-import com.example.todoapp.screen.diary.diaryitem.components.Blue80
+import com.example.todoapp.screen.missions.Blue180
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.painterResource
 import todoapp.shared.generated.resources.Res
+import todoapp.shared.generated.resources.glass_a
+import todoapp.shared.generated.resources.glass_b
+import todoapp.shared.generated.resources.glass_c
 import todoapp.shared.generated.resources.happy
 
 
@@ -40,12 +45,12 @@ fun WaterIntakeHeader(
                     LazyRow(modifier = Modifier.align(Alignment.Center)) {
                         items( listOf(1,2,3,4,5,6,7,8)) {
                             val glassNumber = it
-                            Logger.e("glass ${glassNumber}")
                             Icon(
-                                tint = if (waterIntake >= glassNumber) Blue80 else Color.LightGray,
-                                painter = painterResource(Res.drawable.happy),
+                                tint = if (waterIntake >= glassNumber) Blue180 else Color.LightGray,
+                                painter = painterResource(listOf(Res.drawable.glass_a, Res.drawable.glass_b, Res.drawable.glass_c ).random()),
                                 modifier = Modifier
-                                    .size(40.dp)
+                                    .height(40.dp)
+                                    .wrapContentWidth()
                                     .padding(3.dp)
                                     .clickable {
                                         upsertWaterIntake(glassNumber.toDouble())

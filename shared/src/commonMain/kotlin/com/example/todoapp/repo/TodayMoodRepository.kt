@@ -57,26 +57,50 @@ class TodayMoodRepository(private val database: AppDatabase) {
             Mood(
                 moodId = 0L,
                 moodUserId = userId,
-                moodName = "AFRAID",
-                moodIcon = "afraid"
+                moodName = "DREAMY",
+                moodIcon = "dreamy"
             )
         )
         todayMoodDao.upsertMood(
             Mood(
                 moodId = 0L,
                 moodUserId = userId,
-                moodName = "SURPRISE",
-                moodIcon = "surprised"
+                moodName = "BORED",
+                moodIcon = "bored"
             )
         )
         todayMoodDao.upsertMood(
             Mood(
                 moodId = 0L,
                 moodUserId = userId,
-                moodName = "DISGUSTED",
-                moodIcon = "disgusted"
+                moodName = "CONFUSED",
+                moodIcon = "confused"
             )
         )
+//        todayMoodDao.upsertMood(
+//            Mood(
+//                moodId = 0L,
+//                moodUserId = userId,
+//                moodName = "AFRAID",
+//                moodIcon = "afraid"
+//            )
+//        )
+//        todayMoodDao.upsertMood(
+//            Mood(
+//                moodId = 0L,
+//                moodUserId = userId,
+//                moodName = "SURPRISE",
+//                moodIcon = "surprised"
+//            )
+//        )
+//        todayMoodDao.upsertMood(
+//            Mood(
+//                moodId = 0L,
+//                moodUserId = userId,
+//                moodName = "DISGUSTED",
+//                moodIcon = "disgusted"
+//            )
+//        )
 
 
     }
