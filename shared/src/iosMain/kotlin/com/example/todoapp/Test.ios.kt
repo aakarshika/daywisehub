@@ -17,7 +17,7 @@ actual fun getScreenHeight(): Dp = LocalWindowInfo.current.containerSize.height.
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-actual fun getTopCalHeight(): Dp = 160.dp
+actual fun getTopCalHeight(): Dp = 100.dp
 
 
 

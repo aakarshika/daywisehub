@@ -70,7 +70,7 @@ interface TodayTaskDao {
         LEFT JOIN mission_pillar_mapping mp ON m.mission_id = mp.mission_mapping_id 
         LEFT JOIN pillar p ON mp.pillar_mapping_id = p.pillar_id
         LEFT JOIN mission_frequency mf ON tt.task_mission_id = mf.fs_mission_id
-        where tt.task_date = :date and tt.task_active = 'Y'
+        where tt.task_date = :date and tt.task_active <> 'N'
         """)
     fun getAllTasksForDate1(date: String): Flow<List<ComboTask>>
 
@@ -87,7 +87,6 @@ interface TodayTaskDao {
         LEFT JOIN mission_pillar_mapping mp ON m.mission_id = mp.mission_mapping_id 
         LEFT JOIN pillar p ON mp.pillar_mapping_id = p.pillar_id
         LEFT JOIN mission_frequency mf ON m.mission_id = mf.fs_mission_id
-        where mf.is_daily_habit = true 
         """)
     fun getHabitMissions(date: String): Flow<List<ComboTask>>
 
@@ -108,7 +107,7 @@ interface TodayTaskDao {
         LEFT JOIN mission_pillar_mapping mp ON m.mission_id = mp.mission_mapping_id 
         LEFT JOIN pillar p ON mp.pillar_mapping_id = p.pillar_id
         LEFT JOIN mission_frequency mf ON tt.task_mission_id = mf.fs_mission_id
-        where tt.task_date = :date and mf.is_daily_habit != true
+        where tt.task_date = :date 
         """)
     fun getAllTasksForDate2(date: String): Flow<List<TodayTaskWithFewDetails>>
 
@@ -244,6 +243,7 @@ interface TodayTaskDao {
                 taskProgressVal = 0f, // Example progress
                 taskText = "This is a randomly picked task", // Example text
                 taskPictureUrl = null, // Example URL (can be null)
+                active = "Y",
                 taskLink = null // Example link (can be null)
             ),
             todayTaskReminder = TodayTaskReminder(

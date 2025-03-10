@@ -37,7 +37,7 @@ fun WritingTextField(
 //            fontFamily = anniFontFamily,
             fontWeight = FontWeight.Medium,
             color = Color.Black,
-            textAlign = TextAlign.Center,
+            textAlign = TextAlign.Left,
             fontStyle = FontStyle.Italic,
             letterSpacing = TextUnit(1F, TextUnitType.Sp),
             fontSize = TextUnit( 18f, type = TextUnitType.Sp)
@@ -55,9 +55,10 @@ fun WritingTextField(
             visualTransformation = VisualTransformation.None,
             interactionSource = interactionSource,
             colors = TextFieldDefaults.colors(
-                disabledTextColor = Color.Gray,
+                disabledTextColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
-                focusedContainerColor = Color.Transparent
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent
             ),
             contentPadding = PaddingValues(horizontal = 1.dp, vertical = 1.dp)
         )

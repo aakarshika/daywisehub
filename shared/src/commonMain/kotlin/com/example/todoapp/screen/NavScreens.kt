@@ -2,12 +2,15 @@ package com.example.todoapp.screen
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -18,6 +21,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Logger
 import com.example.todoapp.app.MyScreen
 import com.example.todoapp.di.KoinF
@@ -36,7 +41,14 @@ import com.example.todoapp.screen.missions.MissionsControllerViewModel
 import kotlinx.datetime.LocalDate
 import moe.tlaster.precompose.navigation.NavHost
 import moe.tlaster.precompose.navigation.rememberNavigator
+import org.jetbrains.compose.resources.painterResource
 import org.koin.core.parameter.parametersOf
+import todoapp.shared.generated.resources.Res
+import todoapp.shared.generated.resources.diary
+import todoapp.shared.generated.resources.diary_handmade
+import todoapp.shared.generated.resources.diary_heart_closed
+import todoapp.shared.generated.resources.metrics_calendar
+import todoapp.shared.generated.resources.target
 
 
 @Composable
@@ -65,7 +77,8 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                         }
                     },
                     label = { Text("Diary") },
-                    icon = { Icon(Icons.Default.Menu, contentDescription = "Diary") }
+                    icon = { Icon(painterResource(Res.drawable.diary_heart_closed), tint = Color.Gray,
+                        contentDescription = "Diary", modifier = Modifier.size(30.dp)) }
                 )
                 NavigationBarItem(
                     selected = currentScreen == MyScreen.Missions,
@@ -75,7 +88,7 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                         }
                     },
                     label = { Text("Missions") },
-                    icon = { Icon(Icons.Default.AddCircle, contentDescription = "Missions") }
+                    icon = { Icon(painterResource(Res.drawable.target),tint = Color.Gray,modifier = Modifier.size(30.dp), contentDescription = "Missions") }
                 )
                 NavigationBarItem(
                     selected = currentScreen == MyScreen.Calendar,
@@ -85,7 +98,7 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                         }
                     },
                     label = { Text("Metrics") },
-                    icon = { Icon(Icons.Default.Home, contentDescription = "Metrics") }
+                    icon = { Icon(painterResource(Res.drawable.metrics_calendar),tint = Color.Gray,modifier = Modifier.size(30.dp), contentDescription = "Metrics") }
                 )
             }
         }

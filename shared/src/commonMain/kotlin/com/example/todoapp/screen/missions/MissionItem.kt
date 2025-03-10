@@ -39,7 +39,10 @@ import com.example.todoapp.di.KoinF
 import com.example.todoapp.screen.basicutils.components.WriteText
 import com.example.todoapp.screen.missions.calendar.progress.DayMissionProgressViewModel
 import com.example.todoapp.screen.missions.calendar.progress.MissionProgressCalendar
+import org.jetbrains.compose.resources.painterResource
 import org.koin.core.parameter.parametersOf
+import todoapp.shared.generated.resources.Res
+import todoapp.shared.generated.resources.pencil
 
 
 val taskWidth = 320.dp
@@ -74,36 +77,33 @@ fun MissionItem(missionId: Long,
     LaunchedEffect(isTrigger) {
         missionItemViewModel.loadMissionDetails()
     }
-
-
-        Box(
-            modifier = modifier
+    Box(
+        modifier = modifier
+            .width(taskWidth + width)
+            .height(taskMinHeight + height)
+    ) {
+        Column(
+            modifier = Modifier
                 .width(taskWidth + width)
                 .height(taskMinHeight + height)
+                .shadow(10.dp, spotColor = Color.Black)
+                .background(color = Color.White)
         ) {
-
-            Column(
+            Box(
                 modifier = Modifier
-                    .width(taskWidth + width)
-                    .height(taskMinHeight + height)
-                    .shadow(10.dp, spotColor = Color.Black)
-                    .background(color = Color.White)
+                    .fillMaxSize()
+                    .background(color = getPillarColor(pillar?.pillarName).copy(alpha = 0.5f))
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(color = getPillarColor(pillar?.pillarName).copy(alpha = 0.5f))
-                ) {
-                    if (isSelected && missionWithDetails != null) {
-                        ExpandedListItem(missionWithDetails, onEditClick, onCloseClick )
-                    } else {
-                        missionWithDetails?.let { SmallListItem(it, onEditClick, onViewClick) }
-                    }
+                if (isSelected) {
+                    missionWithDetails?.let { ExpandedListItem(missionWithDetails, onEditClick, onCloseClick ) }
+                } else {
+                    missionWithDetails?.let { SmallListItem(it, onEditClick, onViewClick) }
                 }
-
+            }
         }
     }
 }
+
 fun getPillarColor(pillarName: String?): Color {
     return if (pillarName == "HEALTH") Color(0xFFF6D3FF)
     else if (pillarName == "WEALTH") Color(0xFFFFD4B8)
@@ -133,7 +133,7 @@ private fun SmallListItem(
         }
         .padding(10.dp)
     ){
-        Box(
+        Row(
             modifier = Modifier
                 .padding(top = 8.dp, bottom = 25.dp, start = 1.dp, end = 1.dp)
         ) {
@@ -145,7 +145,7 @@ private fun SmallListItem(
                     modifier = Modifier
                 ) {
                     WriteText(
-                        mission?.mission?.missionTitle?:"MISSION",
+                        mission.mission?.missionTitle?:"MISSION",
                         fontStyle = FontStyle.Italic
                     )
                 }
@@ -171,13 +171,14 @@ private fun SmallListItem(
             .size(30.dp)
             .align(Alignment.TopEnd)
             .clickable {
-                mission?.let { onEditClick(it) }
+                mission.let { onEditClick(it) }
             }) {
             Icon(
-                Icons.Default.Create,
-                "dxfgh",
-                modifier = Modifier.fillMaxSize(),
-                tint = Color.Black
+                painterResource(Res.drawable.pencil),
+                "pevhj j",
+
+                modifier = Modifier.size(20.dp),
+                tint = Color.Gray
             )
         }
     }
@@ -230,7 +231,7 @@ private fun ExpandedListItem(
                                 .align(Alignment.Start)
                         ) {
                             MissionProgressCalendar(
-                                KoinF.di?.get<DayMissionProgressViewModel> { parametersOf(mission?.mission?.missionId) }!!,
+                                KoinF.di?.get<DayMissionProgressViewModel> { parametersOf(mission.mission?.missionId) }!!,
                                 mission)
                         }
 
@@ -260,10 +261,10 @@ private fun ExpandedListItem(
             })
         {
             Icon(
-                Icons.Default.Create,
-                "dxfgh",
-                modifier = Modifier.fillMaxSize(),
-                tint = Color.Black
+                painterResource(Res.drawable.pencil),
+                "dfg",
+                modifier = Modifier.size(20.dp),
+                tint = Color.Gray
             )
         }
     }
@@ -298,7 +299,7 @@ fun MilestoneList(mission: MissionWithDetails) {
 
             Row{
                 WriteText(
-                    text = "${milestone.text}",
+                    text = milestone.text,
                     fontSize = 12f,
                     color = getPillarColor(mission.pillar?.pillarName).darken(0.5f)
                 )
@@ -308,7 +309,7 @@ fun MilestoneList(mission: MissionWithDetails) {
                     color = Color.Gray
                 )
                 WriteText(
-                    text = "${daysToMilestone} day${if (daysToMilestone > 1) "s" else ""} ",
+                    text = "$daysToMilestone day${if (daysToMilestone > 1) "s" else ""} ",
                     fontSize = 11f,
                     color = Color.Black
                 )

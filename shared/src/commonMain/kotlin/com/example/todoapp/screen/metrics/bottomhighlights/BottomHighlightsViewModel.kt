@@ -26,7 +26,7 @@ class BottomHighlightsViewModel(
             todayTaskRepository.getAllTasksForDate2(MyDate.fromLocalDate(currentDate))
                 .collectLatest {
                     Logger.w("tasks collected BH 2: ${currentDate} ${it.size}")
-                    dayTasks.emit(it)
+                    dayTasks.emit(it.filter { it.todayTask.active!="N" })
                 }
         }
     }

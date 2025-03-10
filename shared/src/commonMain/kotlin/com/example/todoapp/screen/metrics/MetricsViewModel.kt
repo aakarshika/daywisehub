@@ -24,7 +24,7 @@ class MetricsViewModel(
             todayTaskRepository.getAllTasks()
                 .collectLatest {
                     Logger.w("tasks collected - all for metrics: ${it.size}")
-                    allTasks.emit(it)
+                    allTasks.emit(it.filter { it.todayTask.active != "N" })
                 }
         }
     }

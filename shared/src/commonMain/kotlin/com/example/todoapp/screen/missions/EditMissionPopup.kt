@@ -56,11 +56,28 @@ import com.example.todoapp.db.data.mission.milestone.Milestone
 import com.example.todoapp.db.data.mission.missionstuff.MissionFrequency
 import com.example.todoapp.db.data.pillar.Pillar
 import com.example.todoapp.db.models.MyDate
+import com.example.todoapp.di.KoinF
 import com.example.todoapp.screen.basicutils.components.FrequencyPeriodButton
 import com.example.todoapp.screen.basicutils.components.WriteText
 import com.example.todoapp.screen.basicutils.components.WritingTextField
 import com.example.todoapp.screen.missions.calendar.blueprint.MissionBlueprintCalendarScreen
+import com.example.todoapp.screen.missions.calendar.progress.DayMissionProgressViewModel
+import org.koin.core.parameter.parametersOf
 
+val Orange20 = Color(0xFFFDF5F1)
+val Red20 = Color(0xFFFCF1F3)
+val Pink20 = Color(0xFFF9F4FC)
+val Blue20 = Color(0xFFF4F8FD)
+
+val Orange40 = Color(0xFFFFF1EB)
+val Red40 = Color(0xFFFFEFF1)
+val Pink40 = Color(0xFFFBF1FF)
+val Blue40 = Color(0xFFF0F7FF)
+val Light_Yellowww =  Color(0xFFFCF9ED)
+
+
+val CalendarGradientA = Color(0xFFF0FFFB)
+val CalendarGradientB = Color(0xFFF2E7FC)
 val Orange80 = Color(0xFFFFD4B8)
 val Red80 = Color(0xFFFFCBD2)
 val Pink80 = Color(0xFFF6D3FF)
@@ -70,8 +87,15 @@ val Red180 = Color(0xFFFFB9C3)
 val Pink180 = Color(0xFFF4CDFF)
 val Blue180 = Color(0xFFC7E4FF)
 
+val Gray40 = Color(0xFFF6F6F6)
+
+
+val Gray60 = Color(0xFFF1F1F1)
+val Gray80 = Color(0xFFEDEDED)
+val Gray100 = Color(0xFFE2E2E2)
 val Yellow180 = Color(0xFFFAE0A0)
 val Yellow80 = Color(0xFFFAE8BC)
+val LightRed80 = Color(0xFFFFDAD5)
 
 val GREEN80 =  Color(0xFFE1F5D1)
 
@@ -449,7 +473,12 @@ fun EditMissionPopup(
                                         modifier = Modifier
                                             .align(Alignment.End)
                                     ) {
-                                        MissionBlueprintCalendarScreen(mission, pillarSelected)
+                                        MissionBlueprintCalendarScreen(
+                                            mission,
+                                            missionFrequency,
+                                            pillarSelected,
+                                            KoinF.di?.get<DayMissionProgressViewModel> { parametersOf(mission.value?.missionId) }!!
+                                        )
                                     }
                                 }
                                 Column{

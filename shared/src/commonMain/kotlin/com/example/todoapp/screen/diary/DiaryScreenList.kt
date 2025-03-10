@@ -6,22 +6,31 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
@@ -59,6 +68,7 @@ import todoapp.shared.generated.resources.block_b
 import todoapp.shared.generated.resources.glass_a
 import todoapp.shared.generated.resources.glass_b
 import todoapp.shared.generated.resources.glass_c
+import todoapp.shared.generated.resources.pencil
 
 data class ComboTask(
     @Embedded val todayTask: TodayTask?,
@@ -176,35 +186,61 @@ fun LazyListScope.Notes(waterIntake: WaterIntake?,
     }
 }
 
+fun LazyListScope.ToDoListHeader(headingtext: String, color: Color, editClicked: () -> Unit) {
+    item {
+        Box(modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) {
+            HeadingBanner(color, headingtext)
+            Box(modifier = Modifier.fillMaxWidth().padding(end = 5.dp).wrapContentHeight()) {
+
+                Box(
+                    modifier = Modifier.clickable { editClicked() }
+                        .wrapContentSize()
+                        .shadow(5.dp, CircleShape)
+                        .clip(CircleShape)
+                        .background(color)
+                        .padding( 8.dp)
+                        .align(Alignment.BottomEnd),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painterResource(Res.drawable.pencil),
+                        contentDescription = "edit_button",
+                        tint = Color.White,
+                        modifier = Modifier.size(15.dp).padding(start = 2.dp, top = 2.dp)
+                    )
+                }
+            }
+        }
+    }
+}
 fun LazyListScope.HeadingText(headingtext: String, color: Color) {
     item {
-        Box(modifier = Modifier.fillMaxWidth()) {
-
-            Box(
-                modifier = Modifier.height(30.dp).fillMaxWidth()
-                    .padding(horizontal = 60.dp)
-            ){
-//                Icon(
-//                    tint = color,
-//                    painter = painterResource(listOf(Res.drawable.block_a, Res.drawable.block_b ).random()),
-//                    modifier = Modifier.fillMaxSize(),
-//                    contentDescription = "fdghj"
-//                )
-                Image(
-                    painterResource(listOf(Res.drawable.block_a, Res.drawable.block_b ).random()),
-                    contentDescription = "sdfgh",
-                    colorFilter = ColorFilter.tint(color),
-                    contentScale = ContentScale.FillBounds,
-                    modifier = Modifier
-                        .fillMaxSize()
-                )
-                Text(
-                    text = headingtext,
-                    modifier = Modifier
-                        .align(Alignment.Center),
-                    style = MaterialTheme.typography.bodyLarge
-                )
-            }
+        Box(modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) {
+            HeadingBanner(color, headingtext)
+        }
+    }
+}
+@Composable
+private fun HeadingBanner(color: Color, headingtext: String) {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier.height(30.dp).fillMaxWidth()
+                .padding(horizontal = 60.dp)
+        ) {
+            Image(
+                painterResource(listOf(Res.drawable.block_a, Res.drawable.block_b).random()),
+                contentDescription = "sdfgh",
+                colorFilter = ColorFilter.tint(color),
+                contentScale = ContentScale.FillBounds,
+                modifier = Modifier
+                    .fillMaxSize()
+            )
+            Text(
+                text = headingtext,
+                modifier = Modifier
+                    .align(Alignment.Center),
+                style = MaterialTheme.typography.bodyLarge
+            )
         }
     }
 }

@@ -3,6 +3,7 @@ package com.example.todoapp.screen.metrics
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.CircleShape
@@ -44,10 +46,16 @@ import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.screen.basicutils.components.WriteText
 import com.example.todoapp.screen.metrics.metriccomponents.TaskTypeDropdown
 import com.example.todoapp.screen.metrics.metriccomponents.options
+import com.example.todoapp.screen.missions.CalendarGradientA
+import com.example.todoapp.screen.missions.CalendarGradientB
+import com.example.todoapp.screen.missions.LightRed80
 import com.example.todoapp.screen.missions.Orange180
+import com.example.todoapp.screen.missions.Orange40
 import com.example.todoapp.screen.missions.Orange80
 import com.example.todoapp.screen.missions.Pink80
 import com.example.todoapp.screen.missions.Red80
+import com.example.todoapp.screen.missions.Yellow180
+import com.example.todoapp.screen.missions.getDarkPillarColor
 import com.example.todoapp.screen.missions.getPillarColor
 import com.kizitonwose.calendar.compose.VerticalCalendar
 import com.kizitonwose.calendar.compose.rememberCalendarState
@@ -68,6 +76,8 @@ import todoapp.shared.generated.resources.Res
 import todoapp.shared.generated.resources.circle_filled_a
 import todoapp.shared.generated.resources.circle_filled_b
 import todoapp.shared.generated.resources.crown_a
+import todoapp.shared.generated.resources.crown_background_a
+import todoapp.shared.generated.resources.crown_c
 
 
 @Composable
@@ -200,13 +210,14 @@ private fun MonthDay(
         Box(
             modifier = Modifier
                 .aspectRatio(1f)
-                .size(80.dp)
+                .size(82.dp)
                 .testTag("MonthDay")
                 .padding(if (isSelected) 5.dp else 10.dp)
                 .clip(RoundedCornerShape(if (isSelected) 15.dp else 20.dp))
+                .border(1.dp, if( MyDate.fromLocalDate(day.date).dateString == MyDate.now().dateString) Yellow180 else Color.Transparent, RoundedCornerShape(if (isSelected) 15.dp else 20.dp))
                 .background(
                     color = when (day.position) {
-                        DayPosition.MonthDate -> if (todayTasks.size>0 && todayTasks.all { it.todayTask.taskStatus=="COMPLETED" }) Red80 else if (isSelected) Color.White else Color.Transparent
+                        DayPosition.MonthDate -> if (todayTasks.size>0 && todayTasks.all { it.todayTask.taskStatus=="COMPLETED" }) LightRed80 else if (isSelected) Color.White else Color.Transparent
                         DayPosition.InDate, DayPosition.OutDate -> Color.Transparent
                     }
                 )
@@ -225,7 +236,7 @@ private fun MonthDay(
                 if (todayTasks != null) {
                     Canvas(
                         modifier = Modifier
-                            .size(80.dp)
+                            .size(78.dp)
                     ) {
 
                         val strokeWidth = 24f // Thickness of the ring
@@ -236,7 +247,7 @@ private fun MonthDay(
                         todayTasks.forEach { task ->
                             drawArc(
                                 color = if (task.todayTask.taskStatus == "COMPLETED") {
-                                    getPillarColor(pillarName = task.pillar?.pillarName)
+                                    getDarkPillarColor(pillarName = task.pillar?.pillarName)
                                 } else Color.White,
                                 startAngle = currentAngle,
                                 sweepAngle = sweepAngle,
@@ -262,14 +273,21 @@ private fun MonthDay(
 
         if(top3completed){
             Box(modifier = Modifier
-                .padding(start = 5.dp)
-                .size(25.dp)
+                .padding(start = if(isSelected) 1.dp else 5.dp, top = if(isSelected) 0.dp else 2.dp )
+                .size(if(isSelected) 28.dp else 25.dp)
                 .align(Alignment.TopStart)){
 
                 Image(
+                    painterResource(Res.drawable.crown_background_a),
+                    contentDescription = "sdfgf",
+                    colorFilter = ColorFilter.tint(Color.White),
+                    modifier = Modifier
+                        .fillMaxSize()
+                )
+                Image(
                     painterResource(Res.drawable.crown_a),
                     contentDescription = "sdfgf",
-                    colorFilter = ColorFilter.tint(Color.Gray),
+                    colorFilter = ColorFilter.tint(Yellow180),
                     modifier = Modifier
                         .fillMaxSize()
                 )
@@ -286,71 +304,6 @@ private fun MonthHeader(month: CalendarMonth) {
             modifier = Modifier.weight(1f),
             textAlign = TextAlign.Center,
             text = "${month.yearMonth.month.name} ${month.yearMonth.year}",
-        )
-    }
-}
-
-@Composable
-fun WeekDayGola(
-    day: WeekDay,
-    isSelected: Boolean,
-    onDateClicked: (LocalDate) -> Unit
-){
-
-    val date = day.date
-
-    Box(modifier = Modifier.padding(2.dp)){
-        RoundButton((date), todayHighlight = isSelected){
-            onDateClicked(date)
-        }
-    }
-}
-val CalendarGradientA = Color(0xFFFFFBF0)
-val CalendarGradientB = Color(0xFFFCECE7)
-
-
-@Composable
-fun RoundButton(date: LocalDate, todayHighlight: Boolean = false,
-                onClick: () -> Unit) {
-
-    Box(
-        modifier = Modifier.size(35.dp)
-            .padding(top = 7.dp, start = 5.dp)
-            .clickable {
-                onClick()
-            }
-    ) {
-        Icon(
-            painter = painterResource(listOf( Res.drawable.circle_filled_a,Res.drawable.circle_filled_b).random()),
-            contentDescription = "circle_filled",
-            tint = if(todayHighlight) Red80 else  Orange80,
-            modifier = Modifier.fillMaxSize()
-        )
-        WriteText(
-            text = ""+date.dayOfMonth,
-            color = Color.Black,
-            fontSize = 14f,
-            modifier = Modifier.padding(top = 2.dp, start = 2.dp).align(Alignment.Center)
-        )
-    }
-    Box(
-        modifier = Modifier.size(16.dp)
-            .clickable {
-                onClick()
-            }
-        ) {
-        Icon(
-            painter = painterResource(listOf( Res.drawable.circle_filled_a,Res.drawable.circle_filled_b).random()),
-            contentDescription = "circle_filled",
-            tint = if(todayHighlight) Red80 else  Color.White,
-            modifier = Modifier.fillMaxSize()
-        )
-        WriteText(
-            text = date.dayOfWeek.name.substring(0,1),
-            fontSize = 10f,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black,
-            modifier = Modifier.align(Alignment.TopCenter)
         )
     }
 }

@@ -84,8 +84,7 @@ data class CategorizedMission(
 )
 @Composable
 fun PlanningList(todaysDate: LocalDate, viewModel: PlanningViewModel) {
-//    val allMissions: List<MissionWithFewDetails> by viewModel.allMissions.collectAsState(emptyList())
-    // Assume tasksMonth is already collected as a List<TodayTask> and allMissions is collected as well
+
     val tasksMonth: List<TodayTask> by viewModel.tasksPastMonth.collectAsState(emptyList())
     val allMissions by viewModel.allMissions.collectAsState()
 
@@ -94,24 +93,19 @@ fun PlanningList(todaysDate: LocalDate, viewModel: PlanningViewModel) {
         viewModel.loadTasksPastMonth()
     }
 
-// Get today's date
     val date = todaysDate
-
-// Efficiently build a map of taskDate -> List<TodayTask> to avoid repetitive filtering
     val dateWiseTasks = tasksMonth.groupBy { it.taskDate.dateString }
-
     val twodays = (1..2).map { MyDate.fromLocalDate(date.minusDays(it)).dateString }.flatMap { dateWiseTasks[it].orEmpty() }
     val weektasks = (1..7).map { MyDate.fromLocalDate(date.minusDays(it)).dateString }.flatMap { dateWiseTasks[it].orEmpty() }
     val biweektasks = (1..15).map { MyDate.fromLocalDate(date.minusDays(it)).dateString }.flatMap { dateWiseTasks[it].orEmpty() }
     val monthtasks = (1..30).map { MyDate.fromLocalDate(date.minusDays(it)).dateString }.flatMap { dateWiseTasks[it].orEmpty() }
     val twomonth = (1..60).map { MyDate.fromLocalDate(date.minusDays(it)).dateString }.flatMap { dateWiseTasks[it].orEmpty() }
-
-    Logger.e ("$date,  twodays: ${twodays.size}, " +
-                            "weektasks: ${weektasks.size}, "+
-                            "biweektasks: ${biweektasks.size}, "+
-                            "monthtasks: ${monthtasks.size}, "+
-                            "twomonth: ${twomonth.size}")
-// Categorized missions
+//
+//    Logger.e ("$date,  twodays: ${twodays.size}, " +
+//                            "weektasks: ${weektasks.size}, "+
+//                            "biweektasks: ${biweektasks.size}, "+
+//                            "monthtasks: ${monthtasks.size}, "+
+//                            "twomonth: ${twomonth.size}")
     val redMissions = remember(allMissions, tasksMonth) {
         allMissions.mapNotNull { mission ->
             val reasons = mutableListOf<String>()
@@ -188,6 +182,9 @@ fun PlanningList(todaysDate: LocalDate, viewModel: PlanningViewModel) {
                     missionList = redMissions,
                     missionAdded = {mission: CategorizedMission ->
                         addRemoveTask(tasksMonth, todaysDate, mission, viewModel)
+                    },
+                    missionHighlighted = {mission: CategorizedMission ->
+                        toggleHighlightTask( mission, viewModel)
                     }
                 )
                 MissionItems(
@@ -195,6 +192,9 @@ fun PlanningList(todaysDate: LocalDate, viewModel: PlanningViewModel) {
                     missionList = yellowMissions,
                     missionAdded = {mission: CategorizedMission ->
                         addRemoveTask(tasksMonth, todaysDate, mission, viewModel)
+                    },
+                    missionHighlighted = {mission: CategorizedMission ->
+                        toggleHighlightTask( mission, viewModel)
                     }
                 )
                 MissionItems(
@@ -202,6 +202,9 @@ fun PlanningList(todaysDate: LocalDate, viewModel: PlanningViewModel) {
                     missionList = greenMissions,
                     missionAdded = {mission: CategorizedMission ->
                         addRemoveTask(tasksMonth, todaysDate, mission, viewModel)
+                    },
+                    missionHighlighted = {mission: CategorizedMission ->
+                        toggleHighlightTask( mission, viewModel)
                     }
                 )
             }
@@ -229,11 +232,22 @@ private fun addRemoveTask(
         }
     }
 }
+private fun toggleHighlightTask(
+    mission: CategorizedMission,
+    viewModel: PlanningViewModel
+) {
+    if (mission.missionTaskToday?.taskPageTag == "TOP3") {
+        viewModel.updateTag(mission.missionTaskToday!!.todayTaskId, "TODO")
+    } else {
+        viewModel.updateTag(mission.missionTaskToday!!.todayTaskId, "TOP3")
+    }
+}
 
 fun LazyListScope.MissionItems(
     title: String,
     missionList: List<CategorizedMission>,
-    missionAdded: (CategorizedMission) -> Unit) {
+    missionAdded: (CategorizedMission) -> Unit,
+    missionHighlighted: (CategorizedMission) -> Unit) {
     item {
         if(!missionList.isNullOrEmpty()) {
             Text("$title", modifier = Modifier.padding(start = 15.dp))
@@ -244,7 +258,8 @@ fun LazyListScope.MissionItems(
             PlanningListItem(
                 mission = mission,
                 extraInfo = "",
-                onMissionClick = {m-> missionAdded(m) }
+                onMissionClick = {m-> missionAdded(m) },
+                onHighlightClick = {m-> missionHighlighted(m) }
             )
         }
     }

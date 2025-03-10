@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -18,6 +19,7 @@ import org.jetbrains.compose.resources.painterResource
 import todoapp.shared.generated.resources.Res
 import todoapp.shared.generated.resources.crown_a
 import todoapp.shared.generated.resources.crown_b
+import todoapp.shared.generated.resources.crown_background_a
 import todoapp.shared.generated.resources.crown_c
 
 @Composable
@@ -42,18 +44,35 @@ fun CustomTop3Button(
     // Determine the tint color based on the state
     val tintColor = if (!enabled) disabledColor else if (checked) checkedColor else uncheckedColor
 
-    Image(
-        iconRes,
-        contentDescription = if (checked) "Checked" else "Unchecked",
-        colorFilter = ColorFilter.tint(tintColor),
-        modifier = modifier
-            .size(if (checked) 30.dp else 20.dp)
-            .clickable(enabled = enabled) {
-                onCheckedChange(!checked)
-            }
-            .graphicsLayer(
-                scaleX = scale,
-                scaleY = scale
-            )
-    )
+    Box {
+
+        Image(
+            painterResource(Res.drawable.crown_background_a),
+            contentDescription = if (checked) "Checked" else "Unchecked",
+            colorFilter = ColorFilter.tint(Color.White),
+            modifier = modifier
+                .size(if (checked) 30.dp else 20.dp)
+                .clickable(enabled = enabled) {
+                    onCheckedChange(!checked)
+                }
+                .graphicsLayer(
+                    scaleX = scale,
+                    scaleY = scale
+                )
+        )
+        Image(
+            iconRes,
+            contentDescription = if (checked) "Checked" else "Unchecked",
+            colorFilter = ColorFilter.tint(tintColor),
+            modifier = modifier
+                .size(if (checked) 30.dp else 20.dp)
+                .clickable(enabled = enabled) {
+                    onCheckedChange(!checked)
+                }
+                .graphicsLayer(
+                    scaleX = scale,
+                    scaleY = scale
+                )
+        )
+    }
 }

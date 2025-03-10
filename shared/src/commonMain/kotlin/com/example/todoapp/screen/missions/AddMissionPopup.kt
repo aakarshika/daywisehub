@@ -7,6 +7,7 @@ import com.example.todoapp.db.data.mission.MissionWithDetails
 import com.example.todoapp.db.data.mission.missionstuff.MissionFrequency
 import com.example.todoapp.db.data.pillar.Pillar
 import com.example.todoapp.db.models.MyDate
+import com.example.todoapp.screen.missions.editpopup.OptimizedEditMissionPopup
 import kotlin.random.Random
 
 val pillars = listOf(
@@ -146,7 +147,7 @@ fun AddMissionPopup(
         missionFrequency = missionFrequency,
         pillar = pillars.random()
     )
-    EditMissionPopup(
+    OptimizedEditMissionPopup(
         selectedMission = newMission,
         pillarOptions = pillarOptions,
         pillarTotalValCount = pillarTotalValCount,

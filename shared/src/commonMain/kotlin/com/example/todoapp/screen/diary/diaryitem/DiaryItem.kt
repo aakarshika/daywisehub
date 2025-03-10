@@ -60,6 +60,7 @@ fun DiaryItem(
                 if (check) "COMPLETED" else "REFRESHED", taskViewModel)
         }
     }
+
 }
 
 fun updateTaskStatus(

@@ -50,6 +50,15 @@ class PlanningViewModel (
             todayTaskRepository.deleteTaskForToday(taskId)
         }
     }
+
+    fun updateTag(taskId: Long, tag: String) {
+        viewModelScope.launch {
+            todayTaskRepository.updateTag(
+                todayTaskId = taskId,
+                tag = tag
+            )
+        }
+    }
     fun activateTaskForToday(taskId: Long) {
         viewModelScope.launch {
             todayTaskRepository.activateTaskForToday(taskId)

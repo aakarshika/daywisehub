@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -44,10 +45,12 @@ import com.example.todoapp.di.KoinF
 import com.example.todoapp.screen.diary.diaryitem.components.diarymood.MoodViewModel
 import com.example.todoapp.screen.diary.diaryitem.components.diarymood.Red80
 import com.example.todoapp.screen.diary.diaryitem.components.waterintake.WaterIntakeViewModel
+import com.example.todoapp.screen.diary.planning.Planner
 import com.example.todoapp.screen.diary.planning.PlanningList
 import com.example.todoapp.screen.diary.planning.PlanningViewModel
-import com.example.todoapp.screen.metrics.bottomhighlights.Light_Yellowww
 import com.example.todoapp.screen.missions.Blue80
+import com.example.todoapp.screen.missions.Light_Yellowww
+import com.example.todoapp.screen.missions.Orange40
 import com.example.todoapp.screen.missions.Orange80
 import com.example.todoapp.screen.missions.Yellow180
 import kotlinx.datetime.LocalDate
@@ -82,7 +85,7 @@ fun DiaryScreen(
     }
     Column(
         modifier = Modifier
-            .wrapContentSize()
+            .fillMaxSize()
             .background(Light_Yellowww)
             .padding(top = 10.dp)
     ) {
@@ -102,8 +105,9 @@ fun DiaryScreen(
                         moodViewModel.upsertTodayMood(newMood)
                     }
                 )
-//          WeatherHeaderItem()
-                HeadingText("TO DO LIST", Orange80)
+                ToDoListHeader("TO DO LIST", Orange80, editClicked = {
+                    planningMode.value = true
+                })
                 ExtraLines(1)
                 TodoListItems(
                     selection, allTasks,
@@ -117,14 +121,6 @@ fun DiaryScreen(
                 Notes(waterIntake, selection, upsertWaterIntake = {
                     waterIntakeViewModel.upsertWaterIntake(it)
                 })
-                TodoMenuItems(selection, diaryViewModel, editingTaskMode)
-                item {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Box(modifier = Modifier.size(30.dp).background(Color.Green)
-                        .clickable {
-                            planningMode.value = true
-                        })
-                }
                 item {
                     Spacer(modifier = Modifier.height(500.dp))
                 }
@@ -135,11 +131,6 @@ fun DiaryScreen(
                 DateHeaderItem(selection, changeDate = {
                     changeDate(it)
                 })
-//                item{
-//                }
-//                item {
-//                    Spacer(modifier = Modifier.height(500.dp))
-//                }
             }
 
             Planner(
@@ -152,119 +143,6 @@ fun DiaryScreen(
                     planningMode.value = false
                 }
             )
-        }
-    }
-}
-
-@Composable
-fun Planner(planningMode: MutableState<Boolean>,todaysDate: LocalDate, back : () -> Unit, done : () -> Unit) {
-    Box {
-        if (!planningMode.value) {
-            Box(
-                modifier = Modifier
-                    .size(500.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .wrapContentSize()
-                        .padding(vertical = 20.dp, horizontal = 16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column {
-                        Text("No tasks added yet")
-                        Box(
-                            modifier = Modifier
-                                .clickable {
-                                    planningMode.value = true
-                                }
-                                .wrapContentSize()
-                                .background(Blue80)
-                                .padding(15.dp)
-                        ) {
-                            Text("Let's plan your day")
-                        }
-                    }
-                }
-            }
-        } else {
-            Box(
-                modifier = Modifier
-                    .wrapContentSize()
-                    .padding(16.dp)
-                    .background(
-                        color = MaterialTheme.colorScheme.surface,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    .border(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant,
-                        shape = RoundedCornerShape(12.dp)
-                    )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "Let's pla",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-//                            IconButton(
-//                                onClick = { back() },
-//                                modifier = Modifier
-//                                    .size(36.dp)
-//                                    .background(
-//                                        color = MaterialTheme.colorScheme.surfaceVariant,
-//                                        shape = CircleShape
-//                                    )
-//                            ) {
-//                                Icon(
-//                                    Icons.Default.Close,
-//                                    contentDescription = "Close",
-//                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-//                                )
-//                            }
-
-                            Button(
-                                onClick = { done() },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text("Done")
-                            }
-                        }
-                    }
-
-                    Divider(
-                        color = MaterialTheme.colorScheme.outlineVariant,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .wrapContentHeight()
-                    ) {
-                        PlanningList(
-                            todaysDate,
-                            KoinF.di?.get<PlanningViewModel>()!!
-                        )
-                    }
-                }
-            }
         }
     }
 }

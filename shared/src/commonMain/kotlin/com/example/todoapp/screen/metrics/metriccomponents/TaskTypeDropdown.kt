@@ -65,7 +65,7 @@ fun TaskTypeDropdown(optionsSelected: (List<String>) -> Unit) {
             // Display selected options or placeholder text
             Text(
                 text = if (optionStates.any { it.value.value }) {
-                    if (allSelected) "Overall Progress" else
+                    if (allSelected) "All Pillars" else
                         optionStates.filter { it.value.value }.keys.joinToString(", ")
                 } else {
                     "Select Pillar(s) to view metrics"
