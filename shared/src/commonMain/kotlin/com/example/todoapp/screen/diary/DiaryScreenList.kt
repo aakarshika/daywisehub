@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.room.Embedded
+import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.mission.missionstuff.MissionFrequency
 import com.example.todoapp.db.data.mood.TodayMood
@@ -59,6 +60,7 @@ import com.example.todoapp.screen.diary.diaryitem.components.NotesItem
 import com.example.todoapp.screen.diary.diaryitem.components.dateheader.DateHeader
 import com.example.todoapp.screen.diary.diaryitem.components.dateheader.WeekDayHeader
 import com.example.todoapp.screen.diary.diaryitem.components.waterintake.WaterIntakeHeader
+import com.example.todoapp.screen.diary.diaryitem.components.waterintake.water_daily_limit
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.parameter.parametersOf
@@ -157,7 +159,8 @@ fun LazyListScope.DateHeaderItem(cDate: LocalDate,
 }
 fun LazyListScope.WaterIntakeHeaderItem(waterIntake: WaterIntake?,
                                         selection: LocalDate,
-                                        upsertWaterIntake : (WaterIntake) -> Unit) {
+                                        upsertWaterIntake : (WaterIntake) -> Unit,
+                                        waterIntakeCompleted : (Boolean) -> Unit) {
     item {
         WaterIntakeHeader(waterIntake?.waterIntakeProgress?:0.0, selection, upsertWaterIntake = {progress->
             upsertWaterIntake((waterIntake ?: WaterIntake(
@@ -165,6 +168,7 @@ fun LazyListScope.WaterIntakeHeaderItem(waterIntake: WaterIntake?,
                 waterIntakeProgress = progress,
                 waterDate = MyDate.fromLocalDate(selection)
             )).copy(waterIntakeProgress = progress))
+            waterIntakeCompleted(progress.toInt() == (water_daily_limit-1))
         })
     }
 }
@@ -228,7 +232,7 @@ private fun HeadingBanner(color: Color, headingtext: String) {
                 .padding(horizontal = 60.dp)
         ) {
             Image(
-                painterResource(listOf(Res.drawable.block_a, Res.drawable.block_b).random()),
+                painterResource(Res.drawable.block_b),
                 contentDescription = "sdfgh",
                 colorFilter = ColorFilter.tint(color),
                 contentScale = ContentScale.FillBounds,
@@ -249,8 +253,8 @@ fun LazyListScope.TodoListItems(
     selection: LocalDate,
     allTasks: List<ComboTask>?,
     editingTaskMode: MutableState<String>,
-    magicMode: MutableState<String>,
     taskViewModel: DiaryViewModel,
+    allTasksCompleted: (Boolean) -> Unit
 ) {
     item {
         if(!allTasks.isNullOrEmpty()) {
@@ -261,8 +265,20 @@ fun LazyListScope.TodoListItems(
         ((task.mission?.missionId?:0L)*1000)+(task.todayTask?.todayTaskId?:0L)
     }) { i, task ->
         Box(modifier = Modifier.animateItem()) {
-            DiaryItem(selection, task, editingTaskMode, taskViewModel, magicMode,
-                KoinF.di?.get<HabitItemViewModel> { parametersOf(selection,task.mission?.missionId) }!!
+            DiaryItem(selection, task, editingTaskMode, taskViewModel,
+                KoinF.di?.get<HabitItemViewModel> { parametersOf(selection,task.mission?.missionId) }!!,
+                taskProgress = { p->
+                    Logger.e("taskCompleted taskCompleted $task")
+                    allTasksCompleted(
+                        if(p == 1f &&
+                            allTasks?.
+                        filter { it.todayTask!!.todayTaskId != task.todayTask!!.todayTaskId }?.
+                        all { it.todayTask!!.taskStatus == "COMPLETED"} == true)
+                            true
+                        else
+                            false)
+
+                }
             )
         }
     }

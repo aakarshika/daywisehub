@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
@@ -62,7 +64,7 @@ fun BottomActionBar(
             if(page1){
                 // Continue button
                 Icon(
-                    Icons.Filled.KeyboardArrowRight,
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = "Continue",
                     modifier = Modifier
                         .size(32.dp)
@@ -73,7 +75,7 @@ fun BottomActionBar(
             }
             else {
                 Icon(
-                    Icons.Filled.KeyboardArrowLeft,
+                    Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                     contentDescription = "back",
                     modifier = Modifier
                         .size(32.dp)

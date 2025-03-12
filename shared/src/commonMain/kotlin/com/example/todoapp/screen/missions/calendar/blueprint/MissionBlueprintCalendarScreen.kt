@@ -25,9 +25,13 @@ import com.example.todoapp.db.data.pillar.Pillar
 import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.screen.missions.DARKGREEN180
+import com.example.todoapp.screen.missions.DARKGREEN200
+import com.example.todoapp.screen.missions.DARKGREEN60
+import com.example.todoapp.screen.missions.GREEN60
 import com.example.todoapp.screen.missions.GREEN80
 import com.example.todoapp.screen.missions.Gray40
 import com.example.todoapp.screen.missions.Gray60
+import com.example.todoapp.screen.missions.Gray80
 import com.example.todoapp.screen.missions.Yellow180
 import com.example.todoapp.screen.missions.Yellow80
 import com.example.todoapp.screen.missions.calendar.progress.DayMissionProgressViewModel
@@ -157,13 +161,13 @@ private fun DayMission(
     // Determine the background color based on date
     val dateColor = when {
         day.date == currentDate -> Yellow180
-        day.date.compareTo(currentDate) < 0-> Gray60
+        day.date.compareTo(currentDate) < 0-> Gray80
         else -> if((selectedMissionFrequency.value!!.frequencyPeriod =="WEEKLY" &&
                     biasedFrequency>=day.date.dayOfWeek.isoDayNumber)
             || (selectedMissionFrequency.value!!.frequencyPeriod =="MONTHLY" &&
                     biasedFrequency>=day.date.dayOfMonth)
             || (selectedMissionFrequency.value!!.frequencyPeriod =="DAILY"))
-            GREEN80 else Gray40
+            DARKGREEN60 else Gray40
     }
 
     Box(modifier = Modifier.wrapContentSize()) {
@@ -194,7 +198,7 @@ private fun DayMission(
                             Res.drawable.square_filled_a
                     ),
                     contentDescription = "Task status",
-                    tint = DARKGREEN180
+                    tint = DARKGREEN200
                     )
                 } else if((tasks?.size?:0)>0) {
                     Icon(
@@ -202,7 +206,7 @@ private fun DayMission(
                             Res.drawable.square_b
                         ),
                         contentDescription = "Task status",
-                        tint = DARKGREEN180
+                        tint = DARKGREEN200
                     )
                 }
                 if ((miles?.size ?: 0) > 0){
@@ -215,7 +219,8 @@ private fun DayMission(
 
                         ),
                         contentDescription = "miles status",
-                        tint = Color.DarkGray
+                        tint = Color.DarkGray,
+                        modifier = Modifier.padding(2.dp)
                     )
                 }
             }

@@ -96,9 +96,11 @@ val Gray100 = Color(0xFFE2E2E2)
 val Yellow180 = Color(0xFFFAE0A0)
 val Yellow80 = Color(0xFFFAE8BC)
 val LightRed80 = Color(0xFFFFDAD5)
+val GREEN60 =  Color(0xFFEAF3E7)
+val DARKGREEN60 =  Color(0xFFD5E5CD)
 
 val GREEN80 =  Color(0xFFE1F5D1)
-
+val DARKGREEN200 =  Color(0xFFA6CC76)
 val DARKGREEN180 =  Color(0xFFCADEB1)
 
 fun Color.darken(amount: Float = 0.2f): Color {

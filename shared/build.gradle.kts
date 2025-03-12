@@ -54,6 +54,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodel)
             api(libs.precompose)
             implementation(libs.kermit)
+            implementation(libs.kottie)
         }
         androidMain.dependencies {
             implementation(libs.koin.android)

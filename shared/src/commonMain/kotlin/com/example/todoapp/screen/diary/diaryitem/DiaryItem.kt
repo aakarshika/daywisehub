@@ -1,5 +1,13 @@
 package com.example.todoapp.screen.diary.diaryitem
 
+import KottieAnimation
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -7,6 +15,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.todotask.TodayTaskReminder
@@ -20,6 +32,11 @@ import com.example.todoapp.screen.diary.diaryitem.components.GeneralItemTop3Star
 import com.example.todoapp.screen.diary.diaryitem.components.GeneralItemTopButton
 import com.example.todoapp.screen.diary.diaryitem.components.ItemProgressBar
 import kotlinx.datetime.LocalDate
+import kottieComposition.KottieCompositionSpec
+import kottieComposition.animateKottieCompositionAsState
+import kottieComposition.rememberKottieComposition
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import todoapp.shared.generated.resources.Res
 
 @Composable
 fun DiaryItem(
@@ -27,8 +44,8 @@ fun DiaryItem(
     hTask: ComboTask,
     editingTaskMode: MutableState<String>,
     taskViewModel: DiaryViewModel,
-    magicMode: MutableState<String>,
-    habitViewModel: HabitItemViewModel
+    habitViewModel: HabitItemViewModel,
+    taskProgress: (Float) -> Unit
 ) {
     val rowHeight = remember { mutableStateOf(52) }
     val taskProgressWeekList:List<TodayTask>? by habitViewModel.taskProgressForPastAround.collectAsState(emptyList())
@@ -45,6 +62,8 @@ fun DiaryItem(
     if (editingTaskMode.value == "ViewItems" && hTask.todayTask?.taskStatus!="COMPLETED") {
         ItemProgressBar(rowHeight.value, selection, hTask, editingTaskMode.value) { progress ->
             updateTaskProgress(selection, hTask, progress, taskViewModel)
+            Logger.e("task Progress $progress")
+            taskProgress(progress)
         }
     }
     if(editingTaskMode.value == "prioritize") {
@@ -62,6 +81,8 @@ fun DiaryItem(
     }
 
 }
+
+
 
 fun updateTaskStatus(
     selection: LocalDate,
@@ -92,6 +113,7 @@ fun updateTaskProgress(
     progress: Float,
     taskViewModel: DiaryViewModel
 ) {
+    var pp = progress
     var status = t.todayTask?.taskStatus?:"ADDED"
     if(progress==1f){
         status = "COMPLETED"
@@ -99,7 +121,7 @@ fun updateTaskProgress(
         status = "REFRESHED"
     }
     val updatedTask = (t.todayTask?: getNewTask(t.mission!!.missionId, selection)).copy(
-        taskProgressVal = progress,
+        taskProgressVal = pp,
         taskStatus = status
     )
     Logger.w("updating/inserting task : ${updatedTask}")

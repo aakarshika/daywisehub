@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,6 +29,7 @@ import todoapp.shared.generated.resources.glass_b
 import todoapp.shared.generated.resources.glass_c
 import todoapp.shared.generated.resources.happy
 
+val water_daily_limit = 8
 
 @Composable
 fun WaterIntakeHeader(
@@ -41,13 +44,22 @@ fun WaterIntakeHeader(
             Column(
                 modifier = Modifier.fillMaxWidth().wrapContentHeight()
             ) {
+
+                val icons = listOf(
+                    Res.drawable.glass_a, Res.drawable.glass_b,
+                    Res.drawable.glass_c  )
+                var iconss = icons
+                listOf(1, water_daily_limit/3).forEach {
+                    iconss = iconss+ icons
+                }
+                val randomIcon = remember { iconss.shuffled() }
                 Box(modifier = Modifier.fillMaxWidth()) {
                     LazyRow(modifier = Modifier.align(Alignment.Center)) {
-                        items( listOf(1,2,3,4,5,6,7,8)) {
-                            val glassNumber = it
+                        items( water_daily_limit) { i->
+                            val glassNumber = i
                             Icon(
                                 tint = if (waterIntake >= glassNumber) Blue180 else Color.LightGray,
-                                painter = painterResource(listOf(Res.drawable.glass_a, Res.drawable.glass_b, Res.drawable.glass_c ).random()),
+                                painter = painterResource(randomIcon[i]),
                                 modifier = Modifier
                                     .height(40.dp)
                                     .wrapContentWidth()

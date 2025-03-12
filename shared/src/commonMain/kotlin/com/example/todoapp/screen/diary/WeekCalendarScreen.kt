@@ -267,8 +267,7 @@ fun RoundButton(date: LocalDate, todayHighlight: Boolean = false,
             }
     ) {
         Icon(
-            painter = painterResource(listOf( Res.drawable.circle_filled_a,
-                Res.drawable.circle_filled_b).random()),
+            painter = painterResource( Res.drawable.circle_filled_a),
             contentDescription = "circle_filled",
             tint = if(todayHighlight) com.example.todoapp.screen.missions.Red80 else  Orange40,
             modifier = Modifier.fillMaxSize()
@@ -287,8 +286,7 @@ fun RoundButton(date: LocalDate, todayHighlight: Boolean = false,
             }
     ) {
         Icon(
-            painter = painterResource(listOf( Res.drawable.circle_filled_a,
-                Res.drawable.circle_filled_b).random()),
+            painter = painterResource(Res.drawable.circle_filled_b),
             contentDescription = "circle_filled",
             tint = if(todayHighlight) com.example.todoapp.screen.missions.Red80 else  Color.White,
             modifier = Modifier.fillMaxSize()

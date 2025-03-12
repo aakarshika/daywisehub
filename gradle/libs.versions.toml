@@ -20,10 +20,12 @@ koin = "3.2.0"
 lifecycle = "2.8.0-rc01"
 cal-version = "2.6.1"
 rendering = "1.17.1"
-lottie = "6.1.0"
+kottie = "2.0.1"
+ioslottie = "6.0"
 
 [libraries]
-lottie = { module = "com.airbnb.android:lottie-compose", version.ref = "lottie"}
+ioslottie = { module = "com.airbnb.android:lottie-ios", version.ref = "ioslottie"}
+kottie = { module = "io.github.ismai117:kottie", version.ref = "kottie"}
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activityCompose" }
