@@ -248,7 +248,7 @@ private fun AnimationConfetti(
         KottieAnimation(
             composition = composition,
             progress = { animationState.progress },
-            modifier = Modifier.fillMaxSize().background(Color.Transparent)
+            modifier = Modifier.fillMaxSize()
         )
     }
 }
