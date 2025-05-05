@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -147,13 +148,13 @@ fun EditMissionPopup(
                 .fillMaxWidth()
                 .padding(10.dp)
                 .padding(top = 10.dp)
-                .height(575.dp),
+                .fillMaxHeight(),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
 
             Column(
                 modifier = Modifier
-                    .height(575.dp)
+                    .fillMaxHeight()
 //                .shadow(10.dp, spotColor = Color.Black)
                     .background(color = Color.White)
 //                        .align(Alignment.CenterEnd)

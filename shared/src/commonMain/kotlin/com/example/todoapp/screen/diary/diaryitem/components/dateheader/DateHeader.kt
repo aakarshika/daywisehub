@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.todoapp.screen.basicutils.components.WriteText
 import com.example.todoapp.screen.diary.WeekCalendarScreen
@@ -31,18 +32,21 @@ fun DateHeader(cDate: LocalDate,
     Box(modifier = Modifier
         .fillMaxWidth()
         .wrapContentHeight()) {
-        Row {
-            Column(
-                modifier = Modifier.weight(1f)
-                    .padding( 10.dp)
-            ) {
-                WriteText(""+getOrdinal(cDate.dayOfMonth) +" "+cDate.month+", "+cDate.year, fontSize = 22f)
+        Column(modifier = Modifier.padding(top = 20.dp, start = 20.dp)) {
+            Row{
+                val daa = getOrdinal(cDate.dayOfMonth)
+                WriteText(""+daa.substring(0,daa.length-2), fontSize = 22f, color = Color.Gray, fontWeight = FontWeight.Normal)
+                WriteText(""+daa.substring(daa.length-2), fontSize = 17f, color = Color.Gray, fontWeight = FontWeight.Normal)
+                WriteText(" "+cDate.month.toString().substring(0,1), fontSize = 22f, color = Color.Gray, fontWeight = FontWeight.Normal)
+                WriteText(""+cDate.month.toString().lowercase().substring(1)+",", fontSize = 19f, color = Color.Gray, fontWeight = FontWeight.Normal)
+                WriteText(" "+cDate.year, fontSize = 22f, color = Color.Gray, fontWeight = FontWeight.Normal)
             }
-            Column(
-                modifier = Modifier.weight(1f)
-                    .padding()
-            ) {
 
+            Row {
+                Row(modifier = Modifier.padding(10.dp)) {
+                    WriteText("" + cDate.dayOfWeek.name.substring(0,1), fontSize = 24f, fontWeight = FontWeight.Normal, color = Color.Gray)
+                    WriteText("" + cDate.dayOfWeek.name.lowercase().substring(1), fontSize = 20f, fontWeight = FontWeight.Normal, color = Color.Gray)
+                }
                 WeekCalendarScreen(cDate, changeDate)
             }
         }

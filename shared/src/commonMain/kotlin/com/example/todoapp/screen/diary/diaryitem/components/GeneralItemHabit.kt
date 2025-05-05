@@ -31,7 +31,7 @@ fun GeneralItemHabit(
     editingMode :String,
     taskIsHabit: (ComboTask?, Boolean) -> Unit,
 ) {
-    Box(modifier = Modifier.fillMaxWidth().height(RowHeight.dp)){
+    Box(modifier = Modifier.fillMaxWidth().height(RowHeight.dp).padding(end = 10.dp)){
         Row(modifier = Modifier.fillMaxWidth().height(RowHeight.dp).align(Alignment.TopEnd).padding(top= 1.dp,end = 5.dp), horizontalArrangement = Arrangement.End) {
             (1..6).forEach {
                 val boxDate = MyDate.fromLocalDate(selection.minusDays(5 - (it)))

@@ -8,6 +8,7 @@ import androidx.compose.animation.shrinkOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -61,13 +62,13 @@ fun OptimizedEditMissionPopup(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 10.dp, vertical = 10.dp)
-                .height(575.dp),
+                .fillMaxHeight(),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(
                 modifier = Modifier
-                    .height(575.dp)
+                    .fillMaxHeight()
                     .background(color = Color.White)
             ) {
                 // Main content
@@ -119,43 +120,43 @@ fun OptimizedEditMissionPopup(
                         )
 //                    }
                     Spacer(modifier = Modifier.height(60.dp))
-                }
 
-                // Bottom action bar
-                BottomActionBar(
-                    page1 = page1.value,
-                    onCloseClicked = onCloseClicked,
-                    onNextClicked = {
-                        page1.value = false
-                        val updatedMission = MissionWithDetails(
-                            mission = mission.value!!,
-                            missionFrequency = missionFrequency.value!!,
-                            pillar = pillarSelected.value!!,
-                            milestones = milestones.value
-                        )
-//                        onSaveClicked(updatedMission)
-                    },
-                    onPrevClicked = {
-                        page1.value = true
-                        val updatedMission = MissionWithDetails(
-                            mission = mission.value!!,
-                            missionFrequency = missionFrequency.value!!,
-                            pillar = pillarSelected.value!!,
-                            milestones = milestones.value
-                        )
-//                        onSaveClicked(updatedMission)
-                    },
-                    onSaveClicked = {
-                        val updatedMission = MissionWithDetails(
-                            mission = mission.value!!,
-                            missionFrequency = missionFrequency.value!!,
-                            pillar = pillarSelected.value!!,
-                            milestones = milestones.value
-                        )
-                        onSaveClicked(updatedMission)
-                    },
-                    pillarColor = pillarColor
-                )
+                    // Bottom action bar
+                    BottomActionBar(
+                        page1 = page1.value,
+                        onCloseClicked = onCloseClicked,
+                        onNextClicked = {
+                            page1.value = false
+                            val updatedMission = MissionWithDetails(
+                                mission = mission.value!!,
+                                missionFrequency = missionFrequency.value!!,
+                                pillar = pillarSelected.value!!,
+                                milestones = milestones.value
+                            )
+    //                        onSaveClicked(updatedMission)
+                        },
+                        onPrevClicked = {
+                            page1.value = true
+                            val updatedMission = MissionWithDetails(
+                                mission = mission.value!!,
+                                missionFrequency = missionFrequency.value!!,
+                                pillar = pillarSelected.value!!,
+                                milestones = milestones.value
+                            )
+    //                        onSaveClicked(updatedMission)
+                        },
+                        onSaveClicked = {
+                            val updatedMission = MissionWithDetails(
+                                mission = mission.value!!,
+                                missionFrequency = missionFrequency.value!!,
+                                pillar = pillarSelected.value!!,
+                                milestones = milestones.value
+                            )
+                            onSaveClicked(updatedMission)
+                        },
+                        pillarColor = pillarColor
+                    )
+                }
             }
         }
     }

@@ -1,5 +1,6 @@
 package com.example.todoapp.screen.diary.diaryitem.components.waterintake
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,6 +19,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Logger
 import com.example.todoapp.screen.missions.Blue180
@@ -55,17 +57,16 @@ fun WaterIntakeHeader(
                 val randomIcon = remember { iconss.shuffled() }
                 Box(modifier = Modifier.fillMaxWidth()) {
                     LazyRow(modifier = Modifier.align(Alignment.Center)) {
-                        items( water_daily_limit) { i->
-                            val glassNumber = i
+                        items( water_daily_limit) { glassNumber->
                             Icon(
                                 tint = if (waterIntake >= glassNumber) Blue180 else Color.LightGray,
-                                painter = painterResource(randomIcon[i]),
+                                painter = painterResource(randomIcon[glassNumber]),
                                 modifier = Modifier
                                     .height(40.dp)
                                     .wrapContentWidth()
                                     .padding(3.dp)
                                     .clickable {
-                                        upsertWaterIntake(glassNumber.toDouble())
+                                        upsertWaterIntake((if (glassNumber == waterIntake.toInt()) glassNumber-1 else glassNumber ).toDouble())
                                     },
                                 contentDescription = "mood-icon-smile"
                             )

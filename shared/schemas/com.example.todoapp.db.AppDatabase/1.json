@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "b184dd6a3e2013367160524422444b54",
+    "identityHash": "7a8a025c09b174d15771595ef639ac96",
     "entities": [
       {
         "tableName": "users",
@@ -272,7 +272,7 @@
       },
       {
         "tableName": "mission_frequency",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`frequency_set_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `fs_mission_id` INTEGER NOT NULL, `frequency_set_name` TEXT, `frequency` INTEGER NOT NULL, `frequency_period` TEXT, `frequency_unit` TEXT, `is_daily_habit` INTEGER NOT NULL, `fs_active` TEXT, FOREIGN KEY(`fs_mission_id`) REFERENCES `mission`(`mission_id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`frequency_set_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `fs_mission_id` INTEGER NOT NULL, `frequency_set_name` TEXT, `frequency` INTEGER NOT NULL, `frequency_period` TEXT, `frequency_unit` TEXT, `is_daily_habit` INTEGER NOT NULL, `fs_active` TEXT, FOREIGN KEY(`fs_mission_id`) REFERENCES `mission`(`mission_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "frequencySetId",
@@ -339,7 +339,7 @@
         "foreignKeys": [
           {
             "table": "mission",
-            "onDelete": "NO ACTION",
+            "onDelete": "CASCADE",
             "onUpdate": "NO ACTION",
             "columns": [
               "fs_mission_id"
@@ -352,7 +352,7 @@
       },
       {
         "tableName": "milestone",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`milestone_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mile_mission_id` INTEGER NOT NULL, `text` TEXT NOT NULL, `priority` TEXT NOT NULL, `expected_completion_date` TEXT NOT NULL, `milestone_order` INTEGER NOT NULL, `status` TEXT NOT NULL, FOREIGN KEY(`mile_mission_id`) REFERENCES `mission`(`mission_id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`milestone_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mile_mission_id` INTEGER NOT NULL, `text` TEXT NOT NULL, `priority` TEXT NOT NULL, `expected_completion_date` TEXT NOT NULL, `milestone_order` INTEGER NOT NULL, `status` TEXT NOT NULL, `progress_value` REAL NOT NULL, `progress_unit` REAL NOT NULL, `progress_text` TEXT NOT NULL, `mile_start_date` TEXT NOT NULL, `actual_completion_date` TEXT, `completion_task_id` INTEGER, FOREIGN KEY(`mile_mission_id`) REFERENCES `mission`(`mission_id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
         "fields": [
           {
             "fieldPath": "milestoneId",
@@ -395,54 +395,6 @@
             "columnName": "status",
             "affinity": "TEXT",
             "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": true,
-          "columnNames": [
-            "milestone_id"
-          ]
-        },
-        "indices": [
-          {
-            "name": "index_milestone_mile_mission_id",
-            "unique": false,
-            "columnNames": [
-              "mile_mission_id"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_milestone_mile_mission_id` ON `${TABLE_NAME}` (`mile_mission_id`)"
-          }
-        ],
-        "foreignKeys": [
-          {
-            "table": "mission",
-            "onDelete": "NO ACTION",
-            "onUpdate": "NO ACTION",
-            "columns": [
-              "mile_mission_id"
-            ],
-            "referencedColumns": [
-              "mission_id"
-            ]
-          }
-        ]
-      },
-      {
-        "tableName": "milestone_progress_data",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`milestone_progress_data_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mpd_milestone_id` INTEGER NOT NULL, `progress_value` REAL NOT NULL, `progress_unit` REAL NOT NULL, `progress_text` TEXT NOT NULL, `mile_start_date` TEXT NOT NULL, `actual_completion_date` TEXT, `completion_task_id` INTEGER, FOREIGN KEY(`mpd_milestone_id`) REFERENCES `milestone`(`milestone_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
-        "fields": [
-          {
-            "fieldPath": "milestoneProgressDataId",
-            "columnName": "milestone_progress_data_id",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "milestoneId",
-            "columnName": "mpd_milestone_id",
-            "affinity": "INTEGER",
-            "notNull": true
           },
           {
             "fieldPath": "progressValue",
@@ -482,37 +434,37 @@
         "primaryKey": {
           "autoGenerate": true,
           "columnNames": [
-            "milestone_progress_data_id"
+            "milestone_id"
           ]
         },
         "indices": [
           {
-            "name": "index_milestone_progress_data_mpd_milestone_id",
+            "name": "index_milestone_mile_mission_id",
             "unique": false,
             "columnNames": [
-              "mpd_milestone_id"
+              "mile_mission_id"
             ],
             "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_milestone_progress_data_mpd_milestone_id` ON `${TABLE_NAME}` (`mpd_milestone_id`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_milestone_mile_mission_id` ON `${TABLE_NAME}` (`mile_mission_id`)"
           }
         ],
         "foreignKeys": [
           {
-            "table": "milestone",
-            "onDelete": "CASCADE",
+            "table": "mission",
+            "onDelete": "NO ACTION",
             "onUpdate": "NO ACTION",
             "columns": [
-              "mpd_milestone_id"
+              "mile_mission_id"
             ],
             "referencedColumns": [
-              "milestone_id"
+              "mission_id"
             ]
           }
         ]
       },
       {
         "tableName": "today_task",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`today_task_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `task_user_id` INTEGER NOT NULL, `task_mission_id` INTEGER NOT NULL, `task_date` TEXT NOT NULL, `task_status` TEXT, `task_progress_val` REAL NOT NULL, `task_page_tag` TEXT, `task_type` TEXT NOT NULL, `task_text` TEXT, `task_picture_url` TEXT, `task_link` TEXT, FOREIGN KEY(`task_mission_id`) REFERENCES `mission`(`mission_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`today_task_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `task_user_id` INTEGER NOT NULL, `task_mission_id` INTEGER NOT NULL, `task_date` TEXT NOT NULL, `task_status` TEXT, `task_progress_val` REAL NOT NULL, `task_page_tag` TEXT, `task_type` TEXT NOT NULL, `task_text` TEXT, `task_picture_url` TEXT, `task_link` TEXT, `task_active` TEXT NOT NULL, FOREIGN KEY(`task_mission_id`) REFERENCES `mission`(`mission_id`) ON UPDATE NO ACTION ON DELETE NO ACTION )",
         "fields": [
           {
             "fieldPath": "todayTaskId",
@@ -574,6 +526,12 @@
             "fieldPath": "taskLink",
             "columnName": "task_link",
             "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "active",
+            "columnName": "task_active",
+            "affinity": "TEXT",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -596,7 +554,7 @@
         "foreignKeys": [
           {
             "table": "mission",
-            "onDelete": "CASCADE",
+            "onDelete": "NO ACTION",
             "onUpdate": "NO ACTION",
             "columns": [
               "task_mission_id"
@@ -752,6 +710,143 @@
         ]
       },
       {
+        "tableName": "mood",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`mood_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mood_name` TEXT, `mood_user_id` INTEGER NOT NULL, `mood_icon` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "moodId",
+            "columnName": "mood_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "moodName",
+            "columnName": "mood_name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "moodUserId",
+            "columnName": "mood_user_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "moodIcon",
+            "columnName": "mood_icon",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "mood_id"
+          ]
+        }
+      },
+      {
+        "tableName": "today_mood",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`tm_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `tm_mood_id` INTEGER NOT NULL, `tm_mood_status` TEXT NOT NULL, `tm_date` TEXT NOT NULL, FOREIGN KEY(`tm_mood_id`) REFERENCES `mood`(`mood_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "tmId",
+            "columnName": "tm_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tmMoodId",
+            "columnName": "tm_mood_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tmMoodStatus",
+            "columnName": "tm_mood_status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tmDate",
+            "columnName": "tm_date",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "tm_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_today_mood_tm_id",
+            "unique": false,
+            "columnNames": [
+              "tm_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_today_mood_tm_id` ON `${TABLE_NAME}` (`tm_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "mood",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "tm_mood_id"
+            ],
+            "referencedColumns": [
+              "mood_id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "water_intake",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`water_intake_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `water_intake_user_id` INTEGER NOT NULL, `water_intake_progress` REAL NOT NULL, `notes` TEXT NOT NULL, `water_date` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "waterIntakeId",
+            "columnName": "water_intake_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "waterIntakeUserId",
+            "columnName": "water_intake_user_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "waterIntakeProgress",
+            "columnName": "water_intake_progress",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notes",
+            "columnName": "notes",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "waterDate",
+            "columnName": "water_date",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "water_intake_id"
+          ]
+        }
+      },
+      {
         "tableName": "login_status",
         "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `userId` INTEGER NOT NULL, `isLoggedIn` INTEGER NOT NULL)",
         "fields": [
@@ -784,7 +879,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b184dd6a3e2013367160524422444b54')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7a8a025c09b174d15771595ef639ac96')"
     ]
   }
 }

@@ -50,7 +50,7 @@ fun GeneralItem(
                             .weight(columnWeights[i])
                     ) {
                         if (i == 1) {
-                            Box(modifier = Modifier) {
+                            Box(modifier = Modifier.padding(top = 3.dp)) {
                                 DiaryLineText(text = mission.missionTitle,
                                     onTextLayout = { textLayoutResult ->
                                         if (textLayoutResult.lineCount > 1) {

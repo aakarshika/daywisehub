@@ -3,21 +3,26 @@ package com.example.todoapp.screen.diary
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Icon
@@ -61,6 +66,8 @@ import com.example.todoapp.screen.diary.diaryitem.components.dateheader.DateHead
 import com.example.todoapp.screen.diary.diaryitem.components.dateheader.WeekDayHeader
 import com.example.todoapp.screen.diary.diaryitem.components.waterintake.WaterIntakeHeader
 import com.example.todoapp.screen.diary.diaryitem.components.waterintake.water_daily_limit
+import com.example.todoapp.screen.missions.Blue80
+import com.example.todoapp.screen.missions.Light_Yellowww
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.parameter.parametersOf
@@ -146,11 +153,11 @@ fun LazyListScope.WeatherHeaderItem() {
     }
 }
 
-fun LazyListScope.SundayHeaderItem(cDate: LocalDate) {
-    item {
-        WeekDayHeader(cDate)
-    }
-}
+//fun LazyListScope.SundayHeaderItem(cDate: LocalDate) {
+//    item {
+//        WeekDayHeader(cDate)
+//    }
+//}
 fun LazyListScope.DateHeaderItem(cDate: LocalDate,
                                  changeDate: (LocalDate) -> Unit) {
     item {
@@ -261,24 +268,60 @@ fun LazyListScope.TodoListItems(
 //            ListHeader("TO DO", modifier = Modifier.animateItem())
         }
     }
+    item {
+        Box(modifier = Modifier.fillMaxWidth().height(20.dp).padding(horizontal = 8.dp)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .border(1.dp, Blue80, RoundedCornerShape(topEnd = 5.dp, topStart = 5.dp))
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 5.dp, start = 1.dp, end = 1.dp)
+                    .background(Light_Yellowww)
+            )
+        }
+    }
     itemsIndexed(allTasks?: listOf(), key = { _, task ->
         ((task.mission?.missionId?:0L)*1000)+(task.todayTask?.todayTaskId?:0L)
     }) { i, task ->
-        Box(modifier = Modifier.animateItem()) {
+        Box(modifier = Modifier
+            .animateItem()) {
             DiaryItem(selection, task, editingTaskMode, taskViewModel,
-                KoinF.di?.get<HabitItemViewModel> { parametersOf(selection,task.mission?.missionId) }!!,
-                taskProgress = { p->
+                KoinF.di?.get<HabitItemViewModel> {
+                    parametersOf(
+                        selection,
+                        task.mission?.missionId
+                    )
+                }!!,
+                taskProgress = { p ->
                     Logger.e("taskCompleted taskCompleted $task")
                     allTasksCompleted(
-                        if(p == 1f &&
-                            allTasks?.
-                        filter { it.todayTask!!.todayTaskId != task.todayTask!!.todayTaskId }?.
-                        all { it.todayTask!!.taskStatus == "COMPLETED"} == true)
+                        if (p == 1f &&
+                            allTasks?.filter { it.todayTask!!.todayTaskId != task.todayTask!!.todayTaskId }
+                                ?.all { it.todayTask!!.taskStatus == "COMPLETED" } == true
+                        )
                             true
                         else
                             false)
 
                 }
+            )
+        }
+    }
+    item {
+        Box(modifier = Modifier.fillMaxWidth().height(10.dp).padding(horizontal = 8.dp)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .border(1.dp, Blue80, RoundedCornerShape(bottomEnd = 5.dp, bottomStart = 5.dp))
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 5.dp, start = 1.dp, end = 1.dp)
+                    .background(Light_Yellowww)
             )
         }
     }

@@ -49,7 +49,7 @@ fun ItemProgressBar(
         }
     }
 
-    Box(modifier = Modifier.fillMaxWidth().height(rowHeight.dp)) {
+    Box(modifier = Modifier.fillMaxWidth().height(rowHeight.dp).padding(end = 10.dp)) {
         ProgressBarWithDrag(
             totalProgressWidth = totalProgressWidth,
             taskProgress = taskProgress,
@@ -130,7 +130,7 @@ fun ProgressBarMetrics(
     val totalFrequency = (missionFrequency?.frequency ?: 1).toFloat()
 
     Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 6.dp, end = 5.dp).wrapContentHeight(),
+        modifier = Modifier.fillMaxWidth().padding(top = 6.dp, end = 10.dp).wrapContentHeight(),
         horizontalArrangement = Arrangement.End
     ) {
         WriteText(

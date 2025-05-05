@@ -9,16 +9,23 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Face
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -34,6 +41,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.mood.WaterIntake
 import com.example.todoapp.screen.basicutils.components.DiaryLineText
@@ -42,6 +50,8 @@ import com.example.todoapp.screen.basicutils.components.NotesTextField
 import com.example.todoapp.screen.basicutils.components.WritingTextField
 import com.example.todoapp.screen.missions.Blue80
 import kotlinx.datetime.LocalDate
+import org.jetbrains.compose.resources.painterResource
+import todoapp.shared.generated.resources.Res
 
 @Composable
 fun NotesItem(
@@ -57,7 +67,7 @@ fun NotesItem(
     LaunchedEffect(selection){
         editing.value = false
     }
-    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).height((26+RowHeight).dp)){
+    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).height((26+RowHeight).dp)){
         Box {
             Box(modifier = Modifier.fillMaxWidth()){
                 Column(modifier = Modifier
@@ -74,12 +84,17 @@ fun NotesItem(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Box(
-                    modifier = Modifier.wrapContentHeight().fillMaxWidth().clickable {
+                    modifier = Modifier.wrapContentHeight()
+                        .fillMaxWidth()
+                        .border(1.dp, Blue80, RoundedCornerShape(8.dp)).clickable {
                         editing.value = true
                     }
                 ) {
                     if(editing.value) {
-                        NotesEdit(nn, editing.value, upsertWaterIntake, textArranged)
+                        NotesEdit(nn, editing.value, upsertWaterIntake, textArranged, editDone={
+                            Logger.e("editiiiiinnnnnggggg")
+                            editing.value = false
+                        })
                     } else {
                         NotesView(water,upsertWaterIntake, textArranged)
                     }
@@ -107,15 +122,18 @@ private fun NotesView(
         )
     }
 }
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NotesEdit(
     nn: MutableState<String>,
     editing: Boolean,
     upsertWaterIntake: (String) -> Unit,
-    textArranged: (Int) -> Unit
+    textArranged: (Int) -> Unit,
+    editDone: () -> Unit
 ) {
     Box(modifier = Modifier) {
         val layout: MutableState<TextLayoutResult?> = mutableStateOf(null)
+
         BasicTextField(
             value = nn.value,
             onValueChange = { it: String ->
@@ -180,6 +198,19 @@ private fun NotesEdit(
                 }
             }
         )
+        Box(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).clickable{
+            editDone()
+        }){
+            Icon(
+                Icons.Default.CheckCircle,
+                "asd",
+                tint = Color.Gray,
+                modifier = Modifier
+                    .size(35.dp).clickable{
+                        editDone()
+                    }
+            )
+        }
 
 
 //                        NotesTextField(

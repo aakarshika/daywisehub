@@ -57,7 +57,6 @@ fun NotesLineText(
         fontSize = TextUnit( fontSize, type = TextUnitType.Sp),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, Blue80, RoundedCornerShape(8.dp))
             .padding(horizontal = 12.dp, vertical = 8.dp)
 //        modifier = modifier.drawWithContent {
 //            drawContent() // Draw the text

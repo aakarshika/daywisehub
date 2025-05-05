@@ -260,43 +260,39 @@ fun RoundButton(date: LocalDate, todayHighlight: Boolean = false,
                 onClick: () -> Unit) {
 
     Box(
-        modifier = Modifier.height(25.dp).width(25.dp)
-            .padding(top = 7.dp)
+        modifier = Modifier.height(35.dp).width(25.dp)
             .clickable {
                 onClick()
             }
     ) {
-        Icon(
-            painter = painterResource( Res.drawable.circle_filled_a),
-            contentDescription = "circle_filled",
-            tint = if(todayHighlight) com.example.todoapp.screen.missions.Red80 else  Orange40,
-            modifier = Modifier.fillMaxSize()
-        )
-        WriteText(
-            text = ""+date.dayOfMonth,
-            color = Color.Black,
-            fontSize = 14f,
-            modifier = Modifier.padding(top = 2.dp, start = 2.dp).align(Alignment.Center)
-        )
-    }
-    Box(
-        modifier = Modifier.size(16.dp)
-            .clickable {
-                onClick()
-            }
-    ) {
-        Icon(
-            painter = painterResource(Res.drawable.circle_filled_b),
-            contentDescription = "circle_filled",
-            tint = if(todayHighlight) com.example.todoapp.screen.missions.Red80 else  Color.White,
-            modifier = Modifier.fillMaxSize()
-        )
-        WriteText(
-            text = date.dayOfWeek.name.substring(0,1),
-            fontSize = 10f,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black,
-            modifier = Modifier.align(Alignment.TopCenter)
-        )
+        Box(modifier = Modifier.size(25.dp).align(Alignment.BottomEnd)){
+            Icon(
+                painter = painterResource( Res.drawable.circle_filled_a),
+                contentDescription = "circle_filled",
+                tint = if(todayHighlight) com.example.todoapp.screen.missions.Red80 else  Orange40,
+                modifier = Modifier.fillMaxSize()
+            )
+            WriteText(
+                text = ""+date.dayOfMonth,
+                color = Color.Black,
+                fontSize = 14f,
+                modifier = Modifier.padding(top = 2.dp, start = 2.dp).align(Alignment.Center)
+            )
+        }
+        Box(modifier = Modifier.size(16.dp).align(Alignment.TopStart)) {
+            Icon(
+                painter = painterResource(Res.drawable.circle_filled_b),
+                contentDescription = "circle_filled",
+                tint = if (todayHighlight) com.example.todoapp.screen.missions.Red80 else Color.White,
+                modifier = Modifier.fillMaxSize()
+            )
+            WriteText(
+                text = date.dayOfWeek.name.substring(0, 1),
+                fontSize = 10f,
+                fontWeight = FontWeight.Normal,
+                color = Color.Black,
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
     }
 }

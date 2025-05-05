@@ -144,7 +144,6 @@ fun DiaryScreen(
                 val editingTaskMode = remember { mutableStateOf("ViewItems") }
                 val magicMode = remember { mutableStateOf("CHECK") }
                 LazyColumn(modifier = Modifier) {
-                    SundayHeaderItem(selection)
                     DateHeaderItem(selection, changeDate = {
                         changeDate(it)
                     })
@@ -159,7 +158,6 @@ fun DiaryScreen(
                     ToDoListHeader("TO DO LIST", Orange80, editClicked = {
                         planningMode.value = true
                     })
-                    ExtraLines(1)
                     TodoListItems(
                         selection, allTasks,
                         editingTaskMode, diaryViewModel,
@@ -184,7 +182,6 @@ fun DiaryScreen(
                 }
             } else {
                 LazyColumn(modifier = Modifier) {
-                    SundayHeaderItem(selection)
                     DateHeaderItem(selection, changeDate = {
                         changeDate(it)
                     })
@@ -240,10 +237,9 @@ private fun AnimationConfetti(
     composition: Any?,
     animationState: KottieAnimationState
 ) {
-    Column(
+    Box(
         modifier = Modifier.fillMaxSize().background(Color.Transparent),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        contentAlignment = Alignment.Center
     ) {
         KottieAnimation(
             composition = composition,

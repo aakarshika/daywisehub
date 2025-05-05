@@ -50,7 +50,7 @@ fun GeneralItemCheckbox(
                                             false
                                         ) else taskErased(ct,  true)
                                     }
-                                    .padding(start = 20.dp, top = 2.dp)
+                                    .padding(start = 15.dp, top = 2.dp)
                             ) {
                                 CustomCheckbox(
                                     checked = isChecked,

@@ -1,10 +1,16 @@
 package com.example.todoapp.screen.diary.diaryitem
 
 import KottieAnimation
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -18,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.todotask.TodayTask
@@ -31,6 +38,7 @@ import com.example.todoapp.screen.diary.diaryitem.components.GeneralItemHabit
 import com.example.todoapp.screen.diary.diaryitem.components.GeneralItemTop3Star
 import com.example.todoapp.screen.diary.diaryitem.components.GeneralItemTopButton
 import com.example.todoapp.screen.diary.diaryitem.components.ItemProgressBar
+import com.example.todoapp.screen.missions.Blue80
 import kotlinx.datetime.LocalDate
 import kottieComposition.KottieCompositionSpec
 import kottieComposition.animateKottieCompositionAsState
@@ -52,34 +60,80 @@ fun DiaryItem(
     LaunchedEffect(selection){
         habitViewModel.loadTaskProgressForPastAround()
     }
-    GeneralItem(rowHeight.value,hTask.mission!!, textArranged = { lineCount ->
-        rowHeight.value = 26*(lineCount+1)
-    })
-    GeneralItemTop3Star(rowHeight.value,hTask, editingTaskMode.value, taskIsTop = { tt, check ->})
-    if(hTask.missionFrequency?.frequencyPeriod == "DAILY") {
-        GeneralItemHabit(rowHeight.value,selection, hTask, taskProgressWeekList, editingTaskMode.value) { tt, check -> }
+    Row{
+        Box(modifier = Modifier.padding(start = 8.dp).width(1.dp).height(rowHeight.value.dp).background(
+            Blue80))
+        Box(modifier = Modifier.weight(1f)){
+            Item(
+                rowHeight,
+                hTask,
+                editingTaskMode,
+                selection,
+                taskProgressWeekList,
+                taskViewModel,
+                taskProgress
+            )
+        }
+        Box(modifier = Modifier.padding(end = 8.dp).width(1.dp).height(rowHeight.value.dp).background(
+            Blue80))
+
     }
-    if (editingTaskMode.value == "ViewItems" && hTask.todayTask?.taskStatus!="COMPLETED") {
+}
+
+@Composable
+private fun Item(
+    rowHeight: MutableState<Int>,
+    hTask: ComboTask,
+    editingTaskMode: MutableState<String>,
+    selection: LocalDate,
+    taskProgressWeekList: List<TodayTask>?,
+    taskViewModel: DiaryViewModel,
+    taskProgress: (Float) -> Unit
+) {
+    GeneralItem(rowHeight.value, hTask.mission!!, textArranged = { lineCount ->
+        rowHeight.value = 26 * (lineCount + 1)
+    })
+    GeneralItemTop3Star(
+        rowHeight.value,
+        hTask,
+        editingTaskMode.value,
+        taskIsTop = { tt, check -> })
+    if (hTask.missionFrequency?.frequencyPeriod == "DAILY") {
+        GeneralItemHabit(
+            rowHeight.value,
+            selection,
+            hTask,
+            taskProgressWeekList,
+            editingTaskMode.value
+        ) { tt, check -> }
+    }
+    if (editingTaskMode.value == "ViewItems" && hTask.todayTask?.taskStatus != "COMPLETED") {
         ItemProgressBar(rowHeight.value, selection, hTask, editingTaskMode.value) { progress ->
             updateTaskProgress(selection, hTask, progress, taskViewModel)
             Logger.e("task Progress $progress")
             taskProgress(progress)
         }
     }
-    if(editingTaskMode.value == "prioritize") {
-        GeneralItemTopButton(rowHeight.value,hTask, editingTaskMode.value){ tt, check ->
+    if (editingTaskMode.value == "prioritize") {
+        GeneralItemTopButton(rowHeight.value, hTask, editingTaskMode.value) { tt, check ->
             if (tt != null) {
-                updateTaskPriority(selection, hTask, if (check) "TOP3" else "TODO", taskViewModel)
+                updateTaskPriority(
+                    selection,
+                    hTask,
+                    if (check) "TOP3" else "TODO",
+                    taskViewModel
+                )
             }
         }
     }
-    if (editingTaskMode.value == "ViewItems" && hTask.todayTask?.taskStatus=="COMPLETED") {
-        GeneralItemCheckbox(rowHeight.value,hTask, editingTaskMode.value,){ tt, check ->
-            updateTaskStatus(selection,hTask,
-                if (check) "COMPLETED" else "REFRESHED", taskViewModel)
+    if (editingTaskMode.value == "ViewItems" && hTask.todayTask?.taskStatus == "COMPLETED") {
+        GeneralItemCheckbox(rowHeight.value, hTask, editingTaskMode.value) { tt, check ->
+            updateTaskStatus(
+                selection, hTask,
+                if (check) "COMPLETED" else "REFRESHED", taskViewModel
+            )
         }
     }
-
 }
 
 
