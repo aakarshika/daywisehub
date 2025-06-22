@@ -79,7 +79,7 @@ fun TaskTypeDropdown(optionsSelected: (List<String>) -> Unit) {
             )
             Icon(
                 imageVector = Icons.Default.ArrowDropDown,
-                contentDescription = "Dropdown Arrow"
+                contentDescription = "Dropdown Arrow yayy"
             )
         }
 
