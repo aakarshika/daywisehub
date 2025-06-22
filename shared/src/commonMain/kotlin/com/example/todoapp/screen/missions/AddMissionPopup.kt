@@ -102,51 +102,69 @@ fun AddMissionPopup(
     onCloseClicked: () -> Unit,
     onSaveClicked: (MissionWithDetails) -> Unit
 ) {
-    val randomFloat1 = Random.nextFloat()
-    val missionFrequency: MissionFrequency = getMissionFrequency(randomFloat1)
-    val randomFloat2 = Random.nextFloat()
-    val missionImportance: String = getMissionImportance(randomFloat2)
+
+//    val randomFloat1 = Random.nextFloat()
+    val missionFrequency: MissionFrequency = getMissionFrequency(0.75f)
+//    val randomFloat2 = Random.nextFloat()
+    val missionImportance: String = getMissionImportance(0.5f)
 
     val newMission = MissionWithDetails(
         mission = defaultMissionWithDetails.mission?.copy(
-            missionTitle = listOf("Gym",
-                "Swimming",
-                "Running",
-                "Marathon Prep",
-                "Drinking Water",
-                "Breathing",
-                "Stupid office",
-                "Brush Teeth",
-                "Make Bed",
-                "Stock Classes",
-                "App Dev",
-                "AWS Certification",
-                "India Job",
-                "LinkedIn",
-                "Akku Kissy",
-                "Dinner Date",
-                "Call Relatives",
-                "Unboxing Video",
-                "Monday Pooja",
-                "Shaadi Album",
-                "Horse Riding",
-                "Meditation",
-                "Yoga",
-                "Mummy Call",
-                "Akku Kissy",
-                "Cooking").random(),
-            frequencySetValue = randomFloat1,
+            missionTitle = "",
+            frequencySetValue = 0.75f,
             frequencySet = missionFrequency.frequencySetName?:"",
-            importanceValue = randomFloat2,
+            importanceValue = 0.5f,
             importanceSet = missionImportance,
-            startDate = MyDate("2024-" +
-                    listOf("10","11","12","9").random() + "-" +
-                    listOf("1","2","3","4","5","6","7","12","15","15","17","21","23","25","29",).random()
-            )
+            startDate = MyDate.now()
         ),
         missionFrequency = missionFrequency,
         pillar = pillars.random()
     )
+//    val randomFloat1 = Random.nextFloat()
+//    val missionFrequency: MissionFrequency = getMissionFrequency(randomFloat1)
+//    val randomFloat2 = Random.nextFloat()
+//    val missionImportance: String = getMissionImportance(randomFloat2)
+//
+//    val newMission = MissionWithDetails(
+//        mission = defaultMissionWithDetails.mission?.copy(
+//            missionTitle = listOf("Gym",
+//                "Swimming",
+//                "Running",
+//                "Marathon Prep",
+//                "Drinking Water",
+//                "Breathing",
+//                "Stupid office",
+//                "Brush Teeth",
+//                "Make Bed",
+//                "Stock Classes",
+//                "App Dev",
+//                "AWS Certification",
+//                "India Job",
+//                "LinkedIn",
+//                "Akku Kissy",
+//                "Dinner Date",
+//                "Call Relatives",
+//                "Unboxing Video",
+//                "Monday Pooja",
+//                "Shaadi Album",
+//                "Horse Riding",
+//                "Meditation",
+//                "Yoga",
+//                "Mummy Call",
+//                "Akku Kissy",
+//                "Cooking").random(),
+//            frequencySetValue = randomFloat1,
+//            frequencySet = missionFrequency.frequencySetName?:"",
+//            importanceValue = randomFloat2,
+//            importanceSet = missionImportance,
+//            startDate = MyDate("2024-" +
+//                    listOf("10","11","12","9").random() + "-" +
+//                    listOf("1","2","3","4","5","6","7","12","15","15","17","21","23","25","29",).random()
+//            )
+//        ),
+//        missionFrequency = missionFrequency,
+//        pillar = pillars.random()
+//    )
     OptimizedEditMissionPopup(
         selectedMission = newMission,
         pillarOptions = pillarOptions,

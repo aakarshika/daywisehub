@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import com.example.todoapp.screen.missions.Gray100
+import com.example.todoapp.screen.missions.getDarkPillarColor
 import com.example.todoapp.screen.missions.getPillarColor
 
 val options = listOf("HEALTH", "WEALTH", "LOVE", "LIFE")
@@ -101,14 +103,14 @@ fun TaskTypeDropdown(optionsSelected: (List<String>) -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = if (allSelected) Icons.Default.CheckCircle else Icons.Default.Face,
+                    imageVector =  Icons.Default.CheckCircle,
                     contentDescription = if (allSelected) "Checked" else "Unchecked",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    tint = if (!allSelected) Gray100 else MaterialTheme.colorScheme.primary,
+                    modifier = if (allSelected) Modifier.size(24.dp) else Modifier.size(22.dp)
                 )
                 Text(
                     text = if (allSelected) "Unselect All" else "Select All",
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = if (allSelected) FontWeight.Bold else  FontWeight.Normal,
                     modifier = Modifier.padding(start = 8.dp)
                 )
             }
@@ -129,13 +131,14 @@ fun TaskTypeDropdown(optionsSelected: (List<String>) -> Unit) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = if (isChecked) Icons.Default.CheckCircle else Icons.Default.Face,
+                        imageVector = Icons.Default.CheckCircle,
                         contentDescription = if (isChecked) "Checked" else "Unchecked",
-                        tint = getPillarColor(option),
-                        modifier = Modifier.size(24.dp)
+                        tint = if (isChecked) getDarkPillarColor(option) else Gray100,
+                        modifier =if (isChecked) Modifier.size(24.dp) else Modifier.size(22.dp)
                     )
                     Text(
                         text = option,
+                        fontWeight = if (isChecked) FontWeight.Bold else  FontWeight.Normal,
                         modifier = Modifier.padding(start = 8.dp)
                     )
                 }

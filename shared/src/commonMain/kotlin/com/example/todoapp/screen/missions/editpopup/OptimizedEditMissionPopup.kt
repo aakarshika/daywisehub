@@ -61,8 +61,9 @@ fun OptimizedEditMissionPopup(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 10.dp)
-                .fillMaxHeight(),
+                .fillMaxHeight()
+                .padding(all = 25.dp)
+                .padding(bottom = 150.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
             shape = RoundedCornerShape(16.dp)
         ) {
@@ -79,7 +80,7 @@ fun OptimizedEditMissionPopup(
                         .verticalScroll(rememberScrollState())
                         .padding(20.dp)
                 ) {
-//                    if(page1.value) {
+                    if(page1.value) {
                         // Title & Pillar section
                         MissionHeaderSection(
                             mission = mission,
@@ -98,7 +99,7 @@ fun OptimizedEditMissionPopup(
 //                        pillarOptions = pillarOptions,
 //                        fieldBackground = fieldBackground
 //                    )
-//                    } else {
+                    } else {
                         Spacer(modifier = Modifier.height(16.dp))
 
                         // Frequency section
@@ -118,45 +119,45 @@ fun OptimizedEditMissionPopup(
                             mission = mission,
                             fieldBackground = fieldBackground
                         )
-//                    }
+                    }
                     Spacer(modifier = Modifier.height(60.dp))
 
-                    // Bottom action bar
-                    BottomActionBar(
-                        page1 = page1.value,
-                        onCloseClicked = onCloseClicked,
-                        onNextClicked = {
-                            page1.value = false
-                            val updatedMission = MissionWithDetails(
-                                mission = mission.value!!,
-                                missionFrequency = missionFrequency.value!!,
-                                pillar = pillarSelected.value!!,
-                                milestones = milestones.value
-                            )
-    //                        onSaveClicked(updatedMission)
-                        },
-                        onPrevClicked = {
-                            page1.value = true
-                            val updatedMission = MissionWithDetails(
-                                mission = mission.value!!,
-                                missionFrequency = missionFrequency.value!!,
-                                pillar = pillarSelected.value!!,
-                                milestones = milestones.value
-                            )
-    //                        onSaveClicked(updatedMission)
-                        },
-                        onSaveClicked = {
-                            val updatedMission = MissionWithDetails(
-                                mission = mission.value!!,
-                                missionFrequency = missionFrequency.value!!,
-                                pillar = pillarSelected.value!!,
-                                milestones = milestones.value
-                            )
-                            onSaveClicked(updatedMission)
-                        },
-                        pillarColor = pillarColor
-                    )
                 }
+                // Bottom action bar
+                BottomActionBar(
+                    page1 = page1.value,
+                    onCloseClicked = onCloseClicked,
+                    onNextClicked = {
+                        page1.value = false
+                        val updatedMission = MissionWithDetails(
+                            mission = mission.value!!,
+                            missionFrequency = missionFrequency.value!!,
+                            pillar = pillarSelected.value!!,
+                            milestones = milestones.value
+                        )
+                        //                        onSaveClicked(updatedMission)
+                    },
+                    onPrevClicked = {
+                        page1.value = true
+                        val updatedMission = MissionWithDetails(
+                            mission = mission.value!!,
+                            missionFrequency = missionFrequency.value!!,
+                            pillar = pillarSelected.value!!,
+                            milestones = milestones.value
+                        )
+                        //                        onSaveClicked(updatedMission)
+                    },
+                    onSaveClicked = {
+                        val updatedMission = MissionWithDetails(
+                            mission = mission.value!!,
+                            missionFrequency = missionFrequency.value!!,
+                            pillar = pillarSelected.value!!,
+                            milestones = milestones.value
+                        )
+                        onSaveClicked(updatedMission)
+                    },
+                    pillarColor = pillarColor
+                )
             }
         }
     }
