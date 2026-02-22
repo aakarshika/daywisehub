@@ -41,13 +41,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
-import com.example.todoapp.screen.missions.Light_Yellowww
+import com.example.todoapp.db.models.TaskStatus
+import com.example.todoapp.db.models.TaskType
+import com.example.todoapp.screen.basicutils.Light_Yellowww
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import todoapp.shared.generated.resources.Res
 import todoapp.shared.generated.resources.crown_b
-import todoapp.shared.generated.resources.diary_edit
 import todoapp.shared.generated.resources.diary_editing_hand
 import todoapp.shared.generated.resources.heart_filled
 import todoapp.shared.generated.resources.star_border
@@ -68,9 +69,9 @@ import todoapp.shared.generated.resources.star_filled
     val allTasks = (selectedTaskList?: listOf() )
         .sortedBy { t-> t.pillar?.pillarName }
         .sortedBy { t-> t.todayTask.taskStatus }
-    val allTasksCompleted = allTasks.filter { t->  t.todayTask.taskStatus== "COMPLETED" }
-    val top3Tasks = allTasks.filter { t-> t.todayTask.taskPageTag == "TOP3" }
-    val top3TasksCompleted = allTasks.filter { t-> t.todayTask.taskPageTag == "TOP3" && t.todayTask.taskStatus== "COMPLETED" }
+    val allTasksCompleted = allTasks.filter { t->  t.todayTask.taskStatus== TaskStatus.COMPLETED.value }
+    val top3Tasks = allTasks.filter { t-> t.todayTask.taskPageTag == TaskType.TOP3.value }
+    val top3TasksCompleted = allTasks.filter { t-> t.todayTask.taskPageTag == TaskType.TOP3.value && t.todayTask.taskStatus== TaskStatus.COMPLETED.value }
 
 
     val highlights:MutableList<Map<String,List<String>>> = mutableListOf()

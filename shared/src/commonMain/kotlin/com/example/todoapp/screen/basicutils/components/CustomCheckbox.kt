@@ -17,10 +17,7 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
 import todoapp.shared.generated.resources.Res
 import todoapp.shared.generated.resources.check_square
-import todoapp.shared.generated.resources.square
 import todoapp.shared.generated.resources.square_b
-import todoapp.shared.generated.resources.square_check_a
-import todoapp.shared.generated.resources.square_check_b
 
 @Composable
 fun CustomCheckbox(

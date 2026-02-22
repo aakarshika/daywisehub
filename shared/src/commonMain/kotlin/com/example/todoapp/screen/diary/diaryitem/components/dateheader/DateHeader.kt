@@ -20,9 +20,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.todoapp.screen.basicutils.components.WriteText
 import com.example.todoapp.screen.diary.WeekCalendarScreen
-import com.example.todoapp.screen.diary.diaryitem.components.diarymood.Red80
-import com.example.todoapp.screen.missions.Orange80
-import com.example.todoapp.screen.missions.getOrdinal
+import com.example.todoapp.screen.basicutils.Orange80
+import com.example.todoapp.screen.basicutils.Red80
+import com.example.todoapp.screen.missions.editpopup.getOrdinal
 import kotlinx.datetime.LocalDate
 
 @Composable

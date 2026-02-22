@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.example.todoapp.db.data.mission.MissionWithDetails
 import com.example.todoapp.db.data.pillar.Pillar
 import com.example.todoapp.screen.missions.components.BottomActionBar
-import com.example.todoapp.screen.missions.getPillarColor
+import com.example.todoapp.screen.basicutils.getPillarColor
 
 /**
  * EditMissionPopup - A modal screen for creating or editing a mission.
@@ -88,17 +88,6 @@ fun OptimizedEditMissionPopup(
                             pillarOptions = pillarOptions,
                             fieldBackground = fieldBackground
                         )
-
-//                    Spacer(modifier = Modifier.height(16.dp))
-
-//                    // Importance section
-//                    ImportanceSection(
-//                        mission = mission,
-//                        pillarSelected = pillarSelected,
-//                        pillarTotalValCount = pillarTotalValCount,
-//                        pillarOptions = pillarOptions,
-//                        fieldBackground = fieldBackground
-//                    )
                     } else {
                         Spacer(modifier = Modifier.height(16.dp))
 
@@ -129,23 +118,9 @@ fun OptimizedEditMissionPopup(
                     onCloseClicked = onCloseClicked,
                     onNextClicked = {
                         page1.value = false
-                        val updatedMission = MissionWithDetails(
-                            mission = mission.value!!,
-                            missionFrequency = missionFrequency.value!!,
-                            pillar = pillarSelected.value!!,
-                            milestones = milestones.value
-                        )
-                        //                        onSaveClicked(updatedMission)
                     },
                     onPrevClicked = {
                         page1.value = true
-                        val updatedMission = MissionWithDetails(
-                            mission = mission.value!!,
-                            missionFrequency = missionFrequency.value!!,
-                            pillar = pillarSelected.value!!,
-                            milestones = milestones.value
-                        )
-                        //                        onSaveClicked(updatedMission)
                     },
                     onSaveClicked = {
                         val updatedMission = MissionWithDetails(

@@ -49,7 +49,7 @@ import androidx.compose.ui.unit.sp
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.pillar.Pillar
 import com.example.todoapp.screen.basicutils.components.WritingTextField
-import com.example.todoapp.screen.missions.getPillarColor
+import com.example.todoapp.screen.basicutils.getPillarColor
 import kotlin.math.abs
 import kotlin.math.roundToInt
 

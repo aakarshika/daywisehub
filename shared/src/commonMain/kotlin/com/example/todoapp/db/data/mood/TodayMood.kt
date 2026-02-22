@@ -18,7 +18,7 @@ import com.example.todoapp.db.models.MyDate
             onDelete = ForeignKey.CASCADE
             )
         ],
-    indices = [Index(value = ["tm_id"])]
+    indices = [Index(value = ["tm_mood_id"])]
 )
 data class TodayMood(
     @PrimaryKey(autoGenerate = true) @ColumnInfo(name = "tm_id") val tmId: Long = 0,

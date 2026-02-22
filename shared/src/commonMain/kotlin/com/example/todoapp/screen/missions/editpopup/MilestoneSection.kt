@@ -30,7 +30,6 @@ import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.mission.milestone.Milestone
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.screen.basicutils.components.WritingTextField
-import com.example.todoapp.screen.missions.getOrdinal
 import kotlinx.datetime.number
 
 import androidx.compose.foundation.layout.Box

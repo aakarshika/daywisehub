@@ -20,7 +20,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
-import com.example.todoapp.screen.missions.Blue80
+import com.example.todoapp.screen.basicutils.Blue80
 
 
 @Composable

@@ -1,20 +1,9 @@
 package com.example.todoapp.screen.missions.editpopup
 
 import androidx.compose.runtime.MutableState
-import androidx.compose.ui.graphics.Color
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.mission.missionstuff.MissionFrequency
 
-
-/**
- * Darken a color by a specified amount
- */
-fun Color.darken(amount: Float = 0.2f): Color {
-    val red = (this.red * (1 - amount)).coerceIn(0f, 1f)
-    val green = (this.green * (1 - amount)).coerceIn(0f, 1f)
-    val blue = (this.blue * (1 - amount)).coerceIn(0f, 1f)
-    return Color(red, green, blue, this.alpha)
-}
 
 /**
  * Format ordinal numbers (1st, 2nd, 3rd, etc.)

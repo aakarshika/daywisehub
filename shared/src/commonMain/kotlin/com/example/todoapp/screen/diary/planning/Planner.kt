@@ -33,10 +33,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.todoapp.di.KoinF
 import com.example.todoapp.screen.basicutils.components.WriteText
-import com.example.todoapp.screen.missions.Blue80
-import com.example.todoapp.screen.missions.Orange180
-import com.example.todoapp.screen.missions.Orange20
-import com.example.todoapp.screen.missions.Orange40
+import com.example.todoapp.screen.basicutils.Blue80
+import com.example.todoapp.screen.basicutils.Orange180
+import com.example.todoapp.screen.basicutils.Orange20
+import com.example.todoapp.screen.basicutils.Orange40
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.painterResource
 import todoapp.shared.generated.resources.Res
@@ -73,7 +73,7 @@ fun Planner(planningMode: MutableState<Boolean>, todaysDate: LocalDate, back : (
                             Icon(
                                 painterResource(Res.drawable.wand),
                                 tint = Color.White,
-                                contentDescription = "dfgh",
+                                contentDescription = "Magic wand icon",
                                 modifier = Modifier.size(30.dp))
                             WriteText("  Let's plan your day", fontSize = 20f, fontWeight = FontWeight.Bold)
                         }

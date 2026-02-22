@@ -33,10 +33,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import com.example.todoapp.db.data.mission.MissionWithDetails
+import com.example.todoapp.db.models.TaskStatus
 import com.example.todoapp.db.models.MyDate.Companion.daysBetween
 import com.example.todoapp.db.models.MyDate.Companion.now
 import com.example.todoapp.di.KoinF
 import com.example.todoapp.screen.basicutils.components.WriteText
+import com.example.todoapp.screen.basicutils.darken
+import com.example.todoapp.screen.basicutils.getDarkPillarColor
+import com.example.todoapp.screen.basicutils.getPillarColor
 import com.example.todoapp.screen.missions.calendar.progress.DayMissionProgressViewModel
 import com.example.todoapp.screen.missions.calendar.progress.MissionProgressCalendar
 import org.jetbrains.compose.resources.painterResource
@@ -102,22 +106,6 @@ fun MissionItem(missionId: Long,
             }
         }
     }
-}
-
-fun getPillarColor(pillarName: String?): Color {
-    return if (pillarName == "HEALTH") Color(0xFFF6D3FF)
-    else if (pillarName == "WEALTH") Color(0xFFFFD4B8)
-    else if (pillarName == "LOVE") Color(0xFFFFCBD2)
-    else if (pillarName == "LIFE") Color(0xFFD4EBFF)
-    else  Color(0xFFCCC2DC)
-}
-
-fun getDarkPillarColor(pillarName: String?): Color {
-    return if (pillarName == "HEALTH") Color(0xFFF4CDFF)
-    else if (pillarName == "WEALTH") Color(0xFFFCBE98)
-    else if (pillarName == "LOVE") Color(0xFFFFB9C3)
-    else if (pillarName == "LIFE") Color(0xFFC7E4FF)
-    else  Color(0xFFCCC2DC)
 }
 
 
@@ -276,7 +264,7 @@ fun MilestoneList(mission: MissionWithDetails) {
     val nextMilestones = mission.milestones?.filter {milestone->
         val daysToMilestone = daysBetween(now(), milestone.expectedCompletionDate)
 
-        milestone.status != "COMPLETED"
+        milestone.status != TaskStatus.COMPLETED.value
                 && daysToMilestone>=0
                 && daysToMilestone<=45
     }
@@ -284,7 +272,7 @@ fun MilestoneList(mission: MissionWithDetails) {
     val completedMilestones = mission.milestones?.filter {milestone->
         val daysToMilestone = daysBetween(now(), milestone.expectedCompletionDate)
 
-        milestone.status == "COMPLETED"
+        milestone.status == TaskStatus.COMPLETED.value
                 || daysToMilestone<=0
 
     }

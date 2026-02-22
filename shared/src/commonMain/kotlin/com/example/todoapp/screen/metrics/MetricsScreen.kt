@@ -39,24 +39,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
 import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
 import com.example.todoapp.db.models.MyDate
+import com.example.todoapp.db.models.TaskStatus
+import com.example.todoapp.db.models.TaskType
 import com.example.todoapp.screen.basicutils.components.WriteText
 import com.example.todoapp.screen.metrics.metriccomponents.TaskTypeDropdown
 import com.example.todoapp.screen.metrics.metriccomponents.options
-import com.example.todoapp.screen.missions.CalendarGradientA
-import com.example.todoapp.screen.missions.CalendarGradientB
-import com.example.todoapp.screen.missions.LightRed80
-import com.example.todoapp.screen.missions.Orange180
-import com.example.todoapp.screen.missions.Orange40
-import com.example.todoapp.screen.missions.Orange80
-import com.example.todoapp.screen.missions.Pink80
-import com.example.todoapp.screen.missions.Red80
-import com.example.todoapp.screen.missions.Yellow180
-import com.example.todoapp.screen.missions.getDarkPillarColor
-import com.example.todoapp.screen.missions.getPillarColor
+import com.example.todoapp.screen.basicutils.CalendarGradientA
+import com.example.todoapp.screen.basicutils.CalendarGradientB
+import com.example.todoapp.screen.basicutils.LightRed80
+import com.example.todoapp.screen.basicutils.Orange180
+import com.example.todoapp.screen.basicutils.Orange40
+import com.example.todoapp.screen.basicutils.Orange80
+import com.example.todoapp.screen.basicutils.Pink80
+import com.example.todoapp.screen.basicutils.Red80
+import com.example.todoapp.screen.basicutils.Yellow180
+import com.example.todoapp.screen.basicutils.getDarkPillarColor
+import com.example.todoapp.screen.basicutils.getPillarColor
 import com.kizitonwose.calendar.compose.VerticalCalendar
 import com.kizitonwose.calendar.compose.rememberCalendarState
 import com.kizitonwose.calendar.core.CalendarDay
@@ -91,7 +92,7 @@ fun MetricsScreen(
     var selectionOptions by remember { mutableStateOf<List<String>>(options) }
      dateWiseTasks=
         allTasks?.sortedBy { it.pillar?.pillarId }
-            ?.sortedBy { it.todayTask.taskStatus == "COMPLETED" }
+            ?.sortedBy { it.todayTask.taskStatus == TaskStatus.COMPLETED.value }
             ?.groupBy { task ->  task.todayTask.taskDate }
            ?: mapOf()
 
@@ -103,11 +104,7 @@ fun MetricsScreen(
         Box(modifier = Modifier.fillMaxWidth().wrapContentHeight()){
             TaskTypeDropdown(
                 optionsSelected = { selectedPillars ->
-                    Logger.e("TaskTypeDropdown     $selectedPillars")
-//                    metricsViewModel.loadTasks(selectedPillars)
                     selectionOptions = selectedPillars
-
-                    Logger.e("dateWiseTasks     $dateWiseTasks")
                 }
             )
 
@@ -203,8 +200,8 @@ private fun MonthDay(
     onDateClicked: (LocalDate) -> Unit
 ) {
     val todayTasks: List<TodayTaskWithFewDetails> = ttasks?.filter { selectionOptions.contains(it.pillar?.pillarName)}?: listOf()
-    val t3 = (todayTasks.filter { it.todayTask.taskPageTag == "TOP3"})
-    val top3completed = t3.isNotEmpty() && t3.all{ it.todayTask.taskStatus == "COMPLETED" }
+    val t3 = (todayTasks.filter { it.todayTask.taskPageTag == TaskType.TOP3.value})
+    val top3completed = t3.isNotEmpty() && t3.all{ it.todayTask.taskStatus == TaskStatus.COMPLETED.value }
     Box(modifier = Modifier.wrapContentSize()) {
 
         Box(
@@ -217,7 +214,7 @@ private fun MonthDay(
                 .border(1.dp, if( MyDate.fromLocalDate(day.date).dateString == MyDate.now().dateString) Yellow180 else Color.Transparent, RoundedCornerShape(if (isSelected) 15.dp else 20.dp))
                 .background(
                     color = when (day.position) {
-                        DayPosition.MonthDate -> if (todayTasks.size>0 && todayTasks.all { it.todayTask.taskStatus=="COMPLETED" }) LightRed80 else if (isSelected) Color.White else Color.Transparent
+                        DayPosition.MonthDate -> if (todayTasks.size>0 && todayTasks.all { it.todayTask.taskStatus==TaskStatus.COMPLETED.value }) LightRed80 else if (isSelected) Color.White else Color.Transparent
                         DayPosition.InDate, DayPosition.OutDate -> Color.Transparent
                     }
                 )
@@ -246,7 +243,7 @@ private fun MonthDay(
                         var currentAngle = startAngle
                         todayTasks.forEach { task ->
                             drawArc(
-                                color = if (task.todayTask.taskStatus == "COMPLETED") {
+                                color = if (task.todayTask.taskStatus == TaskStatus.COMPLETED.value) {
                                     getDarkPillarColor(pillarName = task.pillar?.pillarName)
                                 } else Color.White,
                                 startAngle = currentAngle,
@@ -279,14 +276,14 @@ private fun MonthDay(
 
                 Image(
                     painterResource(Res.drawable.crown_background_a),
-                    contentDescription = "sdfgf",
+                    contentDescription = "Crown background",
                     colorFilter = ColorFilter.tint(Color.White),
                     modifier = Modifier
                         .fillMaxSize()
                 )
                 Image(
                     painterResource(Res.drawable.crown_a),
-                    contentDescription = "sdfgf",
+                    contentDescription = "Crown icon",
                     colorFilter = ColorFilter.tint(Yellow180),
                     modifier = Modifier
                         .fillMaxSize()

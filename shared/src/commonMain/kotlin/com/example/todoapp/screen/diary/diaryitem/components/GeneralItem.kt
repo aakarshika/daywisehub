@@ -13,7 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.screen.basicutils.components.DiaryLineText
-import com.example.todoapp.screen.missions.Blue80
+import com.example.todoapp.screen.basicutils.Blue80
 
 val columnWeights = listOf(1f, 5f, 2f)
 val columnWeightsLeftShifted = listOf(1.1f, 5f, 2f)

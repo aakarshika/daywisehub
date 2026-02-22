@@ -1,6 +1,5 @@
 package com.example.todoapp.di
 
-import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.repo.LoginRepository
 import com.example.todoapp.repo.MilestoneRepository
 import com.example.todoapp.repo.MissionRepository
@@ -57,8 +56,8 @@ fun vmModule(): Module {
         factory { (day: LocalDate) -> BottomHighlightsViewModel(get(), day) }
         factory { MetricsViewModel(get()) }
 
-        factory { (day: LocalDate) -> MoodViewModel(get(), day) }
-        factory { (day: LocalDate) -> WaterIntakeViewModel(get(), day) }
+        factory { (day: LocalDate) -> MoodViewModel(get()) }
+        factory { (day: LocalDate) -> WaterIntakeViewModel(get()) }
         factory { PlanningViewModel(get(), get()) }
 
 

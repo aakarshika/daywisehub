@@ -1,4 +1,4 @@
-package com.example.todoapp.db.data.mood
+package com.example.todoapp.db.data.water
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity

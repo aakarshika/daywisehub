@@ -1,6 +1,5 @@
 package com.example.todoapp.db.models
 
-import co.touchlab.kermit.Logger
 import com.kizitonwose.calendar.core.minusDays
 import com.kizitonwose.calendar.core.now
 import com.kizitonwose.calendar.core.plusDays
@@ -8,30 +7,27 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.daysUntil
 
 data class MyDate(
-    val dateString: String // yyyy-mm-dd
+    val dateString: String // yyyy-MM-dd (zero-padded ISO format)
 ) {
     companion object {
 
         fun daysBetween(date1: MyDate, date2: MyDate): Int {
-            val x = date1.toLocalDate().daysUntil(date2.toLocalDate())
-            Logger.e("daysBetween $date1, $date2 = $x")
-            return x
+            return date1.toLocalDate().daysUntil(date2.toLocalDate())
         }
         fun now(): MyDate {
-            val d = LocalDate.now()
-            return MyDate(dateString = "${d.year}-${d.monthNumber}-${d.dayOfMonth}")
+            return fromLocalDate(LocalDate.now())
         }
-        //locale date to mydate
         fun fromLocalDate(date: LocalDate): MyDate {
-            return MyDate(dateString = "${date.year}-${date.monthNumber}-${date.dayOfMonth}")
+            val m = date.monthNumber.toString().padStart(2, '0')
+            val d = date.dayOfMonth.toString().padStart(2, '0')
+            return MyDate(dateString = "${date.year}-$m-$d")
         }
-
     }
     fun addDays(days: Int): MyDate {
-        return MyDate(dateString = fromLocalDate(toLocalDate().plusDays(days)).dateString)
+        return fromLocalDate(toLocalDate().plusDays(days))
     }
     fun subtractDays(days: Int): MyDate {
-        return MyDate(dateString = fromLocalDate(toLocalDate().minusDays(days)).dateString)
+        return fromLocalDate(toLocalDate().minusDays(days))
     }
     fun toLocalDate(): LocalDate {
         val parts = dateString.split("-").map { it.toInt() }

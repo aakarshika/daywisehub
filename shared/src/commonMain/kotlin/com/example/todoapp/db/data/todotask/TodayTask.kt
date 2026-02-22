@@ -6,6 +6,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.models.MyDate
+import com.example.todoapp.db.models.TaskType
 
 @Entity(
     tableName = "today_task",
@@ -24,7 +25,7 @@ data class TodayTask(
 
     @ColumnInfo(name = "task_status") val taskStatus: String?,//suggested, rejected, added, in progress, refreshed, completed.
     @ColumnInfo(name = "task_progress_val") val taskProgressVal: Float,
-    @ColumnInfo(name = "task_page_tag") val taskPageTag: String? = "TODO",
+    @ColumnInfo(name = "task_page_tag") val taskPageTag: String? = TaskType.TODO.value,
 
     @ColumnInfo(name = "task_type") val taskType: String,// comment, today task, highlight, system generated.
     @ColumnInfo(name = "task_text") val taskText: String?, //task text, picture, link, - for system generated task.

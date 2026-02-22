@@ -2,7 +2,6 @@ package com.example.todoapp.screen.missions.calendar.progress
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
 import com.example.todoapp.db.data.mission.missionstuff.MissionFrequency
@@ -15,6 +14,7 @@ import com.example.todoapp.repo.TodayTaskRepository
 import com.kizitonwose.calendar.core.CalendarDay
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -24,17 +24,17 @@ class DayMissionProgressViewModel(
     private val missionId: Long
 ) : ViewModel() {
 
-    val milestones: MutableSharedFlow<List<MilestoneWithDetails>?> = MutableSharedFlow(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-    val tasks: MutableSharedFlow<List<TodayTaskWithFewDetails>?> = MutableSharedFlow(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-//    val dayTasks: MutableSharedFlow<Mission?> = MutableSharedFlow(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    private val _milestones: MutableSharedFlow<List<MilestoneWithDetails>?> = MutableSharedFlow(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val milestones: SharedFlow<List<MilestoneWithDetails>?> = _milestones
 
+    private val _tasks: MutableSharedFlow<List<TodayTaskWithFewDetails>?> = MutableSharedFlow(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val tasks: SharedFlow<List<TodayTaskWithFewDetails>?> = _tasks
 
     fun loadMileDetails() {
         viewModelScope.launch {
             milestoneRepository.getAllMilestonesForMission(missionId)
                 .collectLatest {
-                    Logger.w("milestones: ${it}")
-                    milestones.tryEmit(it)
+                    _milestones.tryEmit(it)
                 }
         }
     }
@@ -43,8 +43,7 @@ class DayMissionProgressViewModel(
         viewModelScope.launch {
             todayTaskRepository.getAllTasksForMission(missionId)
                 .collectLatest {
-                    Logger.w("tasks: ${it}")
-                    tasks.tryEmit(it)
+                    _tasks.tryEmit(it)
                 }
         }
     }

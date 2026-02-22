@@ -41,14 +41,13 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.mission.Mission
-import com.example.todoapp.db.data.mood.WaterIntake
+import com.example.todoapp.db.data.water.WaterIntake
 import com.example.todoapp.screen.basicutils.components.DiaryLineText
 import com.example.todoapp.screen.basicutils.components.NotesLineText
 import com.example.todoapp.screen.basicutils.components.NotesTextField
 import com.example.todoapp.screen.basicutils.components.WritingTextField
-import com.example.todoapp.screen.missions.Blue80
+import com.example.todoapp.screen.basicutils.Blue80
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.painterResource
 import todoapp.shared.generated.resources.Res
@@ -92,7 +91,6 @@ fun NotesItem(
                 ) {
                     if(editing.value) {
                         NotesEdit(nn, editing.value, upsertWaterIntake, textArranged, editDone={
-                            Logger.e("editiiiiinnnnnggggg")
                             editing.value = false
                         })
                     } else {
@@ -212,16 +210,5 @@ private fun NotesEdit(
             )
         }
 
-
-//                        NotesTextField(
-//                            taskName = "${nn.value}",
-//                            modifier = Modifier
-//                                .fillMaxWidth(),
-//                            placeHolder = "",
-//                            valueChanged = { it ->
-//                                nn.value = it
-//                                upsertWaterIntake(nn.value)
-//                            },
-//                        )
     }
 }

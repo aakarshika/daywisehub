@@ -13,6 +13,7 @@ fun getDatabaseBuilder(ctx: Context): RoomDatabase.Builder<AppDatabase> {
         context = appContext,
         name = dbFile.absolutePath
     )
+        .fallbackToDestructiveMigration(true)
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)
 }

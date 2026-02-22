@@ -5,7 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
-import co.touchlab.kermit.Logger
+import androidx.room.Update
 import com.example.todoapp.db.data.mission.milestone.Milestone
 import com.example.todoapp.db.data.mission.missionstuff.MissionFrequency
 import com.example.todoapp.db.data.mission.missionstuff.MissionPillarMapping
@@ -19,7 +19,7 @@ interface MissionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun addMission(mission: Mission): Long
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Update
     suspend fun updateMission(mission: Mission)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -45,33 +45,12 @@ interface MissionDao {
     suspend fun upsertFrequencySet(frequencySet: MissionFrequency)
 
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertMilestones(milestones: List<Milestone>)
-
-//    @Transaction
-//    @Query("""SELECT m.*,p.*,mf.*,mil.*,tt.*
-//        FROM mission m
-//        LEFT JOIN mission_pillar_mapping mp ON m.mission_id = mp.mission_mapping_id
-//        LEFT JOIN pillar p ON mp.pillar_mapping_id = p.pillar_id
-//        LEFT JOIN mission_frequency mf ON m.mission_id = mf.fs_mission_id
-//        LEFT JOIN milestone mil ON mil.mile_mission_id = m.mission_id
-//        ---LEFT JOIN today_task  tt ON tt.task_mission_id = m.mission_id and tt.task_date between date(:date,'-1 month') and :date
-//        """)
-//    fun getMissionsWithTaskHistory(date: String): Flow<List<MissionWithTaskHistory>>
-
     @Transaction
     @Query("""SELECT m.*,p.*,mf.*
-            ---(select count(*) from today_task tt 
-           --- where tt.task_mission_id = m.mission_id and 
-              ---  tt.task_date between date(:date,'-1 month') and :date) as nTasksCompletedThisMonth,
-            ---(select count(*) from today_task tt 
-           --- where tt.task_mission_id = m.mission_id and 
-              ---  tt.task_date between date(:date,'-1 week') and :date) as nTasksCompletedThisWeek
         FROM mission m
         LEFT JOIN mission_pillar_mapping mp ON m.mission_id = mp.mission_mapping_id 
         LEFT JOIN pillar p ON mp.pillar_mapping_id = p.pillar_id
         LEFT JOIN mission_frequency mf ON m.mission_id = mf.fs_mission_id
-        ---LEFT JOIN milestone mil ON mil.mile_mission_id = m.mission_id and mil.expected_completion_date between date(:date,'+2 day') and :date
         """)
     fun getMissions(): Flow<List<MissionWithFewDetails>>
 
@@ -81,11 +60,6 @@ interface MissionDao {
         FROM mission m WHERE m.user_id = :userId
     """)
      fun getAllMissionIds(userId: Long): Flow<List<Long>>
-    //
-    @Transaction
-    @Query("SELECT * FROM pillar")
-     fun getAllPillars(): Flow<List<Pillar>>
-
 
     @Query("SELECT * FROM Mission WHERE mission_id = :missionId")
     fun getMission(missionId: Long): Flow<Mission>
@@ -109,9 +83,6 @@ interface MissionDao {
 
     @Transaction
     suspend fun insertFullMission(missionWithDetails: MissionWithDetails): Long {
-        Logger.e("MissionDAO")
-        Logger.e("$missionWithDetails")
-
         val mission = missionWithDetails.mission
         val frequencySet = missionWithDetails.missionFrequency
         val milestones = missionWithDetails.milestones
@@ -143,7 +114,7 @@ interface MissionDao {
         return missionId
     }
 
-    suspend fun deleteMilestonesss(
+    suspend fun clearMilestones(
         missionId: Long
     ) {
         deleteMilestones(missionId = missionId)
@@ -152,7 +123,7 @@ interface MissionDao {
         milestones: List<Milestone>,
         missionId: Long
     ) {
-        deleteMilestonesss(missionId)
+        clearMilestones(missionId)
         milestones.forEach { mile ->
             val mileId = upsertMilestone(mile.copy(missionId = missionId))
         }

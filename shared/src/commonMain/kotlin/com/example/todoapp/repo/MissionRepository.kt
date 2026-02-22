@@ -10,7 +10,6 @@ import com.example.todoapp.db.data.mission.missionstuff.MissionFrequency
 import com.example.todoapp.db.data.mission.missionstuff.MissionPillarMapping
 import com.example.todoapp.db.data.pillar.Pillar
 import com.example.todoapp.db.models.MyDate
-import com.example.todoapp.screen.init.UserInitManager
 import kotlinx.coroutines.flow.Flow
 
 class MissionRepository(private val database: AppDatabase) {
@@ -42,13 +41,8 @@ class MissionRepository(private val database: AppDatabase) {
     }
 
     //get all missions
-     fun getAllPillars(): Flow<List<Pillar>> {
-        return missionDao.getAllPillars()
-    }
-
-    //get all missions
-     fun getAllMissionIds(): Flow<List<Long>> {
-        return missionDao.getAllMissionIds(UserInitManager.getUserId())
+     fun getAllMissionIds(userId: Long): Flow<List<Long>> {
+        return missionDao.getAllMissionIds(userId)
     }
 
     //insert or update mission
@@ -68,7 +62,6 @@ class MissionRepository(private val database: AppDatabase) {
     }
     //update milestones
     suspend fun updateMilestones(milestones: List<Milestone>, missionId: Long) {
-        missionDao.deleteMilestones(missionId = missionId)
         missionDao.updateMilestones(milestones, missionId = missionId)
     }
 

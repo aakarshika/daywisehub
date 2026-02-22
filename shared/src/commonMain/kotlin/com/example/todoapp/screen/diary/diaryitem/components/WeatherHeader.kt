@@ -21,8 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.unit.dp
-import com.example.todoapp.screen.missions.Blue180
-import com.example.todoapp.screen.missions.Blue80
+import com.example.todoapp.screen.basicutils.Blue180
+import com.example.todoapp.screen.basicutils.Blue80
 
 
 @Composable

@@ -40,7 +40,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import com.example.todoapp.di.KoinF
 import com.example.todoapp.screen.missions.calendar.progress.DayMissionProgressViewModel
-import com.example.todoapp.screen.missions.getPillarColor
+import com.example.todoapp.screen.basicutils.darken
+import com.example.todoapp.screen.basicutils.getPillarColor
 import org.koin.core.parameter.parametersOf
 
 @Composable

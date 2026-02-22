@@ -26,10 +26,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.todotask.TodayTaskReminder
 import com.example.todoapp.db.models.MyDate
+import com.example.todoapp.db.models.TaskStatus
+import com.example.todoapp.db.models.TaskType
 import com.example.todoapp.screen.diary.ComboTask
 import com.example.todoapp.screen.diary.DiaryViewModel
 import com.example.todoapp.screen.diary.diaryitem.components.GeneralItem
@@ -38,7 +39,7 @@ import com.example.todoapp.screen.diary.diaryitem.components.GeneralItemHabit
 import com.example.todoapp.screen.diary.diaryitem.components.GeneralItemTop3Star
 import com.example.todoapp.screen.diary.diaryitem.components.GeneralItemTopButton
 import com.example.todoapp.screen.diary.diaryitem.components.ItemProgressBar
-import com.example.todoapp.screen.missions.Blue80
+import com.example.todoapp.screen.basicutils.Blue80
 import kotlinx.datetime.LocalDate
 import kottieComposition.KottieCompositionSpec
 import kottieComposition.animateKottieCompositionAsState
@@ -107,10 +108,9 @@ private fun Item(
             editingTaskMode.value
         ) { tt, check -> }
     }
-    if (editingTaskMode.value == "ViewItems" && hTask.todayTask?.taskStatus != "COMPLETED") {
+    if (editingTaskMode.value == "ViewItems" && hTask.todayTask?.taskStatus != TaskStatus.COMPLETED.value) {
         ItemProgressBar(rowHeight.value, selection, hTask, editingTaskMode.value) { progress ->
             updateTaskProgress(selection, hTask, progress, taskViewModel)
-            Logger.e("task Progress $progress")
             taskProgress(progress)
         }
     }
@@ -120,17 +120,17 @@ private fun Item(
                 updateTaskPriority(
                     selection,
                     hTask,
-                    if (check) "TOP3" else "TODO",
+                    if (check) TaskType.TOP3.value else TaskType.TODO.value,
                     taskViewModel
                 )
             }
         }
     }
-    if (editingTaskMode.value == "ViewItems" && hTask.todayTask?.taskStatus == "COMPLETED") {
+    if (editingTaskMode.value == "ViewItems" && hTask.todayTask?.taskStatus == TaskStatus.COMPLETED.value) {
         GeneralItemCheckbox(rowHeight.value, hTask, editingTaskMode.value) { tt, check ->
             updateTaskStatus(
                 selection, hTask,
-                if (check) "COMPLETED" else "REFRESHED", taskViewModel
+                if (check) TaskStatus.COMPLETED.value else "REFRESHED", taskViewModel
             )
         }
     }
@@ -168,9 +168,9 @@ fun updateTaskProgress(
     taskViewModel: DiaryViewModel
 ) {
     var pp = progress
-    var status = t.todayTask?.taskStatus?:"ADDED"
+    var status = t.todayTask?.taskStatus?: TaskStatus.ADDED.value
     if(progress==1f){
-        status = "COMPLETED"
+        status = TaskStatus.COMPLETED.value
     } else {
         status = "REFRESHED"
     }
@@ -178,7 +178,6 @@ fun updateTaskProgress(
         taskProgressVal = pp,
         taskStatus = status
     )
-    Logger.w("updating/inserting task : ${updatedTask}")
     upsertTask(updatedTask, taskViewModel)
 }
 fun upsertTask(
@@ -204,10 +203,10 @@ fun getNewTask(missionId: Long, taskDate: LocalDate): TodayTask{
         todayTaskId = 0L, // Example task ID
         userId = 1L, // Example userId
         missionId = missionId,
-        taskStatus = "ADDED",
+        taskStatus = TaskStatus.ADDED.value,
         taskDate = MyDate.fromLocalDate(taskDate) ,
-        taskType = "USER_HABIT", // Example type
-        taskPageTag = "TODO",
+        taskType = "USER_HABIT",
+        taskPageTag = TaskType.TODO.value,
         taskProgressVal = 0f, // Example progress
         taskText = "", // Example text
         taskPictureUrl = null, // Example URL (can be null)

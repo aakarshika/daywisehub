@@ -21,8 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
-import co.touchlab.kermit.Logger
-import com.example.todoapp.screen.missions.Blue180
+import com.example.todoapp.screen.basicutils.Blue180
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.painterResource
 import todoapp.shared.generated.resources.Res

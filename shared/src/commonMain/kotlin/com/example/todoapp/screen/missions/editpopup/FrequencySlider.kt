@@ -20,8 +20,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.pillar.Pillar
-import com.example.todoapp.screen.missions.getDarkPillarColor
-import com.example.todoapp.screen.missions.getPillarColor
+import com.example.todoapp.screen.basicutils.getDarkPillarColor
+import com.example.todoapp.screen.basicutils.getPillarColor
 
 /**
  * Frequency slider for selecting mission frequency

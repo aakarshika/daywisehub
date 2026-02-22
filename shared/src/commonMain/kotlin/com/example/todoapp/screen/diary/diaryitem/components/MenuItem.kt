@@ -13,9 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import co.touchlab.kermit.Logger
 import com.example.todoapp.screen.diary.ComboTask
-import com.example.todoapp.screen.missions.Blue80
+import com.example.todoapp.screen.basicutils.Blue80
 import kotlinx.datetime.LocalDate
 
 @Composable
@@ -46,7 +45,6 @@ fun MenuItem(
                                 }) { Text("     +    ") }
 
                                 Box(modifier = Modifier.clickable {
-                                    Logger.e("Is Priority?")
                                     if (editingMode == "ViewItems")
                                         prioritizeClicked("prioritize")
                                     else

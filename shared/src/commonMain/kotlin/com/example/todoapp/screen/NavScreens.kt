@@ -5,12 +5,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddCircle
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -23,14 +17,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import co.touchlab.kermit.Logger
 import com.example.todoapp.app.MyScreen
 import com.example.todoapp.di.KoinF
 import com.example.todoapp.screen.diary.DiaryScreen
 import com.example.todoapp.screen.diary.DiaryViewModel
 import com.example.todoapp.screen.metrics.CalDiaryViewModel
 import com.example.todoapp.screen.metrics.MetricsScreen
-import com.example.todoapp.screen.diary.WeekCalendarScreen
 import com.example.todoapp.screen.diary.diaryitem.components.diarymood.MoodViewModel
 import com.example.todoapp.screen.diary.diaryitem.components.waterintake.WaterIntakeViewModel
 import com.example.todoapp.screen.metrics.MetricsViewModel
@@ -40,12 +32,12 @@ import com.example.todoapp.screen.missions.MissionsControllerScreen
 import com.example.todoapp.screen.missions.MissionsControllerViewModel
 import kotlinx.datetime.LocalDate
 import moe.tlaster.precompose.navigation.NavHost
+import moe.tlaster.precompose.navigation.NavOptions
+import moe.tlaster.precompose.navigation.PopUpTo
 import moe.tlaster.precompose.navigation.rememberNavigator
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.parameter.parametersOf
 import todoapp.shared.generated.resources.Res
-import todoapp.shared.generated.resources.diary
-import todoapp.shared.generated.resources.diary_handmade
 import todoapp.shared.generated.resources.diary_heart_closed
 import todoapp.shared.generated.resources.metrics_calendar
 import todoapp.shared.generated.resources.target
@@ -54,18 +46,23 @@ import todoapp.shared.generated.resources.target
 @Composable
 fun NavScreens(calDateViewModel: CalDiaryViewModel) {
     val navigator = rememberNavigator()
-    val modifier = Modifier
     val backStackEntry by navigator.currentEntry.collectAsState(null)
 
     val currentDate by calDateViewModel.currentDate.collectAsState()
 
-//    val diaryViewModel = KoinF.di?.get<CalDiaryViewModel>()!!
-
-    // Get the name of the current screen
     val currentScreen = MyScreen.valueOf(
         backStackEntry?.route?.route ?: MyScreen.Diary.name
     )
 
+    fun navigateTab(screen: MyScreen) {
+        navigator.navigate(
+            screen.name,
+            NavOptions(
+                launchSingleTop = true,
+                popUpTo = PopUpTo(MyScreen.Diary.name, inclusive = false)
+            )
+        )
+    }
 
     Scaffold(
         bottomBar = {
@@ -74,7 +71,7 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                     selected = currentScreen == MyScreen.Diary,
                     onClick = {
                         if (currentScreen != MyScreen.Diary) {
-                            navigator.navigate(MyScreen.Diary.name)
+                            navigateTab(MyScreen.Diary)
                         }
                     },
                     label = { Text("Diary") },
@@ -85,7 +82,7 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                     selected = currentScreen == MyScreen.Missions,
                     onClick = {
                         if(currentScreen != MyScreen.Missions) {
-                            navigator.navigate(MyScreen.Missions.name)
+                            navigateTab(MyScreen.Missions)
                         }
                     },
                     label = { Text("Missions") },
@@ -95,7 +92,7 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                     selected = currentScreen == MyScreen.Calendar,
                     onClick = {
                         if (currentScreen != MyScreen.Calendar) {
-                            navigator.navigate(MyScreen.Calendar.name)
+                            navigateTab(MyScreen.Calendar)
                         }
                     },
                     label = { Text("Metrics") },
@@ -117,8 +114,7 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                 }
                 scene(route = MyScreen.Diary.name) {
                     Scaffold(
-                        topBar = {
-                        }
+                        topBar = {}
                     ){
                         DiaryScreen(
                             KoinF.di?.get<DiaryViewModel> {
@@ -127,13 +123,7 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                             KoinF.di?.get<MoodViewModel> { parametersOf(currentDate) }!!,
                             KoinF.di?.get<WaterIntakeViewModel> { parametersOf(currentDate) }!!,
                             currentDate,
-                            goToTomorrow={
-                                calDateViewModel.selectNextDate() },
-                            goToYesterday={
-                                calDateViewModel.selectPreviousDate() },
                             changeDate={ date:LocalDate ->
-                                Logger.e("DATE changed $date selected date  ")
-
                                 calDateViewModel.selectDate(date)
                             }
                         )
@@ -159,7 +149,7 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                                         } ?: error("BottomHighlightsViewModel not found"),
                                         currentDate,
                                         goToDiary = {
-                                            navigator.navigate(MyScreen.Diary.name)
+                                            navigateTab(MyScreen.Diary)
                                         }
                                     )
                                 }

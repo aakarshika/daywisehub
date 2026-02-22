@@ -14,9 +14,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.todoapp.screen.basicutils.components.CustomTop3Button
+import com.example.todoapp.db.models.TaskType
 import com.example.todoapp.screen.diary.ComboTask
 import com.example.todoapp.screen.basicutils.cal.clickable
-import com.example.todoapp.screen.missions.Orange80
+import com.example.todoapp.screen.basicutils.Orange80
 
 @Composable
 fun GeneralItemTopButton(
@@ -25,7 +26,7 @@ fun GeneralItemTopButton(
     editingMode:String,
     taskIsTop: (ComboTask?, Boolean) -> Unit,
 ) {
-    val isChecked = todoTask?.todayTask?.taskPageTag == "TOP3"
+    val isChecked = todoTask?.todayTask?.taskPageTag == TaskType.TOP3.value
 
     Box(modifier = Modifier.fillMaxWidth().height(RowHeight.dp)){
         Row(modifier = Modifier.fillMaxWidth()

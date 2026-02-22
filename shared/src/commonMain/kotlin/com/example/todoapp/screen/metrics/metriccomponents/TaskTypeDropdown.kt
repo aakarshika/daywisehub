@@ -29,9 +29,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import com.example.todoapp.screen.missions.Gray100
-import com.example.todoapp.screen.missions.getDarkPillarColor
-import com.example.todoapp.screen.missions.getPillarColor
+import com.example.todoapp.screen.basicutils.Gray100
+import com.example.todoapp.screen.basicutils.getDarkPillarColor
+import com.example.todoapp.screen.basicutils.getPillarColor
 
 val options = listOf("HEALTH", "WEALTH", "LOVE", "LIFE")
 

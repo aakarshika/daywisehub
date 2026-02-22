@@ -23,8 +23,9 @@ import androidx.compose.ui.unit.dp
 import com.example.todoapp.db.data.mission.missionstuff.MissionFrequency
 import com.example.todoapp.getScreenWidth
 import com.example.todoapp.screen.basicutils.components.WriteText
+import com.example.todoapp.db.models.TaskStatus
 import com.example.todoapp.screen.diary.ComboTask
-import com.example.todoapp.screen.missions.getPillarColor
+import com.example.todoapp.screen.basicutils.getPillarColor
 import kotlinx.datetime.LocalDate
 
 
@@ -38,7 +39,7 @@ fun ItemProgressBar(
     editingMode:String,
     onTaskProgressUpdated: (Float) -> Unit,
 ) {
-    val isTaskCompleted = ct.todayTask?.taskStatus == "COMPLETED"
+    val isTaskCompleted = ct.todayTask?.taskStatus == TaskStatus.COMPLETED.value
     var taskProgress = remember { mutableStateOf(0f) }
 
     LaunchedEffect(selection) {

@@ -16,7 +16,7 @@ import androidx.room.PrimaryKey
     indices = [Index(value = ["sub_today_task_id"])]
 )
 data class SubTask(
-    @PrimaryKey(autoGenerate = true)@ColumnInfo(name = "task_sub_work_id") val taskSubWorkId: Long = -1L,
+    @PrimaryKey(autoGenerate = true) @ColumnInfo(name = "task_sub_work_id") val taskSubWorkId: Long = 0L,
     @ColumnInfo(name = "sub_today_task_id") val todayTaskId: Long,
     @ColumnInfo(name = "sub_work_text") val workText: String,
     @ColumnInfo(name = "sub_work_type") val workType: String,

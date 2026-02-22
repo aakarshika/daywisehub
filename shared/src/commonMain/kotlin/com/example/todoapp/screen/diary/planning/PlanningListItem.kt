@@ -33,12 +33,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.example.todoapp.db.models.TaskType
 import com.example.todoapp.screen.diary.diaryitem.components.GeneralItem
-import com.example.todoapp.screen.missions.Blue80
-import com.example.todoapp.screen.missions.DARKGREEN180
-import com.example.todoapp.screen.missions.Orange20
-import com.example.todoapp.screen.missions.Red80
-import com.example.todoapp.screen.missions.Yellow180
+import com.example.todoapp.screen.basicutils.Blue80
+import com.example.todoapp.screen.basicutils.DARKGREEN180
+import com.example.todoapp.screen.basicutils.Orange20
+import com.example.todoapp.screen.basicutils.Red80
+import com.example.todoapp.screen.basicutils.Yellow180
 import org.jetbrains.compose.resources.painterResource
 import todoapp.shared.generated.resources.Res
 import todoapp.shared.generated.resources.crown_a
@@ -128,13 +129,13 @@ fun PlanningListItem(
                                     .padding(end = 8.dp)
                                     .size(35.dp)
                                     .background(
-                                        color = if(mission.missionTaskToday?.taskPageTag!="TOP3") Color.LightGray else Yellow180,
-                                        shape = if(mission.missionTaskToday?.taskPageTag!="TOP3") RoundedCornerShape(3.dp) else CircleShape
+                                        color = if(mission.missionTaskToday?.taskPageTag!=TaskType.TOP3.value) Color.LightGray else Yellow180,
+                                        shape = if(mission.missionTaskToday?.taskPageTag!=TaskType.TOP3.value) RoundedCornerShape(3.dp) else CircleShape
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    painterResource(if(mission.missionTaskToday?.taskPageTag!="TOP3") Res.drawable.crown_b else Res.drawable.crown_c),
+                                    painterResource(if(mission.missionTaskToday?.taskPageTag!=TaskType.TOP3.value) Res.drawable.crown_b else Res.drawable.crown_c),
                                     contentDescription = "Add to mission",
                                     modifier = Modifier.size(20.dp),
                                     tint = Color.White

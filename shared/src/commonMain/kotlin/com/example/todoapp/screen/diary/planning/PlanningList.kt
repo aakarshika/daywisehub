@@ -14,10 +14,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.mission.MissionWithFewDetails
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.models.MyDate
+import com.example.todoapp.db.models.TaskStatus
+import com.example.todoapp.db.models.TaskType
 import com.kizitonwose.calendar.core.minusDays
 import com.kizitonwose.calendar.core.now
 import kotlinx.datetime.DayOfWeek
@@ -31,48 +32,18 @@ enum class MissionCategory {
 val wittyComments = mapOf(
     "DAILY_MISSED" to listOf(
         "It's been more than 2 days since you've done this daily habit!",
-//        "Oops, your daily streak is broken! Time to get back on track!",
-//        "It's been more than 2 days since you've done this daily habit!",
-//        "Missing your daily habit? It's feeling neglected!",
-//        "It's been more than 2 days since you've done this daily habit!",
-//        "It's been more than 2 days since you've done this daily habit!",
-//        "Two days without your daily habit? That's a red flag!"
     ),
     "BIWEEKLY_QUOTA_MISSED" to listOf(
         "You haven't met your weekly goals in the past two weeks!",
-//        "Your weekly goals are giving you the silent treatment!",
-//        "You haven't met your weekly goals in the past two weeks!",
-//        "Those weekly targets aren't going to hit themselves!",
-//        "You haven't met your weekly goals in the past two weeks!",
-//        "Your weekly quota is seriously under-achieved right now.",
-//        "You haven't met your weekly goals in the past two weeks!"
     ),
     "WEEKLY_QUOTA_MISSED" to listOf(
         "This week's goal pending.",
-//        "Your weekly goals are giving you the silent treatment!",
-//        "You haven't met your weekly goals in the past two weeks!",
-//        "Those weekly targets aren't going to hit themselves!",
-//        "You haven't met your weekly goals in the past two weeks!",
-//        "Your weekly quota is seriously under-achieved right now.",
-//        "You haven't met your weekly goals in the past two weeks!"
     ),
     "BIMONTHLY_QUOTA_MISSED" to listOf(
         "Your monthly quota hasn't been met in two months!!",
-//        "Your monthly mission is crying for attention!",
-//        "Monthly goals feeling abandoned lately?",
-//        "Your monthly quota hasn't been met in two months!",
-//        "Two months of missed targets? That's commitment to procrastination!",
-//        "Your monthly quota hasn't been met in two months!",
-//        "Your monthly quota has gone from 'do later' to 'critical'!"
     ),
     "MONTHLY_QUOTA_MISSED" to listOf(
         "Your monthly quota hasn't been met  this month",
-//        "Your monthly mission is crying for attention!",
-//        "Monthly goals feeling abandoned lately?",
-//        "Your monthly quota hasn't been met in two months!",
-//        "Two months of missed targets? That's commitment to procrastination!",
-//        "Your monthly quota hasn't been met in two months!",
-//        "Your monthly quota has gone from 'do later' to 'critical'!"
     )
 )
 
@@ -100,12 +71,7 @@ fun PlanningList(todaysDate: LocalDate, viewModel: PlanningViewModel) {
     val biweektasks = (1..15).map { MyDate.fromLocalDate(date.minusDays(it)).dateString }.flatMap { dateWiseTasks[it].orEmpty() }
     val monthtasks = (1..30).map { MyDate.fromLocalDate(date.minusDays(it)).dateString }.flatMap { dateWiseTasks[it].orEmpty() }
     val twomonth = (1..60).map { MyDate.fromLocalDate(date.minusDays(it)).dateString }.flatMap { dateWiseTasks[it].orEmpty() }
-//
-//    Logger.e ("$date,  twodays: ${twodays.size}, " +
-//                            "weektasks: ${weektasks.size}, "+
-//                            "biweektasks: ${biweektasks.size}, "+
-//                            "monthtasks: ${monthtasks.size}, "+
-//                            "twomonth: ${twomonth.size}")
+
     val redMissions = remember(allMissions, tasksMonth) {
         allMissions.mapNotNull { mission ->
             val reasons = mutableListOf<String>()
@@ -113,15 +79,15 @@ fun PlanningList(todaysDate: LocalDate, viewModel: PlanningViewModel) {
             // Check if the mission is DAILY, WEEKLY, or MONTHLY and if it's missed
             when {
                 mission.missionFrequency?.isDailyHabit == true || mission.missionFrequency?.frequencyPeriod == "DAILY" ->
-                    if (twodays.count { it.missionId == mission.mission?.missionId && it.taskStatus == "COMPLETED" } < (mission.missionFrequency?.frequency ?: 1)) {
+                    if (twodays.count { it.missionId == mission.mission?.missionId && it.taskStatus == TaskStatus.COMPLETED.value } < (mission.missionFrequency?.frequency ?: 1)) {
                         reasons.add(wittyComments["DAILY_MISSED"]?.random() ?: "You've missed your daily habit!")
                     }
                 mission.missionFrequency?.frequencyPeriod == "WEEKLY" ->
-                    if (biweektasks.count { it.missionId == mission.mission?.missionId && it.taskStatus == "COMPLETED" } < (mission.missionFrequency?.frequency ?: 1)) {
+                    if (biweektasks.count { it.missionId == mission.mission?.missionId && it.taskStatus == TaskStatus.COMPLETED.value } < (mission.missionFrequency?.frequency ?: 1)) {
                         reasons.add(wittyComments["BIWEEKLY_QUOTA_MISSED"]?.random() ?: "You've missed your weekly habit!")
                     }
                 mission.missionFrequency?.frequencyPeriod == "MONTHLY" ->
-                    if (twomonth.count { it.missionId == mission.mission?.missionId && it.taskStatus == "COMPLETED" } < (mission.missionFrequency?.frequency ?: 1)) {
+                    if (twomonth.count { it.missionId == mission.mission?.missionId && it.taskStatus == TaskStatus.COMPLETED.value } < (mission.missionFrequency?.frequency ?: 1)) {
                         reasons.add(wittyComments["BIMONTHLY_QUOTA_MISSED"]?.random() ?: "You've missed your monthly habit!")
                     }
             }
@@ -142,15 +108,15 @@ fun PlanningList(todaysDate: LocalDate, viewModel: PlanningViewModel) {
                 // Check if the mission is DAILY, WEEKLY, or MONTHLY and if it's partially completed
                 when {
                     mission.missionFrequency?.isDailyHabit == true || mission.missionFrequency?.frequencyPeriod == "DAILY" ->
-                        if (twodays.count { it.missionId == mission.mission?.missionId && it.taskStatus == "COMPLETED" } < (mission.missionFrequency?.frequency ?: 1)) {
+                        if (twodays.count { it.missionId == mission.mission?.missionId && it.taskStatus == TaskStatus.COMPLETED.value } < (mission.missionFrequency?.frequency ?: 1)) {
                             reasons.add(wittyComments["DAILY_MISSED"]?.random() ?: "You've missed your daily habit!")
                         }
                     mission.missionFrequency?.frequencyPeriod == "WEEKLY" ->
-                        if (weektasks.count { it.missionId == mission.mission?.missionId && it.taskStatus == "COMPLETED" } < (mission.missionFrequency?.frequency ?: 1)) {
+                        if (weektasks.count { it.missionId == mission.mission?.missionId && it.taskStatus == TaskStatus.COMPLETED.value } < (mission.missionFrequency?.frequency ?: 1)) {
                             reasons.add(wittyComments["WEEKLY_QUOTA_MISSED"]?.random() ?: "You've missed your weekly habit!")
                         }
                     mission.missionFrequency?.frequencyPeriod == "MONTHLY" ->
-                        if (monthtasks.count { it.missionId == mission.mission?.missionId && it.taskStatus == "COMPLETED" } < (mission.missionFrequency?.frequency ?: 1)) {
+                        if (monthtasks.count { it.missionId == mission.mission?.missionId && it.taskStatus == TaskStatus.COMPLETED.value } < (mission.missionFrequency?.frequency ?: 1)) {
                             reasons.add(wittyComments["MONTHLY_QUOTA_MISSED"]?.random() ?: "You've missed your monthly habit!")
                         }
                 }
@@ -236,10 +202,10 @@ private fun toggleHighlightTask(
     mission: CategorizedMission,
     viewModel: PlanningViewModel
 ) {
-    if (mission.missionTaskToday?.taskPageTag == "TOP3") {
-        viewModel.updateTag(mission.missionTaskToday!!.todayTaskId, "TODO")
+    if (mission.missionTaskToday?.taskPageTag == TaskType.TOP3.value) {
+        viewModel.updateTag(mission.missionTaskToday!!.todayTaskId, TaskType.TODO.value)
     } else {
-        viewModel.updateTag(mission.missionTaskToday!!.todayTaskId, "TOP3")
+        viewModel.updateTag(mission.missionTaskToday!!.todayTaskId, TaskType.TOP3.value)
     }
 }
 

@@ -2,10 +2,10 @@ package com.example.todoapp.screen.diary.planning
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.mission.Mission
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import com.example.todoapp.db.data.mission.MissionWithFewDetails
 import com.example.todoapp.db.data.todotask.TodayTask
@@ -23,8 +23,8 @@ class PlanningViewModel (
     private val todayTaskRepository: TodayTaskRepository
 ) : ViewModel() {
 
-//    val allMissions = MutableSharedFlow<List<MissionWithFewDetails>>(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-    val tasksPastMonth = MutableSharedFlow<List<TodayTask>>(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    private val _tasksPastMonth = MutableSharedFlow<List<TodayTask>>(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val tasksPastMonth: SharedFlow<List<TodayTask>> = _tasksPastMonth
 
     private val _allMissions = MutableStateFlow<List<MissionWithFewDetails>>(emptyList())
     val allMissions: StateFlow<List<MissionWithFewDetails>> = _allMissions.asStateFlow()
@@ -34,8 +34,7 @@ class PlanningViewModel (
         viewModelScope.launch {
             todayTaskRepository.getTasksPastMonth()
                 .collectLatest { tl ->
-                    Logger.w("loading tasks for month: ${tl}")
-                    tasksPastMonth.tryEmit(tl)
+                    _tasksPastMonth.tryEmit(tl)
                 }
         }
     }
@@ -65,22 +64,10 @@ class PlanningViewModel (
         }
     }
 
-//    fun loadMissions() {
-//        viewModelScope.launch {
-//            missionRepository.getMissions()
-//                .collectLatest { missionList ->
-//                    Logger.w("loading missions: ${missionList}")
-//                    allMissions.tryEmit(missionList)
-//                }
-//        }
-//    }
-
-
     fun loadMissions() {
         viewModelScope.launch {
             missionRepository.getMissions()
                 .collectLatest { missionList ->
-                    Logger.w("loading missions: ${missionList}")
                     _allMissions.value = missionList // Updates only the latest list
                 }
         }

@@ -17,8 +17,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.models.MyDate
+import com.example.todoapp.db.models.TaskStatus
 import com.example.todoapp.screen.diary.ComboTask
-import com.example.todoapp.screen.missions.Blue80
+import com.example.todoapp.screen.basicutils.Blue80
+import com.example.todoapp.screen.basicutils.Orange80
 import com.kizitonwose.calendar.core.minusDays
 import kotlinx.datetime.LocalDate
 
@@ -46,7 +48,7 @@ fun GeneralItemHabit(
                             .height(5.dp).width(7.dp).clip(RoundedCornerShape(2.dp))
                             .align(Alignment.Center)
                             .background(
-                                if (hTask.todayTask?.taskStatus == "COMPLETED") com.example.todoapp.screen.missions.Orange80
+                                if (hTask.todayTask?.taskStatus == TaskStatus.COMPLETED.value) Orange80
                                 else Color.White
                             )
                     )}
@@ -55,7 +57,7 @@ fun GeneralItemHabit(
                         modifier = Modifier
                             .height(5.dp).width(7.dp).clip(RoundedCornerShape(2.dp))
                             .background(
-                                if (t?.taskStatus == "COMPLETED") com.example.todoapp.screen.missions.Orange80
+                                if (t?.taskStatus == TaskStatus.COMPLETED.value) Orange80
                                 else Color.White
                             )
                     )
@@ -64,5 +66,3 @@ fun GeneralItemHabit(
         }
     }
 }
-
-val LightGray = Color(0xEEEEEEEE)

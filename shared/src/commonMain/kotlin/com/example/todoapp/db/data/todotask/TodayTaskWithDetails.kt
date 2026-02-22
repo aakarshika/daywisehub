@@ -5,6 +5,8 @@ import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.mission.MissionWithDetails
 import com.example.todoapp.db.data.mission.missionstuff.MissionFrequency
 import com.example.todoapp.db.data.pillar.Pillar
+import com.example.todoapp.db.models.TaskStatus
+import com.example.todoapp.db.models.TaskType
 
 
 data class TodayTaskWithFewDetails(
@@ -19,14 +21,14 @@ data class TodayTaskWithFewDetails(
             "habit(" +
                     "'m${mission?.missionId?:0L},t${todayTask?.todayTaskId?:0L}'${mission?.missionTitle}-${pillar?.pillarName}." +
                     (todayTask?.taskDate?.dateString?:"")+
-                    (if (todayTask?.taskStatus=="COMPLETED") "/CMPLD" else "")+
-                    (if (todayTask?.taskPageTag=="TOP3") "/T3" else "")+
+                    (if (todayTask?.taskStatus==TaskStatus.COMPLETED.value) "/CMPLD" else "")+
+                    (if (todayTask?.taskPageTag==TaskType.TOP3.value) "/T3" else "")+
                     ")"
         else "todo(" +
                 "'m${mission?.missionId?:0L},t${todayTask?.todayTaskId?:0L}'${mission?.missionTitle}-${pillar?.pillarName}." +
                 (todayTask?.taskDate?.dateString?:"")+
-                (if (todayTask?.taskStatus=="COMPLETED") "/CMPLD" else "")+
-                (if (todayTask?.taskPageTag=="TOP3") "/T3" else "")+
+                (if (todayTask?.taskStatus==TaskStatus.COMPLETED.value) "/CMPLD" else "")+
+                (if (todayTask?.taskPageTag==TaskType.TOP3.value) "/T3" else "")+
                 ")"
     }
 }
@@ -49,14 +51,14 @@ data class HabitTaskWithFewDetails(
             "habit(" +
                     "'m${mission?.missionId?:0L},t${todayTask?.todayTaskId?:0L}'${mission?.missionTitle}-${pillar?.pillarName}." +
                     (todayTask?.taskDate?.dateString?:"")+
-                    (if (todayTask?.taskStatus=="COMPLETED") "/CMPLD" else "")+
-                    (if (todayTask?.taskPageTag=="TOP3") "/T3" else "")+
+                    (if (todayTask?.taskStatus==TaskStatus.COMPLETED.value) "/CMPLD" else "")+
+                    (if (todayTask?.taskPageTag==TaskType.TOP3.value) "/T3" else "")+
                     ")"
         else "todo(" +
                 "'m${mission?.missionId?:0L},t${todayTask?.todayTaskId?:0L}'${mission?.missionTitle}-${pillar?.pillarName}." +
                 (todayTask?.taskDate?.dateString?:"")+
-                (if (todayTask?.taskStatus=="COMPLETED") "/CMPLD" else "")+
-                (if (todayTask?.taskPageTag=="TOP3") "/T3" else "")+
+                (if (todayTask?.taskStatus==TaskStatus.COMPLETED.value) "/CMPLD" else "")+
+                (if (todayTask?.taskPageTag==TaskType.TOP3.value) "/T3" else "")+
                 ")"
     }
 }

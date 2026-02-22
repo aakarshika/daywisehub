@@ -3,13 +3,14 @@ package com.example.todoapp.screen.missions
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import co.touchlab.kermit.Logger
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import com.example.todoapp.db.data.mission.MissionWithDetails
 import com.example.todoapp.db.data.pillar.Pillar
+import com.example.todoapp.di.KoinF
 import com.example.todoapp.repo.MissionRepository
+import com.example.todoapp.screen.metrics.CalDiaryViewModel
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.collectLatest
@@ -35,7 +36,8 @@ class MissionsControllerViewModel constructor(
     fun insertFullMission(updatedMission: MissionWithDetails) {
         viewModelScope.launch {
             val newMissionId = missionRepository.insertFullMission(updatedMission)
-            loadMissionIds()
+            val userId = KoinF.di?.get<CalDiaryViewModel>()?.userId ?: -1L
+            loadMissionIds(userId)
         }
     }
 
@@ -73,9 +75,9 @@ class MissionsControllerViewModel constructor(
 //    }
 
 
-    fun loadMissionIds() {
+    fun loadMissionIds(userId: Long) {
         viewModelScope.launch {
-            missionRepository.getAllMissionIds()
+            missionRepository.getAllMissionIds(userId)
                 .collect { missionList ->
                     _missionIds.tryEmit(missionList)
                 }

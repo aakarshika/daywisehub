@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.todoapp.db.data.mission.MissionWithDetails
 import com.example.todoapp.di.KoinF
+import com.example.todoapp.screen.metrics.CalDiaryViewModel
 import com.example.todoapp.screen.missions.editpopup.OptimizedEditMissionPopup
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.parameter.parametersOf
@@ -46,22 +47,12 @@ fun MissionsControllerScreen(viewModel: MissionsControllerViewModel) {
         val tt = remember { mutableStateOf<MissionWithDetails?>(null) }
         val pillarOptions = pillars
 
-//        val pillarCountMap = missionIds.itemList.groupBy { it.pillar?.pillarName }
-//            .mapValues { missionList->
-//                missionList.value.sumOf { mis->
-//                    if(mis.mission.importanceSet =="LOW")
-//                        1 else if(mis.mission.importanceSet =="MEDIUM")
-//                        2 else if(mis.mission.importanceSet =="HIGH") 3
-//                    else 0 .toInt()
-//                }
-//            }
-
         val editMissionMode = remember { mutableStateOf("IDLE") }
 
         // Load mission IDs when the screen is composed
         LaunchedEffect(Unit) {
-//            viewModel.loadPillars()
-            viewModel.loadMissionIds()
+            val userId = KoinF.di?.get<CalDiaryViewModel>()?.userId ?: -1L
+            viewModel.loadMissionIds(userId)
         }
 
         var isAddMissionPopupVisible = remember { mutableStateOf(false) }

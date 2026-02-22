@@ -32,12 +32,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import co.touchlab.kermit.Logger
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.screen.basicutils.components.WriteText
-import com.example.todoapp.screen.diary.diaryitem.components.diarymood.Red80
-import com.example.todoapp.screen.missions.Orange40
-import com.example.todoapp.screen.missions.Orange80
+import com.example.todoapp.screen.basicutils.Orange40
+import com.example.todoapp.screen.basicutils.Orange80
+import com.example.todoapp.screen.basicutils.Red80
 import com.example.todoapp.screen.missions.calendar.progress.MonthHeader
 import com.kizitonwose.calendar.compose.HorizontalCalendar
 import com.kizitonwose.calendar.compose.WeekCalendar
@@ -74,8 +73,6 @@ fun WeekCalendarScreen(selectedDate: LocalDate, changeDate: (LocalDate) -> Unit)
             diaryViewMode = diaryViewMode,
             collapsedHeight = collapsedHeight,
             onDateClicked = { date ->
-                Logger.e("DATE CLICKED $date cal area")
-
                 changeDate(date)
             },
             changeToMonth = {diaryViewMode = "month"},
@@ -129,7 +126,6 @@ private fun CalendarArea(
                     modifier = Modifier
                         .fillMaxWidth()
                         .wrapContentHeight()
-//                        .height(getTopCalHeight())
                         .pointerInput(Unit) {
                             detectVerticalDragGestures(
                                 onVerticalDrag = { change, dragAmount ->
@@ -145,7 +141,6 @@ private fun CalendarArea(
                             day,
                             isSelected = selectedDate == day.date,
                             onDateClicked = {
-                                Logger.e("DATE CLICKED $it")
                                 onDateClicked(it)
                             }
                         )
@@ -156,9 +151,7 @@ private fun CalendarArea(
         }
 
         if(diaryViewMode!="week") {
-            Box(modifier = Modifier
-//                .height(collapsedHeight.value)
-            ) {
+            Box(modifier = Modifier) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -269,7 +262,7 @@ fun RoundButton(date: LocalDate, todayHighlight: Boolean = false,
             Icon(
                 painter = painterResource( Res.drawable.circle_filled_a),
                 contentDescription = "circle_filled",
-                tint = if(todayHighlight) com.example.todoapp.screen.missions.Red80 else  Orange40,
+                tint = if(todayHighlight) Red80 else  Orange40,
                 modifier = Modifier.fillMaxSize()
             )
             WriteText(
@@ -283,7 +276,7 @@ fun RoundButton(date: LocalDate, todayHighlight: Boolean = false,
             Icon(
                 painter = painterResource(Res.drawable.circle_filled_b),
                 contentDescription = "circle_filled",
-                tint = if (todayHighlight) com.example.todoapp.screen.missions.Red80 else Color.White,
+                tint = if (todayHighlight) Red80 else Color.White,
                 modifier = Modifier.fillMaxSize()
             )
             WriteText(

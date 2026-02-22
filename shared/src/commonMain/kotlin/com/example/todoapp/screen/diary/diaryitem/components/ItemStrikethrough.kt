@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.pillar.Pillar
 import com.example.todoapp.db.data.todotask.TodayTask
+import com.example.todoapp.db.models.TaskStatus
 import com.example.todoapp.screen.basicutils.components.DiaryLineText
 
 @Composable
@@ -24,7 +25,7 @@ fun ItemStrikethrough(
     editingMode :String,
     taskErased: (TodayTask?, Boolean) -> Unit,
 ) {
-    val isChecked = todoTask?.taskStatus== "COMPLETED"
+    val isChecked = todoTask?.taskStatus== TaskStatus.COMPLETED.value
 
     val ld = LocalDensity.current
 

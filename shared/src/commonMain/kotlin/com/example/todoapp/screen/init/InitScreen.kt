@@ -1,4 +1,4 @@
-package  com.example.todoapp.screen.init
+package com.example.todoapp.screen.init
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*

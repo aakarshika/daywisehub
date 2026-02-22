@@ -43,36 +43,31 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.room.Embedded
-import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.mission.missionstuff.MissionFrequency
 import com.example.todoapp.db.data.mood.TodayMood
 import com.example.todoapp.db.data.mood.TodayMoodWithDetails
-import com.example.todoapp.db.data.mood.WaterIntake
+import com.example.todoapp.db.data.water.WaterIntake
 import com.example.todoapp.db.data.pillar.Pillar
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.todotask.TodayTaskReminder
 import com.example.todoapp.db.models.MyDate
+import com.example.todoapp.db.models.TaskStatus
+import com.example.todoapp.db.models.TaskType
 import com.example.todoapp.di.KoinF
 import com.example.todoapp.screen.diary.diaryitem.components.diarymood.MoodHeader
-import com.example.todoapp.screen.diary.diaryitem.components.WeatherHeader
 import com.example.todoapp.screen.diary.diaryitem.HabitItemViewModel
-import com.example.todoapp.screen.diary.diaryitem.components.MenuItem
-import com.example.todoapp.screen.diary.diaryitem.components.NotebookLine
 import com.example.todoapp.screen.diary.diaryitem.DiaryItem
-import com.example.todoapp.screen.diary.diaryitem.components.GeneralItem
 import com.example.todoapp.screen.diary.diaryitem.components.NotesItem
 import com.example.todoapp.screen.diary.diaryitem.components.dateheader.DateHeader
-import com.example.todoapp.screen.diary.diaryitem.components.dateheader.WeekDayHeader
 import com.example.todoapp.screen.diary.diaryitem.components.waterintake.WaterIntakeHeader
 import com.example.todoapp.screen.diary.diaryitem.components.waterintake.water_daily_limit
-import com.example.todoapp.screen.missions.Blue80
-import com.example.todoapp.screen.missions.Light_Yellowww
+import com.example.todoapp.screen.basicutils.Blue80
+import com.example.todoapp.screen.basicutils.Light_Yellowww
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.parameter.parametersOf
 import todoapp.shared.generated.resources.Res
-import todoapp.shared.generated.resources.block_a
 import todoapp.shared.generated.resources.block_b
 import todoapp.shared.generated.resources.glass_a
 import todoapp.shared.generated.resources.glass_b
@@ -91,49 +86,18 @@ data class ComboTask(
             "habit(" +
                     "'m${mission?.missionId?:0L},t${todayTask?.todayTaskId?:0L}'${mission?.missionTitle}-${pillar?.pillarName}." +
                     (todayTask?.taskDate?.dateString?:"")+
-                    (if (todayTask?.taskStatus=="COMPLETED") "/CMPLD" else "/${todayTask?.taskProgressVal}")+
-                    (if (todayTask?.taskPageTag=="TOP3") "/T3" else "")+
+                    (if (todayTask?.taskStatus==TaskStatus.COMPLETED.value) "/CMPLD" else "/${todayTask?.taskProgressVal}")+
+                    (if (todayTask?.taskPageTag==TaskType.TOP3.value) "/T3" else "")+
                     ")"
         else "todo(" +
                 "'m${mission?.missionId?:0L},t${todayTask?.todayTaskId?:0L}'${mission?.missionTitle}-${pillar?.pillarName}." +
                 (todayTask?.taskDate?.dateString?:"")+
-                (if (todayTask?.taskStatus=="COMPLETED") "/CMPLD" else "/${todayTask?.taskProgressVal}")+
-                (if (todayTask?.taskPageTag=="TOP3") "/T3" else "")+
+                (if (todayTask?.taskStatus==TaskStatus.COMPLETED.value) "/CMPLD" else "/${todayTask?.taskProgressVal}")+
+                (if (todayTask?.taskPageTag==TaskType.TOP3.value) "/T3" else "")+
                 ")"
     }
 }
 
-
-fun LazyListScope.ExtraLines(n: Int ) {
-    item {
-        Column {
-            (1..n).forEach {
-                NotebookLine()
-            }
-        }
-    }
-}
-
-fun LazyListScope.TodoMenuItems(
-    selection: LocalDate,
-    diaryViewModel: DiaryViewModel,
-    editingTaskMode: MutableState<String>
-) {
-    item{
-        MenuItem(
-            selection,
-            52,
-            editingTaskMode.value,
-            prioritizeClicked={
-                editingTaskMode.value = it
-            }, addRandomTask = {
-                diaryViewModel.addRandomTask(selection)
-            }, generateTodaysTasks= {
-                diaryViewModel.generateTodaysTasks(selection)
-            }
-        )
-    }
-}
 
 fun LazyListScope.MoodHeaderItem(todayMoodList: List<TodayMoodWithDetails>?,
                                  selection: LocalDate,
@@ -147,17 +111,6 @@ fun LazyListScope.MoodHeaderItem(todayMoodList: List<TodayMoodWithDetails>?,
     }
 }
 
-fun LazyListScope.WeatherHeaderItem() {
-    item {
-        WeatherHeader()
-    }
-}
-
-//fun LazyListScope.SundayHeaderItem(cDate: LocalDate) {
-//    item {
-//        WeekDayHeader(cDate)
-//    }
-//}
 fun LazyListScope.DateHeaderItem(cDate: LocalDate,
                                  changeDate: (LocalDate) -> Unit) {
     item {
@@ -240,7 +193,7 @@ private fun HeadingBanner(color: Color, headingtext: String) {
         ) {
             Image(
                 painterResource(Res.drawable.block_b),
-                contentDescription = "sdfgh",
+                contentDescription = "Section heading background",
                 colorFilter = ColorFilter.tint(color),
                 contentScale = ContentScale.FillBounds,
                 modifier = Modifier
@@ -264,9 +217,6 @@ fun LazyListScope.TodoListItems(
     allTasksCompleted: (Boolean) -> Unit
 ) {
     item {
-        if(!allTasks.isNullOrEmpty()) {
-//            ListHeader("TO DO", modifier = Modifier.animateItem())
-        }
     }
     item {
         Box(modifier = Modifier.fillMaxWidth().height(20.dp).padding(horizontal = 8.dp)) {
@@ -296,11 +246,10 @@ fun LazyListScope.TodoListItems(
                     )
                 }!!,
                 taskProgress = { p ->
-                    Logger.e("taskCompleted taskCompleted $task")
                     allTasksCompleted(
                         if (p == 1f &&
                             allTasks?.filter { it.todayTask!!.todayTaskId != task.todayTask!!.todayTaskId }
-                                ?.all { it.todayTask!!.taskStatus == "COMPLETED" } == true
+                                ?.all { it.todayTask!!.taskStatus == TaskStatus.COMPLETED.value } == true
                         )
                             true
                         else

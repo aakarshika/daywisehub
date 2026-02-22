@@ -3,25 +3,15 @@ package com.example.todoapp.screen.init
 
 import androidx.lifecycle.ViewModel
 import com.example.todoapp.db.data.user.User
+import com.example.todoapp.di.KoinF
 import com.example.todoapp.repo.UserRepository
+import com.example.todoapp.screen.metrics.CalDiaryViewModel
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 
 import kotlinx.coroutines.flow.SharedFlow
 
 
-object UserInitManager {
-    private var userId: Long = -1
-    private var username: String = ""
-
-    fun setUserDetails(id: Long, name: String) {
-        userId = id
-        username = name
-    }
-
-    fun getUserId(): Long = userId
-    fun getUsername(): String = username
-}
 class UserViewModel  constructor(
     private val userRepository: UserRepository
 ) : ViewModel() {
@@ -33,7 +23,9 @@ class UserViewModel  constructor(
     suspend fun loadUserByIdOnce(userId: Long){
         userRepository.getUserValueByUserId(userId)
             .collect { it ->
-                UserInitManager.setUserDetails(userId, it?.username ?: "gggg") // Update UserManager
+                val calDiaryVm = KoinF.di?.get<CalDiaryViewModel>()
+                calDiaryVm?.userId = userId
+                calDiaryVm?.username = it?.username ?: "gggg"
                 _user.tryEmit(it)
             }
     }

@@ -15,8 +15,8 @@ import com.example.todoapp.db.data.mission.missionstuff.MissionPillarMapping
 import com.example.todoapp.db.data.mood.Mood
 import com.example.todoapp.db.data.mood.TodayMood
 import com.example.todoapp.db.data.mood.TodayMoodDao
-import com.example.todoapp.db.data.mood.WaterIntake
-import com.example.todoapp.db.data.mood.WaterIntakeDao
+import com.example.todoapp.db.data.water.WaterIntake
+import com.example.todoapp.db.data.water.WaterIntakeDao
 import com.example.todoapp.db.data.pillar.Pillar
 import com.example.todoapp.db.data.todotask.SubTask
 import com.example.todoapp.db.data.todotask.TodayTask
@@ -41,7 +41,7 @@ import kotlinx.coroutines.IO
     TodayMood::class,
     WaterIntake::class,
     LoginStatus::class],
-    version = 1
+    version = 2
 )
 
 @TypeConverters(Converters::class)

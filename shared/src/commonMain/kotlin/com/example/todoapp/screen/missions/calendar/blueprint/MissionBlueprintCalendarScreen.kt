@@ -24,16 +24,18 @@ import com.example.todoapp.db.data.mission.missionstuff.MissionFrequency
 import com.example.todoapp.db.data.pillar.Pillar
 import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
 import com.example.todoapp.db.models.MyDate
-import com.example.todoapp.screen.missions.DARKGREEN180
-import com.example.todoapp.screen.missions.DARKGREEN200
-import com.example.todoapp.screen.missions.DARKGREEN60
-import com.example.todoapp.screen.missions.GREEN60
-import com.example.todoapp.screen.missions.GREEN80
-import com.example.todoapp.screen.missions.Gray40
-import com.example.todoapp.screen.missions.Gray60
-import com.example.todoapp.screen.missions.Gray80
-import com.example.todoapp.screen.missions.Yellow180
-import com.example.todoapp.screen.missions.Yellow80
+import com.example.todoapp.db.models.TaskStatus
+import com.example.todoapp.db.models.TaskType
+import com.example.todoapp.screen.basicutils.DARKGREEN180
+import com.example.todoapp.screen.basicutils.DARKGREEN200
+import com.example.todoapp.screen.basicutils.DARKGREEN60
+import com.example.todoapp.screen.basicutils.GREEN60
+import com.example.todoapp.screen.basicutils.GREEN80
+import com.example.todoapp.screen.basicutils.Gray40
+import com.example.todoapp.screen.basicutils.Gray60
+import com.example.todoapp.screen.basicutils.Gray80
+import com.example.todoapp.screen.basicutils.Yellow180
+import com.example.todoapp.screen.basicutils.Yellow80
 import com.example.todoapp.screen.missions.calendar.progress.DayMissionProgressViewModel
 import com.kizitonwose.calendar.compose.HeatMapCalendar
 import com.kizitonwose.calendar.compose.heatmapcalendar.rememberHeatMapCalendarState
@@ -81,7 +83,7 @@ fun MissionBlueprintCalendarScreen(
         mutableStateOf(
             tasks
                 ?.sortedWith(
-                    compareBy<TodayTaskWithFewDetails> { it.todayTask.taskStatus != "COMPLETED" }
+                    compareBy<TodayTaskWithFewDetails> { it.todayTask.taskStatus != TaskStatus.COMPLETED.value }
                         .thenBy { it.pillar?.pillarId }
                 )
                 ?.groupBy { it.todayTask.taskDate.dateString }
@@ -192,7 +194,7 @@ private fun DayMission(
                     .align(Alignment.Center)
                     .background(dateColor)
             ){
-                if((tasks?.filter { it.todayTask.taskStatus=="COMPLETED" }?.size?:0)>0) {
+                if((tasks?.filter { it.todayTask.taskStatus==TaskStatus.COMPLETED.value }?.size?:0)>0) {
                     Icon(
                         painterResource(
                             Res.drawable.square_filled_a
@@ -225,7 +227,7 @@ private fun DayMission(
                 }
             }
 
-            if(tasks?.any { it.todayTask.taskPageTag=="TOP3" } == true) {
+            if(tasks?.any { it.todayTask.taskPageTag==TaskType.TOP3.value } == true) {
                 Box(modifier = Modifier.padding(end = 5.dp, bottom = 5.dp)) {
                     Icon(
                         painterResource(

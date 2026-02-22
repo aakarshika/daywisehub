@@ -15,10 +15,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.todoapp.screen.basicutils.components.CustomCheckbox
+import com.example.todoapp.db.models.TaskStatus
 import com.example.todoapp.screen.diary.ComboTask
 import com.example.todoapp.screen.basicutils.cal.clickable
-import com.example.todoapp.screen.missions.getDarkPillarColor
-import com.example.todoapp.screen.missions.getPillarColor
+import com.example.todoapp.screen.basicutils.getDarkPillarColor
+import com.example.todoapp.screen.basicutils.getPillarColor
 
 @Composable
 fun GeneralItemCheckbox(
@@ -27,7 +28,7 @@ fun GeneralItemCheckbox(
     editingMode :String,
     taskErased: (ComboTask?, Boolean) -> Unit,
 ) {
-    val isChecked = ct?.todayTask?.taskStatus== "COMPLETED"
+    val isChecked = ct?.todayTask?.taskStatus== TaskStatus.COMPLETED.value
 
     Box(modifier = Modifier.fillMaxWidth().height(RowHeight.dp)){
         Row(modifier = Modifier.fillMaxWidth()

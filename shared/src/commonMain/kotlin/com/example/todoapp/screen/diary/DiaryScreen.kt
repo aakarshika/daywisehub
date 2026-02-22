@@ -40,22 +40,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.mood.TodayMood
 import com.example.todoapp.db.data.mood.TodayMoodWithDetails
-import com.example.todoapp.db.data.mood.WaterIntake
+import com.example.todoapp.db.data.water.WaterIntake
+import com.example.todoapp.db.models.TaskType
 import com.example.todoapp.di.KoinF
 import com.example.todoapp.screen.diary.diaryitem.components.diarymood.MoodViewModel
-import com.example.todoapp.screen.diary.diaryitem.components.diarymood.Red80
+import com.example.todoapp.screen.basicutils.Blue80
+import com.example.todoapp.screen.basicutils.Light_Yellowww
+import com.example.todoapp.screen.basicutils.Orange40
+import com.example.todoapp.screen.basicutils.Orange80
+import com.example.todoapp.screen.basicutils.Red80
+import com.example.todoapp.screen.basicutils.Yellow180
 import com.example.todoapp.screen.diary.diaryitem.components.waterintake.WaterIntakeViewModel
 import com.example.todoapp.screen.diary.planning.Planner
 import com.example.todoapp.screen.diary.planning.PlanningList
 import com.example.todoapp.screen.diary.planning.PlanningViewModel
-import com.example.todoapp.screen.missions.Blue80
-import com.example.todoapp.screen.missions.Light_Yellowww
-import com.example.todoapp.screen.missions.Orange40
-import com.example.todoapp.screen.missions.Orange80
-import com.example.todoapp.screen.missions.Yellow180
 import kotlinx.datetime.LocalDate
 import kottieAnimationState.KottieAnimationState
 import kottieComposition.KottieCompositionSpec
@@ -72,22 +72,19 @@ fun DiaryScreen(
     moodViewModel: MoodViewModel,
     waterIntakeViewModel: WaterIntakeViewModel,
     selection: LocalDate,
-    goToTomorrow: () -> Unit,
-    goToYesterday: () -> Unit,
     changeDate: (LocalDate) -> Unit
 ) {
     val selectedTaskList: List<ComboTask>? by diaryViewModel.dayTasks.collectAsState(emptyList())
-    val habitTasks: List<ComboTask>? by diaryViewModel.habitList.collectAsState(emptyList())
     val todayMoodList:List<TodayMoodWithDetails>? by moodViewModel.todayMoodStatuses.collectAsState(emptyList())
     val waterIntake:WaterIntake? by waterIntakeViewModel.waterIntake.collectAsState(null)
     val planningMode = remember { mutableStateOf(false) }
 
 
-    val all : List<ComboTask> = (selectedTaskList?.toList() ?: listOf()) //+ (habitTasks?.toList() ?: listOf())
+    val all : List<ComboTask> = (selectedTaskList?.toList() ?: listOf())
 
     val allTasks = all
         .sortedBy { it.missionFrequency?.isDailyHabit == true }
-        .sortedBy {  it.todayTask?.taskPageTag!="TOP3" }
+        .sortedBy {  it.todayTask?.taskPageTag!=TaskType.TOP3.value }
 
     var animationStarted by remember { mutableStateOf(false) }
     var animationStartedWater by remember { mutableStateOf(false) }
@@ -162,7 +159,6 @@ fun DiaryScreen(
                         selection, allTasks,
                         editingTaskMode, diaryViewModel,
                         allTasksCompleted = { play->
-                            Logger.e("allTasksCompleted allTasksCompleted allTasksCompleted")
                             animationStarted = play
                         }
                     )

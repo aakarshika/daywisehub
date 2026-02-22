@@ -32,19 +32,18 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.mission.MissionWithDetails
 import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
 import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
 import com.example.todoapp.db.models.MyDate
+import com.example.todoapp.db.models.TaskStatus
 import com.example.todoapp.di.KoinF
-import com.example.todoapp.screen.missions.DARKGREEN180
+import com.example.todoapp.screen.basicutils.DARKGREEN180
+import com.example.todoapp.screen.basicutils.Yellow180
+import com.example.todoapp.screen.basicutils.Yellow80
+import com.example.todoapp.screen.basicutils.getDarkPillarColor
+import com.example.todoapp.screen.basicutils.getPillarColor
 import com.example.todoapp.screen.missions.MissionItemViewModel
-import com.example.todoapp.screen.missions.Yellow180
-import com.example.todoapp.screen.missions.Yellow80
-import com.example.todoapp.screen.missions.darken
-import com.example.todoapp.screen.missions.getDarkPillarColor
-import com.example.todoapp.screen.missions.getPillarColor
 import com.kizitonwose.calendar.compose.VerticalCalendar
 import com.kizitonwose.calendar.compose.rememberCalendarState
 import com.kizitonwose.calendar.core.CalendarDay
@@ -66,7 +65,6 @@ import todoapp.shared.generated.resources.Res
 import todoapp.shared.generated.resources.circle_badge
 import todoapp.shared.generated.resources.circle_filled_a
 import todoapp.shared.generated.resources.square_b
-import todoapp.shared.generated.resources.square_check_b
 
 
 @Composable
@@ -87,7 +85,7 @@ fun MissionProgressCalendar(
         mutableStateOf(
             tasks
                 ?.sortedWith(
-                    compareBy<TodayTaskWithFewDetails> { it.todayTask.taskStatus != "COMPLETED" }
+                    compareBy<TodayTaskWithFewDetails> { it.todayTask.taskStatus != TaskStatus.COMPLETED.value }
                         .thenBy { it.pillar?.pillarId }
                 )
                 ?.groupBy { it.todayTask.taskDate.dateString }
@@ -190,7 +188,7 @@ private fun CalendarArea(
                 MyDate(dateString).toLocalDate().month == month.yearMonth.month
             }?.values?.flatMap { it?: listOf() })?: listOf()
             Column(modifier = Modifier.fillMaxWidth()) { // Wrap month in a Column
-                val weeklycompleted  = monthlyTaskList!!.filter { t-> t.todayTask.taskStatus == "COMPLETED" }
+                val weeklycompleted  = monthlyTaskList!!.filter { t-> t.todayTask.taskStatus == TaskStatus.COMPLETED.value }
                 val freq = (selectedMission?.missionFrequency?.frequency?:1)
 
                 MonthHeader(month) // Display month header
@@ -244,7 +242,7 @@ private fun DayMission(
         .height(20.dp)
     ) {
         if(isSaturday ){
-            val weeklycompleted  = weeklytasklist.filter { t-> t.todayTask.taskStatus == "COMPLETED" }
+            val weeklycompleted  = weeklytasklist.filter { t-> t.todayTask.taskStatus == TaskStatus.COMPLETED.value }
             val freq = (selectedMission?.missionFrequency?.frequency?:1)
             Box(
                 modifier = Modifier
@@ -260,18 +258,7 @@ private fun DayMission(
                             else Color.Transparent
                         else Color.Transparent
                     )
-            ) {
-//                Icon(
-//                    painterResource(Res.drawable.square_check_b),
-//                    "dfg",
-//                    tint = when (day.position) {
-//                        DayPosition.MonthDate ->
-//                            getPillarColor(pillarName = selectedMission?.pillar?.pillarName)
-//
-//                        DayPosition.InDate, DayPosition.OutDate -> Color.Transparent
-//                    }
-//                )
-            }
+            )
         }
         Box(
             modifier = Modifier.wrapContentSize()
@@ -284,7 +271,7 @@ private fun DayMission(
             ) {
 
                     if(tasks != null && tasks!!.size>0 &&
-                        tasks.get(0).todayTask.taskStatus  == "COMPLETED"){
+                        tasks.get(0).todayTask.taskStatus  == TaskStatus.COMPLETED.value){
                         Icon(
                             painterResource(Res.drawable.circle_badge),
                             "dfg",

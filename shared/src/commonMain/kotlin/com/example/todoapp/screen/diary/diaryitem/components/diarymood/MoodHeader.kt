@@ -24,30 +24,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.mood.TodayMood
 import com.example.todoapp.db.data.mood.TodayMoodWithDetails
 import com.example.todoapp.db.models.MyDate
-import com.example.todoapp.screen.missions.Red180
+import com.example.todoapp.screen.basicutils.Red180
+import com.example.todoapp.screen.basicutils.Red80
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import todoapp.shared.generated.resources.Res
 import todoapp.shared.generated.resources.happy
 import todoapp.shared.generated.resources.sad
-import todoapp.shared.generated.resources.angry
-import todoapp.shared.generated.resources.afraid
 import todoapp.shared.generated.resources.angryemoji
 import todoapp.shared.generated.resources.boredemoji
 import todoapp.shared.generated.resources.confusedemoji
-import todoapp.shared.generated.resources.surprised
-import todoapp.shared.generated.resources.disgusted
 import todoapp.shared.generated.resources.dreamyemoji
 import todoapp.shared.generated.resources.happyemoji
 import todoapp.shared.generated.resources.sademoji
 
-
-val Red80 = Color(0xFFFFCBD2)
 
 private fun getDrawableIdFromMoodIcon(moodIcon: String): DrawableResource {
     val drawableMap = mapOf(
