@@ -33,6 +33,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import com.example.todoapp.db.data.mission.MissionWithDetails
+import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
+import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
 import com.example.todoapp.db.models.TaskStatus
 import com.example.todoapp.db.models.MyDate.Companion.daysBetween
 import com.example.todoapp.db.models.MyDate.Companion.now
@@ -46,6 +48,7 @@ import com.example.todoapp.screen.missions.calendar.progress.MissionProgressCale
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.parameter.parametersOf
 import todoapp.shared.generated.resources.Res
+import todoapp.shared.generated.resources.flag
 import todoapp.shared.generated.resources.pencil
 
 
@@ -61,8 +64,17 @@ fun MissionItem(missionId: Long,
                     onViewClick: (Long) -> Unit,
                     onCloseClick: () -> Unit
 ) {
-    val height by animateDpAsState(targetValue = if (isSelected) 200.dp else 10.dp)
-    val width by animateDpAsState(targetValue = if (isSelected) 100.dp else 1.dp)
+    val progressViewModel = KoinF.di?.get<DayMissionProgressViewModel> { parametersOf(missionId) }!!
+
+    val miles: List<MilestoneWithDetails>? by progressViewModel.milestones.collectAsState(initial = null)
+    val tasks: List<TodayTaskWithFewDetails>? by progressViewModel.tasks.collectAsState(initial = null)
+
+    val isCalendarLoaded = miles != null && tasks != null
+
+    val shouldExpand = isSelected
+
+    val height by animateDpAsState(targetValue = if (shouldExpand) 200.dp else 10.dp)
+    val width by animateDpAsState(targetValue = if (shouldExpand) 100.dp else 1.dp)
 
     val mission by missionItemViewModel.mission.collectAsState(null)
     val pillar by missionItemViewModel.pillar.collectAsState(null)
@@ -80,6 +92,8 @@ fun MissionItem(missionId: Long,
 
     LaunchedEffect(isTrigger) {
         missionItemViewModel.loadMissionDetails()
+        progressViewModel.loadMileDetails()
+        progressViewModel.loadTaskDetails()
     }
     Box(
         modifier = modifier
@@ -98,8 +112,8 @@ fun MissionItem(missionId: Long,
                     .fillMaxSize()
                     .background(color = getPillarColor(pillar?.pillarName).copy(alpha = 0.5f))
             ) {
-                if (isSelected) {
-                    missionWithDetails?.let { ExpandedListItem(missionWithDetails, onEditClick, onCloseClick ) }
+                if (shouldExpand) {
+                    missionWithDetails?.let { ExpandedListItem(missionWithDetails, onEditClick, onCloseClick, progressViewModel) }
                 } else {
                     missionWithDetails?.let { SmallListItem(it, onEditClick, onViewClick) }
                 }
@@ -176,7 +190,8 @@ private fun SmallListItem(
 private fun ExpandedListItem(
     mission: MissionWithDetails,
     onEditClick: (MissionWithDetails) -> Unit,
-    onCloseClick: () -> Unit
+    onCloseClick: () -> Unit,
+    progressViewModel: DayMissionProgressViewModel
 ) {
     Box(modifier = Modifier
         .fillMaxSize()
@@ -214,12 +229,12 @@ private fun ExpandedListItem(
                     ) {
                         Box(
                             modifier = Modifier
-                                .width((8 * 22).dp)
-                                .height(150.dp)
+                                .width((8 * 30).dp)
+                                .height(180.dp)
                                 .align(Alignment.Start)
                         ) {
                             MissionProgressCalendar(
-                                KoinF.di?.get<DayMissionProgressViewModel> { parametersOf(mission.mission?.missionId) }!!,
+                                progressViewModel,
                                 mission)
                         }
 
@@ -263,17 +278,16 @@ fun MilestoneList(mission: MissionWithDetails) {
 
     val nextMilestones = mission.milestones?.filter {milestone->
         val daysToMilestone = daysBetween(now(), milestone.expectedCompletionDate)
-
+        println("daysToMilestone: $daysToMilestone ${milestone.expectedCompletionDate.dateString}")
         milestone.status != TaskStatus.COMPLETED.value
-                && daysToMilestone>=0
+                && daysToMilestone>=-7
                 && daysToMilestone<=45
     }
 
     val completedMilestones = mission.milestones?.filter {milestone->
         val daysToMilestone = daysBetween(now(), milestone.expectedCompletionDate)
-
+        println("daysToMilestone: $daysToMilestone ${milestone.expectedCompletionDate.dateString}")
         milestone.status == TaskStatus.COMPLETED.value
-                || daysToMilestone<=0
 
     }
     Column(
@@ -292,12 +306,12 @@ fun MilestoneList(mission: MissionWithDetails) {
                     color = getPillarColor(mission.pillar?.pillarName).darken(0.5f)
                 )
                 WriteText(
-                    text = " in ",
+                    text = "${if (daysToMilestone > 1) " in " else if (daysToMilestone == 0) " " else " "}",
                     fontSize = 10f,
                     color = Color.Gray
                 )
                 WriteText(
-                    text = "$daysToMilestone day${if (daysToMilestone > 1) "s" else ""} ",
+                    text = "${if (daysToMilestone > 1) ("$daysToMilestone days.") else if (daysToMilestone == 0) "today!" else (""+daysToMilestone+" days ago.")} ",
                     fontSize = 11f,
                     color = Color.Black
                 )
@@ -307,11 +321,7 @@ fun MilestoneList(mission: MissionWithDetails) {
         Row{
             completedMilestones?.forEach { milestone ->
                 Icon(listOf(
-                    Icons.Filled.CheckCircle,
-                    Icons.Filled.Face,
-                    Icons.Filled.Star,
-                    Icons.Filled.Favorite,
-                    Icons.Filled.ThumbUp,
+                    painterResource(Res.drawable.flag),
                 ).random(),
                     modifier = Modifier
                         .size(10.dp),

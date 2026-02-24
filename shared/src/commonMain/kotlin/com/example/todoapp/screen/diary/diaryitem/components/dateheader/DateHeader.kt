@@ -1,5 +1,7 @@
 package com.example.todoapp.screen.diary.diaryitem.components.dateheader
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +15,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,11 +35,22 @@ import kotlinx.datetime.LocalDate
 fun DateHeader(cDate: LocalDate,
                changeDate: (LocalDate) -> Unit) {
 
+    var diaryViewMode by remember { mutableStateOf("week") }
+
     Box(modifier = Modifier
         .fillMaxWidth()
         .wrapContentHeight()) {
         Column(modifier = Modifier.padding(top = 20.dp, start = 20.dp)) {
-            Row{
+            Row(
+                modifier = Modifier
+                    .then(
+                        if (diaryViewMode == "month") Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { diaryViewMode = "week" }
+                        else Modifier
+                    )
+            ) {
                 val daa = getOrdinal(cDate.dayOfMonth)
                 WriteText(""+daa.substring(0,daa.length-2), fontSize = 22f, color = Color.Gray, fontWeight = FontWeight.Normal)
                 WriteText(""+daa.substring(daa.length-2), fontSize = 17f, color = Color.Gray, fontWeight = FontWeight.Normal)
@@ -43,11 +60,26 @@ fun DateHeader(cDate: LocalDate,
             }
 
             Row {
-                Row(modifier = Modifier.padding(10.dp)) {
+                Row(
+                    modifier = Modifier
+                        .padding(10.dp)
+                        .then(
+                            if (diaryViewMode == "month") Modifier.clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) { diaryViewMode = "week" }
+                            else Modifier
+                        )
+                ) {
                     WriteText("" + cDate.dayOfWeek.name.substring(0,1), fontSize = 24f, fontWeight = FontWeight.Normal, color = Color.Gray)
                     WriteText("" + cDate.dayOfWeek.name.lowercase().substring(1), fontSize = 20f, fontWeight = FontWeight.Normal, color = Color.Gray)
                 }
-                WeekCalendarScreen(cDate, changeDate)
+                WeekCalendarScreen(
+                    selectedDate = cDate,
+                    changeDate = changeDate,
+                    diaryViewMode = diaryViewMode,
+                    onViewModeChange = { diaryViewMode = it }
+                )
             }
         }
     }

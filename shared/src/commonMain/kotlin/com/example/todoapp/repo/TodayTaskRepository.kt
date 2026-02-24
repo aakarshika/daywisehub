@@ -14,6 +14,7 @@ import com.kizitonwose.calendar.core.minusDays
 import com.kizitonwose.calendar.core.now
 import com.kizitonwose.calendar.core.plusDays
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.datetime.LocalDate
 
 class TodayTaskRepository(private val database: AppDatabase) {
@@ -30,7 +31,7 @@ class TodayTaskRepository(private val database: AppDatabase) {
     }
 
     suspend fun getAllTasksForDate1(date: MyDate): Flow<List<ComboTask>> {
-        return todayTaskDao.getAllTasksForDate1(date.dateString)
+        return todayTaskDao.getAllTasksForDate1(date.dateString).map { list -> list.distinctBy { it.todayTask?.todayTaskId } }
     }
 
     suspend fun getTasksPastMonth(): Flow<List<TodayTask>> {

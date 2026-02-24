@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
 import todoapp.shared.generated.resources.Res
 import todoapp.shared.generated.resources.check_square
+import todoapp.shared.generated.resources.flag
+import todoapp.shared.generated.resources.flag_open
 import todoapp.shared.generated.resources.square_b
 
 @Composable
@@ -27,7 +29,8 @@ fun CustomCheckbox(
     enabled: Boolean = true,
     checkedColor: Color = Color.Red,//Orange80, // Default checked color (Orange)
     uncheckedColor: Color = Color.Gray, // Default unchecked color (Gray)
-    disabledColor: Color = Color.Gray // Color when disabled
+    disabledColor: Color = Color.Gray, // Color when disabled
+    iconTag: String = "Checkbox"
 ) {
     // Animation for smooth scaling
     val scale by animateFloatAsState(
@@ -36,7 +39,12 @@ fun CustomCheckbox(
     )
 
     // Choose the icon based on the checked state
-    val iconRes = if (checked) painterResource(Res.drawable.check_square) else painterResource(Res.drawable.square_b)
+    val iconRes =
+        if (iconTag == "Milestone")
+            if (checked) painterResource(Res.drawable.flag) else painterResource(Res.drawable.flag_open)
+        else
+            if (checked) painterResource(Res.drawable.check_square) else painterResource(Res.drawable.square_b)
+
 
     // Determine the tint color based on the state
     val tintColor = if (!enabled) disabledColor else if (checked) checkedColor else uncheckedColor

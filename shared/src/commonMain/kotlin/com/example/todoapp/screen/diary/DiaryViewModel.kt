@@ -2,9 +2,13 @@ package com.example.todoapp.screen.diary
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.todoapp.db.data.mission.milestone.Milestone
+import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
 import com.example.todoapp.db.models.MyDate
+import com.example.todoapp.db.models.TaskStatus
+import com.example.todoapp.repo.MilestoneRepository
 import com.example.todoapp.repo.TodayTaskRepository
 import com.kizitonwose.calendar.core.now
 import kotlinx.coroutines.channels.BufferOverflow
@@ -16,11 +20,16 @@ import kotlinx.datetime.LocalDate
 
 class DiaryViewModel(
     private val todayTaskRepository: TodayTaskRepository,
+    private val milestoneRepository: MilestoneRepository,
     private val currentDate: LocalDate = LocalDate.now(),
+    private val userId: Long,
 ) : ViewModel() {
 
     private val _dayTasks: MutableSharedFlow<List<ComboTask>?> = MutableSharedFlow(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     val dayTasks: SharedFlow<List<ComboTask>?> = _dayTasks
+
+    private val _milestonesForWindow: MutableSharedFlow<List<MilestoneWithDetails>?> = MutableSharedFlow(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val milestonesForWindow: SharedFlow<List<MilestoneWithDetails>?> = _milestonesForWindow
 
     fun loadTaskDetails() {
         viewModelScope.launch {
@@ -28,6 +37,38 @@ class DiaryViewModel(
                 .collectLatest {
                     _dayTasks.emit(it)
                 }
+        }
+    }
+
+    fun loadMilestonesAround(selectionDate: LocalDate) {
+        viewModelScope.launch {
+            if (userId <= 0) {
+                _milestonesForWindow.emit(emptyList())
+                return@launch
+            }
+            val startDate = MyDate.fromLocalDate(selectionDate).subtractDays(7)
+            val endDate = MyDate.fromLocalDate(selectionDate).addDays(7)
+            milestoneRepository.getMilestonesForUserInDateRange(userId, startDate, endDate)
+                .collectLatest {
+                    _milestonesForWindow.emit(it)
+                }
+        }
+    }
+
+    fun updateMilestoneStatus(milestone: Milestone, achieved: Boolean, completionDate: LocalDate) {
+        viewModelScope.launch {
+            val updated = if (achieved) {
+                milestone.copy(
+                    status = TaskStatus.COMPLETED.value,
+                    actualCompletionDate = MyDate.fromLocalDate(completionDate)
+                )
+            } else {
+                milestone.copy(
+                    status = TaskStatus.IN_PROGRESS.value,
+                    actualCompletionDate = null
+                )
+            }
+            milestoneRepository.updateMilestone(updated)
         }
     }
 

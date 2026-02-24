@@ -233,9 +233,12 @@ fun LazyListScope.TodoListItems(
             )
         }
     }
-    itemsIndexed(allTasks?: listOf(), key = { _, task ->
-        ((task.mission?.missionId?:0L)*1000)+(task.todayTask?.todayTaskId?:0L)
-    }) { i, task ->
+    itemsIndexed(
+        allTasks ?: listOf(),
+        key = { index, task ->
+            "m${task.mission?.missionId ?: -1L}_t${task.todayTask?.todayTaskId ?: -1L}_i$index"
+        }
+    ) { i, task ->
         Box(modifier = Modifier
             .animateItem()) {
             DiaryItem(selection, task, editingTaskMode, taskViewModel,

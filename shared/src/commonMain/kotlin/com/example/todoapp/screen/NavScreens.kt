@@ -18,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.todoapp.app.MyScreen
+import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
+import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.di.KoinF
 import com.example.todoapp.screen.diary.DiaryScreen
 import com.example.todoapp.screen.diary.DiaryViewModel
@@ -118,7 +120,7 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                     ){
                         DiaryScreen(
                             KoinF.di?.get<DiaryViewModel> {
-                                parametersOf(currentDate)
+                                parametersOf(currentDate, calDateViewModel.userId)
                             } ?: error("DiaryViewModel not found"),
                             KoinF.di?.get<MoodViewModel> { parametersOf(currentDate) }!!,
                             KoinF.di?.get<WaterIntakeViewModel> { parametersOf(currentDate) }!!,
@@ -132,6 +134,11 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                 scene(
                     route = MyScreen.Calendar.name
                 ) {
+                    val metricsViewModel = KoinF.di?.get<MetricsViewModel>()!!
+                    val allMilestones: List<MilestoneWithDetails>? by metricsViewModel.allMilestones.collectAsState(emptyList())
+                    val dateString = MyDate.fromLocalDate(currentDate).dateString
+                    val milestonesCompletedOnDay = (allMilestones ?: emptyList())
+                        .filter { it.milestone.actualCompletionDate?.dateString == dateString }
                     Scaffold(
                         bottomBar = {
                             Box(
@@ -148,6 +155,7 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                                             parametersOf(currentDate)
                                         } ?: error("BottomHighlightsViewModel not found"),
                                         currentDate,
+                                        milestonesCompletedOnDay = milestonesCompletedOnDay,
                                         goToDiary = {
                                             navigateTab(MyScreen.Diary)
                                         }
@@ -157,7 +165,7 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                         }
                     ) {
                         MetricsScreen(
-                            KoinF.di?.get<MetricsViewModel>()!!,
+                            metricsViewModel,
                             currentDate,
                             changeDate = { date: LocalDate ->
                                 calDateViewModel.selectDate(date)

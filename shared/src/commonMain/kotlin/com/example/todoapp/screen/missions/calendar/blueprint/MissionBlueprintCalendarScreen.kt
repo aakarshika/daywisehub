@@ -54,6 +54,8 @@ import todoapp.shared.generated.resources.Res
 import todoapp.shared.generated.resources.circle_badge
 import todoapp.shared.generated.resources.crown_b
 import todoapp.shared.generated.resources.crown_filled_b
+import todoapp.shared.generated.resources.flag
+import todoapp.shared.generated.resources.flag_open
 import todoapp.shared.generated.resources.square_b
 import todoapp.shared.generated.resources.square_filled_a
 import todoapp.shared.generated.resources.star_border
@@ -216,8 +218,8 @@ private fun DayMission(
                         painterResource(
 
                             if(day.date.compareTo(currentDate) < 0)
-                                Res.drawable.star_filled
-                            else Res.drawable.star_border
+                                Res.drawable.flag
+                            else Res.drawable.flag_open
 
                         ),
                         contentDescription = "miles status",

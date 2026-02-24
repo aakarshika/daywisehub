@@ -53,6 +53,7 @@ import com.example.todoapp.screen.basicutils.Orange80
 import com.example.todoapp.screen.basicutils.Red80
 import com.example.todoapp.screen.basicutils.Yellow180
 import com.example.todoapp.screen.diary.diaryitem.components.waterintake.WaterIntakeViewModel
+import com.example.todoapp.screen.diary.diaryitem.components.DiaryMilestoneSection
 import com.example.todoapp.screen.diary.planning.Planner
 import com.example.todoapp.screen.diary.planning.PlanningList
 import com.example.todoapp.screen.diary.planning.PlanningViewModel
@@ -77,6 +78,7 @@ fun DiaryScreen(
     val selectedTaskList: List<ComboTask>? by diaryViewModel.dayTasks.collectAsState(emptyList())
     val todayMoodList:List<TodayMoodWithDetails>? by moodViewModel.todayMoodStatuses.collectAsState(emptyList())
     val waterIntake:WaterIntake? by waterIntakeViewModel.waterIntake.collectAsState(null)
+    val milestonesForWindow: List<com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails>? by diaryViewModel.milestonesForWindow.collectAsState(emptyList())
     val planningMode = remember { mutableStateOf(false) }
 
 
@@ -93,6 +95,7 @@ fun DiaryScreen(
 
     LaunchedEffect(selection, Unit) {
         diaryViewModel.loadTaskDetails()
+        diaryViewModel.loadMilestonesAround(selection)
         moodViewModel.loadDailyMoodStatus(selection)
         waterIntakeViewModel.loadWaterIntake(selection)
         animationStarted = false
@@ -168,6 +171,15 @@ fun DiaryScreen(
                     }, waterIntakeCompleted = { play->
                         animationStartedWater = play
                     })
+                    if (!milestonesForWindow.isNullOrEmpty()) {
+                        HeadingText("MILESTONE", Orange80)
+                        DiaryMilestoneSection(
+                            milestones = milestonesForWindow!!,
+                            onMilestoneChecked = { mwd, achieved ->
+                                diaryViewModel.updateMilestoneStatus(mwd.milestone, achieved, selection)
+                            }
+                        )
+                    }
                     HeadingText("NOTES", Yellow180)
                     Notes(waterIntake, selection, upsertWaterIntake = {
                         waterIntakeViewModel.upsertWaterIntake(it)

@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
 import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
 import com.example.todoapp.db.models.TaskStatus
 import com.example.todoapp.db.models.TaskType
@@ -51,6 +52,7 @@ import todoapp.shared.generated.resources.Res
 import todoapp.shared.generated.resources.crown_b
 import todoapp.shared.generated.resources.diary_editing_hand
 import todoapp.shared.generated.resources.heart_filled
+import todoapp.shared.generated.resources.flag
 import todoapp.shared.generated.resources.star_border
 import todoapp.shared.generated.resources.star_filled
 
@@ -59,6 +61,7 @@ import todoapp.shared.generated.resources.star_filled
  fun DateHighlights(
     bottomHighlightsViewModel: BottomHighlightsViewModel,
     selection: LocalDate,
+    milestonesCompletedOnDay: List<MilestoneWithDetails> = emptyList(),
     goToDiary: () -> Unit
 ) {
     val selectedTaskList: List<TodayTaskWithFewDetails>? by bottomHighlightsViewModel.dayTasks.collectAsState(emptyList())
@@ -98,6 +101,15 @@ import todoapp.shared.generated.resources.star_filled
                 "Your top ${top3Tasks.size} tasks were done!",
                 "You're on top of your priorities.",
                 "Priority tasks completed.",
+            ))))
+    }
+    if (milestonesCompletedOnDay.isNotEmpty()) {
+        highlights.add(mapOf(Pair(
+            "Milestones_Completed", listOf(
+                if (milestonesCompletedOnDay.size == 1)
+                    "1 milestone completed."
+                else
+                    "${milestonesCompletedOnDay.size} milestones completed.",
             ))))
     }
 
@@ -235,6 +247,16 @@ private fun HighlightItem(
                     Res.drawable.star_border,
                 text = totalTasksTexts.random(),
                 contentDescription = "Tasks completed"
+            )
+        }
+    }
+
+    highlight["Milestones_Completed"]?.let { milestoneTexts ->
+        if (milestoneTexts.isNotEmpty()) {
+            HighlightRow(
+                iconRes = Res.drawable.flag,
+                text = milestoneTexts.first(),
+                contentDescription = "Milestones completed"
             )
         }
     }

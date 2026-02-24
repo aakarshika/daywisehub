@@ -51,10 +51,10 @@ fun vmModule(): Module {
         factory { (missionId: Long) -> MissionItemViewModel(get(), missionId) } // for dynamic MissionItemViewModel
 
         factory { (missionId: Long) -> DayMissionProgressViewModel(get(),get(),  missionId) }
-        factory { (day: LocalDate) -> DiaryViewModel(get(), day) }
+        factory { (day: LocalDate, userId: Long) -> DiaryViewModel(get(), get(), day, userId) }
         factory { (day: LocalDate, missionId: Long) -> HabitItemViewModel(get(), day, missionId) }
         factory { (day: LocalDate) -> BottomHighlightsViewModel(get(), day) }
-        factory { MetricsViewModel(get()) }
+        factory { MetricsViewModel(get(), get()) }
 
         factory { (day: LocalDate) -> MoodViewModel(get()) }
         factory { (day: LocalDate) -> WaterIntakeViewModel(get()) }
