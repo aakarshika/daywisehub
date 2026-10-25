@@ -17,6 +17,10 @@ interface PlanDao {
     @Upsert
     suspend fun upsertPlan(plan: DayPlan)
 
+    /** Days before [date] that have a plan but whose fixed blocks haven't been ticked yet. */
+    @Query("SELECT * FROM day_plan WHERE plan_date < :date AND plan_fixed_ticked = 0 ORDER BY plan_date")
+    suspend fun getUntickedBefore(date: String): List<DayPlan>
+
     @Query("SELECT * FROM day_settings ORDER BY settings_weekday")
     suspend fun getSettings(): List<DaySettings>
 

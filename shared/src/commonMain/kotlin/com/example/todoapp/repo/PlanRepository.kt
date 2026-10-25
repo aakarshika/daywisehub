@@ -7,9 +7,11 @@ import com.example.todoapp.db.data.plan.DaySettings
 import com.example.todoapp.db.data.plan.PlanDao
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.models.MyDate
+import com.example.todoapp.domain.DayClose
 import com.example.todoapp.domain.Energy
 import com.example.todoapp.domain.History
 import com.example.todoapp.domain.MissionKind
+import com.example.todoapp.domain.Moves
 import com.example.todoapp.domain.PlanInput
 import com.example.todoapp.domain.Planner
 import com.example.todoapp.domain.Points
@@ -53,11 +55,12 @@ class PlanRepository(
         if (planDao.getSettings().isEmpty()) planDao.upsertSettings(DaySettings.defaults)
     }
 
-    /** Builds the day's list the first time it's asked for; later calls do nothing. */
+    /**
+     * Closes what earlier days left open, then builds the day's list the first time it's asked for.
+     * Safe on every open: closing only touches what's still open, and a built day isn't rebuilt.
+     */
     suspend fun ensurePlanned(date: LocalDate) = write {
-        // Fixed blocks start ticked, so earlier days this week score even if their evening check never opened.
-        var day = WeekMath.weekStart(date)
-        while (day < date) { tickBlocks(day); day = day.plus(1, DateTimeUnit.DAY) }
+        closePastDays(date)
         if (planDao.getPlan(key(date)) != null) return@write
         // fill() writes the plan row last, so a build cut short is simply redone next time.
         fill(date, DayPlan(date = key(date), freeMinutes = defaultFreeMinutes(date)))
@@ -87,7 +90,9 @@ class PlanRepository(
 
     suspend fun toggleDone(taskId: Long) = write {
         val task = todayTaskRepository.get(taskId) ?: return@write
-        updateState(task, if (task.taskState.countsAsDone) TaskState.PLANNED else TaskState.DONE)
+        // An earlier day is closed: unticking there skips the item, so the next open doesn't carry it forward again.
+        val unticked = if (task.date < today()) TaskState.SKIPPED else TaskState.PLANNED
+        updateState(task, if (task.taskState.countsAsDone) unticked else TaskState.DONE)
     }
 
     suspend fun toggleCrown(taskId: Long) = write {
@@ -105,20 +110,7 @@ class PlanRepository(
         val task = todayTaskRepository.get(taskId) ?: return@write
         if (task.taskState != TaskState.PLANNED || task.isFixedBlock) return@write
         val mission = missionRepository.get(task.missionId) ?: return@write
-        val from = task.date
-        val after = maxOf(from, today().minus(1, DateTimeUnit.DAY))
-        val upcoming = todayTaskRepository.getBetween(after.plus(1, DateTimeUnit.DAY), after.plus(7, DateTimeUnit.DAY))
-        val target = roomByDay(after, tasks = upcoming).entries
-            .firstOrNull { (day, room) ->
-                room >= mission.durationMinutes &&
-                    upcoming.none { it.date == day && it.missionId == mission.missionId && it.taskState.isOpen }
-            }?.key
-            ?: after.plus(1, DateTimeUnit.DAY)
-        val order = (upcoming.filter { it.date == target }.maxOfOrNull { it.sortOrder } ?: -1) + 1
-        todayTaskRepository.update(task.copy(state = TaskState.MOVED.name, pointsEarned = 0, crowned = false))
-        todayTaskRepository.insert(
-            newTask(mission, target, Reason(ReasonCode.MOVED, listOf(from.weekdayName())), fixed = false, order = order, movedFrom = from)
-        )
+        moveTask(task, mission, today())
     }
 
     /** True when the item was replaced; false when it stays (nothing fits, crowned, moved in, or not a plain pick). */
@@ -211,6 +203,47 @@ class PlanRepository(
         rebuild(date, plan)
     }
 
+    /**
+     * Spec 6.4, at the first open of a new day: fixed blocks on earlier days start ticked, then items
+     * still planned there follow their "if a day goes sideways" answer. A day that was never opened
+     * has no plan and no items, so there's nothing to close. Call only inside [write].
+     */
+    private suspend fun closePastDays(today: LocalDate) {
+        planDao.getUntickedBefore(key(today)).forEach { tickBlocks(MyDate(it.date).toLocalDate()) }
+        resolveUnfinished(today)
+    }
+
+    /** Items still planned on earlier days follow "if a day goes sideways". Call only inside [write]. */
+    private suspend fun resolveUnfinished(today: LocalDate) {
+        val unfinished = todayTaskRepository.getPlannedBefore(today)
+        if (unfinished.isEmpty()) return
+        val missions = missionRepository.getActive().associateBy { it.missionId }
+        // Newest first, so when one mission has several, the latest is the one carried forward.
+        for (task in unfinished) {
+            val mission = missions[task.missionId]
+            val coming = todayTaskRepository.getBetween(today, today.plus(7, DateTimeUnit.DAY))
+                .any { it.missionId == task.missionId && it.taskState.isOpen }
+            if (mission != null && DayClose.outcome(task, mission, today, alreadyComing = coming) == DayClose.Outcome.MOVE) {
+                moveTask(task, mission, today)
+            } else {
+                todayTaskRepository.update(task.copy(state = TaskState.SKIPPED.name, pointsEarned = 0, crowned = false))
+            }
+        }
+    }
+
+    /** Moves [task] to the next day with room after [Moves.anchor]. Call only inside [write]. */
+    private suspend fun moveTask(task: TodayTask, mission: Mission, today: LocalDate) {
+        val from = task.date
+        val after = Moves.anchor(from, today)
+        val upcoming = todayTaskRepository.getBetween(after.plus(1, DateTimeUnit.DAY), after.plus(7, DateTimeUnit.DAY))
+        val target = Moves.target(mission, after, upcoming, roomByDay(after, tasks = upcoming))
+        val order = (upcoming.filter { it.date == target }.maxOfOrNull { it.sortOrder } ?: -1) + 1
+        todayTaskRepository.update(task.copy(state = TaskState.MOVED.name, pointsEarned = 0, crowned = false))
+        todayTaskRepository.insert(
+            newTask(mission, target, Reason(ReasonCode.MOVED, listOf(from.weekdayName())), fixed = false, order = order, movedFrom = from)
+        )
+    }
+
     private suspend fun currentPlan(date: LocalDate): DayPlan =
         planDao.getPlan(key(date)) ?: DayPlan(date = key(date), freeMinutes = defaultFreeMinutes(date))
 
@@ -276,15 +309,8 @@ class PlanRepository(
         val minutesById = (missions ?: missionRepository.getActive()).associate { it.missionId to it.durationMinutes }
         val days = (1..7).map { from.plus(it, DateTimeUnit.DAY) }
         val upcoming = tasks ?: todayTaskRepository.getBetween(days.first(), days.last())
-        val room = LinkedHashMap<LocalDate, Int>()
-        for (day in days) {
-            val free = planDao.getPlan(key(day))?.freeMinutes ?: defaultFreeMinutes(day)
-            val planned = upcoming
-                .filter { it.date == day && !it.isFixedBlock && it.taskState.isOpen }
-                .sumOf { minutesById[it.missionId] ?: 0 }
-            room[day] = free - planned
-        }
-        return room
+        val free = days.associateWith { day -> planDao.getPlan(key(day))?.freeMinutes ?: defaultFreeMinutes(day) }
+        return Moves.roomByDay(from, minutesById, upcoming, freeOn = { free[it] ?: 0 })
     }
 
     private suspend fun defaultFreeMinutes(date: LocalDate): Int {
