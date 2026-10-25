@@ -2,6 +2,7 @@ package com.example.todoapp.di
 
 import com.example.todoapp.repo.MilestoneRepository
 import com.example.todoapp.repo.MissionRepository
+import com.example.todoapp.repo.PlanRepository
 import com.example.todoapp.repo.TodayMoodRepository
 import com.example.todoapp.repo.TodayTaskRepository
 import com.example.todoapp.repo.WaterIntakeRepository
@@ -27,9 +28,10 @@ fun vmModule(): Module {
         single { TodayTaskRepository(get()) }
         single { TodayMoodRepository(get()) }
         single { WaterIntakeRepository(get()) }
+        single { PlanRepository(get(), get(), get(), get()) }
 
         // ViewModels
-        single { InitViewModel(get()) }
+        single { InitViewModel(get(), get(), get(), get()) }
         single { CalDiaryViewModel() }
         factory { (day: LocalDate) -> DiaryViewModel(get(), day) }
         factory { (day: LocalDate) -> MoodViewModel(get()) }
