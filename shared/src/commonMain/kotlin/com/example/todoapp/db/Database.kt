@@ -1,5 +1,6 @@
 package com.example.todoapp.db
 
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
@@ -17,8 +18,15 @@ import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.todotask.TodayTaskDao
 import com.example.todoapp.db.data.water.WaterIntake
 import com.example.todoapp.db.data.water.WaterIntakeDao
+import com.example.todoapp.db.data.week.PaceOffer
+import com.example.todoapp.db.data.week.WeekDao
+import com.example.todoapp.db.data.week.WeekSummary
 
-// Version 5 replaces the old mission model. Builders use fallbackToDestructiveMigration, so older databases are wiped.
+/**
+ * Version 5 replaced the old mission model; anything older is wiped (see the platform DB.kt files).
+ * From version 5 on, data is kept: each new version adds an auto migration from the one before,
+ * generated from the exported schemas in shared/schemas. Version 6 adds the week tables.
+ */
 @Database(
     entities = [
         Mission::class,
@@ -28,8 +36,11 @@ import com.example.todoapp.db.data.water.WaterIntakeDao
         DaySettings::class,
         Mood::class,
         TodayMood::class,
-        WaterIntake::class],
-    version = 5
+        WaterIntake::class,
+        WeekSummary::class,
+        PaceOffer::class],
+    version = 6,
+    autoMigrations = [AutoMigration(from = 5, to = 6)]
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -39,4 +50,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun getPlanDao(): PlanDao
     abstract fun getTodayMoodDao(): TodayMoodDao
     abstract fun getWaterIntakeDao(): WaterIntakeDao
+    abstract fun getWeekDao(): WeekDao
 }
