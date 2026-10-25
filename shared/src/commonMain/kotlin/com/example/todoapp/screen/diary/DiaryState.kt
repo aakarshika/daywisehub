@@ -38,6 +38,8 @@ data class PlanRow(
     val isFixedBlock: Boolean,
     /** Weekday it was moved to, when [state] is MOVED. */
     val movedTo: String?,
+    /** Moved in from another day; it can't be swapped. */
+    val movedIn: Boolean,
 )
 
 data class DidntFitRow(val title: String, val text: String)
@@ -118,6 +120,7 @@ object DiaryStateBuilder {
             crowned = task.crowned,
             isFixedBlock = task.isFixedBlock,
             movedTo = movedTo,
+            movedIn = task.movedFromDate != null,
         )
     }
 

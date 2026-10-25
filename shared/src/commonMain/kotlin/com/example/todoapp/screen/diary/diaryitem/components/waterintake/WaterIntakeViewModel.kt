@@ -4,11 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.todoapp.db.data.water.WaterIntake
 import com.example.todoapp.repo.WaterIntakeRepository
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDate
 
 class WaterIntakeViewModel(
@@ -28,7 +30,7 @@ class WaterIntakeViewModel(
     }
     fun upsertWaterIntake(waterIntake: WaterIntake) {
         viewModelScope.launch {
-            waterIntakeRepository.upsertWaterIntake(waterIntake)
+            withContext(NonCancellable) { waterIntakeRepository.upsertWaterIntake(waterIntake) }
         }
     }
 }

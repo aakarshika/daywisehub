@@ -92,7 +92,7 @@ private fun CalendarArea(
     val startMonth = remember { currentMonth.minusYears(3) }
     val endMonth = remember { currentMonth.plusYears(3) }
     val firstDayOfWeek = remember { firstDayOfWeekFromLocale() }
-    val daysOfWeekList = daysOfWeek(firstDayOfWeek = DayOfWeek.SUNDAY)
+    val daysOfWeekList = daysOfWeek(firstDayOfWeek = DayOfWeek.MONDAY)
 
     var visibleMonthFirst by remember { mutableStateOf(LocalDate(selectedDate.year, selectedDate.month, 1)) }
     LaunchedEffect(diaryViewMode) {

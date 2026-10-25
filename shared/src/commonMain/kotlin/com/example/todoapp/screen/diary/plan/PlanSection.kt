@@ -102,7 +102,14 @@ fun PlanSubline(state: DiaryUiState, onChange: () -> Unit) {
 }
 
 @Composable
-fun PlanSection(state: DiaryUiState, isToday: Boolean, evening: Boolean, editMode: Boolean, actions: PlanRowActions) {
+fun PlanSection(
+    state: DiaryUiState,
+    isToday: Boolean,
+    evening: Boolean,
+    editMode: Boolean,
+    actions: PlanRowActions,
+    onToggleEvening: () -> Unit,
+) {
     Column(
         modifier = Modifier.fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 6.dp)
@@ -127,6 +134,9 @@ fun PlanSection(state: DiaryUiState, isToday: Boolean, evening: Boolean, editMod
                 "Hold a title to crown it.",
                 fontSize = 11.sp, color = InkGray, modifier = Modifier.padding(top = 8.dp)
             )
+        }
+        if (isToday) {
+            SmallChip(if (evening) "Back to the plan" else "Evening check") { onToggleEvening() }
         }
     }
 }
@@ -209,7 +219,7 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
             }
             if (editMode && row.state == TaskState.PLANNED && !row.isFixedBlock) {
                 Row(modifier = Modifier.padding(top = 4.dp)) {
-                    SmallChip("Swap") { actions.onSwap(row.taskId) }
+                    if (!row.movedIn && !row.crowned) SmallChip("Swap") { actions.onSwap(row.taskId) }
                     SmallChip("Remove") { actions.onRemove(row.taskId) }
                 }
             }
@@ -224,7 +234,8 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
                     else -> "+${row.points}"
                 },
                 fontSize = 12.sp, fontWeight = FontWeight.Medium, color = pillarInk(row.pillar),
-                modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(pillarLight(row.pillar))
+                modifier = Modifier.alpha(if (closed) 0.4f else 1f)
+                    .clip(RoundedCornerShape(10.dp)).background(pillarLight(row.pillar))
                     .padding(horizontal = 8.dp, vertical = 2.dp)
             )
         }

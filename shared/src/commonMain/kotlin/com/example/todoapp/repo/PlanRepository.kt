@@ -16,6 +16,7 @@ import com.example.todoapp.domain.Points
 import com.example.todoapp.domain.Reason
 import com.example.todoapp.domain.ReasonCode
 import com.example.todoapp.domain.TaskState
+import com.example.todoapp.domain.WeekMath
 import com.example.todoapp.domain.date
 import com.example.todoapp.domain.missionKind
 import com.example.todoapp.domain.taskState
@@ -52,6 +53,9 @@ class PlanRepository(
 
     /** Builds the day's list the first time it's asked for; later calls do nothing. */
     suspend fun ensurePlanned(date: LocalDate) = write {
+        // Fixed blocks start ticked, so earlier days this week score even if their evening check never opened.
+        var day = WeekMath.weekStart(date)
+        while (day < date) { tickBlocks(day); day = day.plus(1, DateTimeUnit.DAY) }
         if (planDao.getPlan(key(date)) != null) return@write
         // fill() writes the plan row last, so a build cut short is simply redone next time.
         fill(date, DayPlan(date = key(date), freeMinutes = defaultFreeMinutes(date)))
@@ -73,14 +77,7 @@ class PlanRepository(
     }
 
     /** Evening check: fixed blocks start ticked, once per day, so an untick sticks. */
-    suspend fun tickFixedBlocks(date: LocalDate) = write {
-        val plan = planDao.getPlan(key(date)) ?: return@write
-        if (plan.fixedTicked) return@write
-        todayTaskRepository.getBetween(date, date)
-            .filter { it.isFixedBlock && it.taskState == TaskState.PLANNED }
-            .forEach { updateState(it, TaskState.DONE) }
-        planDao.upsertPlan(plan.copy(fixedTicked = true))
-    }
+    suspend fun tickFixedBlocks(date: LocalDate) = write { tickBlocks(date) }
 
     suspend fun setState(taskId: Long, state: TaskState) = write {
         todayTaskRepository.get(taskId)?.let { updateState(it, state) }
@@ -122,21 +119,23 @@ class PlanRepository(
         )
     }
 
-    suspend fun swap(taskId: Long) = write {
-        val task = todayTaskRepository.get(taskId) ?: return@write
-        if (task.taskState != TaskState.PLANNED || task.isFixedBlock) return@write
+    /** True when the item was replaced; false when it stays (nothing fits, crowned, moved in, or not a plain pick). */
+    suspend fun swap(taskId: Long): Boolean = writeFor {
+        val task = todayTaskRepository.get(taskId) ?: return@writeFor false
+        if (task.taskState != TaskState.PLANNED || task.isFixedBlock || task.crowned) return@writeFor false
         // A moved-in task stays; it can still be moved again or skipped in the evening.
-        if (task.movedFromDate != null) return@write
-        val mission = missionRepository.get(task.missionId) ?: return@write
+        if (task.movedFromDate != null) return@writeFor false
+        val mission = missionRepository.get(task.missionId) ?: return@writeFor false
         val date = task.date
-        val plan = planDao.getPlan(key(date)) ?: return@write
+        val plan = planDao.getPlan(key(date)) ?: return@writeFor false
         // Pick the replacement first; if nothing fits, the item stays.
         val full = input(date, plan)
         val withoutIt = full.copy(todayTasks = full.todayTasks.filter { it.todayTaskId != taskId })
         val excluded = swappedOut.getOrPut(date) { mutableSetOf() }.apply { add(task.missionId) }
-        val next = Planner.nextCandidate(withoutIt, swappedOut = mission, exclude = excluded) ?: return@write
+        val next = Planner.nextCandidate(withoutIt, swappedOut = mission, exclude = excluded) ?: return@writeFor false
         todayTaskRepository.delete(taskId)
         todayTaskRepository.insert(newTask(next.mission, date, next.reason, fixed = false, order = task.sortOrder))
+        true
     }
 
     suspend fun addMission(date: LocalDate, missionId: Long) = write {
@@ -151,8 +150,24 @@ class PlanRepository(
     suspend fun removeTask(taskId: Long) = write { todayTaskRepository.delete(taskId) }
 
     /** All writes: one at a time, finished even if the caller's screen goes away, and off the main thread. */
-    private suspend fun write(block: suspend () -> Unit) =
+    private suspend fun write(block: suspend () -> Unit) = writeFor(block)
+
+    /** [write] for a block that returns a value. */
+    private suspend fun <T> writeFor(block: suspend () -> T): T =
         withContext(NonCancellable + Dispatchers.Default) { mutex.withLock { block() } }
+
+    /**
+     * Evening check: ticks the day's planned fixed blocks, once per day, so an untick sticks.
+     * Does nothing for a day without a plan. Doesn't take the lock, so call it only inside [write].
+     */
+    private suspend fun tickBlocks(date: LocalDate) {
+        val plan = planDao.getPlan(key(date)) ?: return
+        if (plan.fixedTicked) return
+        todayTaskRepository.getBetween(date, date)
+            .filter { it.isFixedBlock && it.taskState == TaskState.PLANNED }
+            .forEach { updateState(it, TaskState.DONE) }
+        planDao.upsertPlan(plan.copy(fixedTicked = true))
+    }
 
     private suspend fun currentPlan(date: LocalDate): DayPlan =
         planDao.getPlan(key(date)) ?: DayPlan(date = key(date), freeMinutes = defaultFreeMinutes(date))

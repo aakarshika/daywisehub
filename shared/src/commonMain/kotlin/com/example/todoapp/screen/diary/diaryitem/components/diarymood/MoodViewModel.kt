@@ -5,11 +5,13 @@ import androidx.lifecycle.viewModelScope
 import com.example.todoapp.db.data.mood.TodayMood
 import com.example.todoapp.db.data.mood.TodayMoodWithDetails
 import com.example.todoapp.repo.TodayMoodRepository
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDate
 
 class MoodViewModel(
@@ -29,7 +31,7 @@ class MoodViewModel(
 
     fun upsertTodayMood(todayMood: TodayMood) {
         viewModelScope.launch {
-            todayMoodRepository.upsertTodayMood(todayMood)
+            withContext(NonCancellable) { todayMoodRepository.upsertTodayMood(todayMood) }
         }
     }
 }

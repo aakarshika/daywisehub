@@ -11,8 +11,12 @@ import com.example.todoapp.domain.PillarType
 import com.example.todoapp.domain.Reason
 import com.example.todoapp.domain.ReasonCode
 import com.example.todoapp.domain.TaskState
+import com.example.todoapp.domain.WeekMath
 import com.example.todoapp.repo.MissionRepository
 import com.example.todoapp.repo.TodayTaskRepository
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.isoDayNumber
+import kotlinx.datetime.plus
 
 /** Seeds the mockups' example missions while missions can't be created in the app. Plan 3 turns this off. */
 const val SEED_SAMPLE_MISSIONS = true
@@ -21,8 +25,8 @@ object SampleData {
 
     suspend fun seed(missionRepository: MissionRepository, todayTaskRepository: TodayTaskRepository) {
         val today = MyDate.now()
-        val ids = missions(start = today.subtractDays(120), today = today)
-            .associate { it.title to missionRepository.save(it) }
+        val missions = missions(start = today.subtractDays(120), today = today)
+        val ids = missions.associate { it.title to missionRepository.save(it) }
         val history = buildList {
             val gym = Reason(ReasonCode.STREAK, listOf("0"))
             (1..9).forEach { add(done(ids.getValue("Gym"), today.subtractDays(it), points = 2, reason = gym)) }
@@ -30,15 +34,30 @@ object SampleData {
                 reason = Reason(ReasonCode.RHYTHM_FIRST, listOf("2 weeks"))))
             add(done(ids.getValue("Plan winter trip"), today.subtractDays(89), points = 3,
                 reason = Reason(ReasonCode.RHYTHM_FIRST, listOf("3 months"))))
+            // This week's earlier work blocks, already ticked as fixed blocks start out.
+            val blocks = missions.filter { it.title == "Job" || it.title == "App" }
+            val todayDate = today.toLocalDate()
+            var day = WeekMath.weekStart(todayDate)
+            while (day < todayDate) {
+                if (day.dayOfWeek.isoDayNumber <= 5) {
+                    blocks.forEach { block ->
+                        add(done(ids.getValue(block.title), MyDate.fromLocalDate(day), points = 3,
+                            reason = Reason(ReasonCode.BLOCK, listOf(block.startTime.orEmpty(), block.endTime.orEmpty())),
+                            isFixedBlock = true))
+                    }
+                }
+                day = day.plus(1, DateTimeUnit.DAY)
+            }
         }
         todayTaskRepository.insertAll(history)
     }
 
-    private fun done(missionId: Long, date: MyDate, points: Int, reason: Reason) = TodayTask(
+    private fun done(missionId: Long, date: MyDate, points: Int, reason: Reason, isFixedBlock: Boolean = false) = TodayTask(
         missionId = missionId,
         taskDate = date,
         state = TaskState.DONE.name,
         pointsEarned = points,
+        isFixedBlock = isFixedBlock,
         reasonCode = reason.code.name,
         reasonArgs = reason.encodeArgs(),
     )

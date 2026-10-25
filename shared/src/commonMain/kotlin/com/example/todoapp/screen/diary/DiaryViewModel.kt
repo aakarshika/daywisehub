@@ -42,6 +42,14 @@ class DiaryViewModel(
     /** Past days, and today from 18:00. Fixed for this view model's life. */
     val isEvening: Boolean = currentDate < now.date || (currentDate == now.date && now.hour >= EVENING_HOUR)
 
+    private val _eveningOpen = MutableStateFlow(isEvening)
+    /** Today's list can switch to the evening check at any time; past days always show it. */
+    val eveningOpen: StateFlow<Boolean> = _eveningOpen
+
+    private val _notice = MutableStateFlow<String?>(null)
+    /** A short one-off message under the list, cleared by the next action. */
+    val notice: StateFlow<String?> = _notice
+
     /** False until today's plan is built, so the list doesn't flicker through half-built states. */
     private val planReady = MutableStateFlow(!isToday)
 
@@ -80,12 +88,22 @@ class DiaryViewModel(
     fun moveTask(taskId: Long) = act { planRepository.moveToNextRoom(taskId) }
     fun skipTask(taskId: Long) = act { planRepository.setState(taskId, TaskState.SKIPPED) }
     fun toggleCrown(taskId: Long) = act { planRepository.toggleCrown(taskId) }
-    fun swap(taskId: Long) = act { planRepository.swap(taskId) }
+    fun swap(taskId: Long) = act {
+        _notice.value = if (planRepository.swap(taskId)) null else "Nothing else fits today, so this one stays."
+    }
     fun removeTask(taskId: Long) = act { planRepository.removeTask(taskId) }
     fun addMission(missionId: Long) = act { planRepository.addMission(currentDate, missionId) }
     fun lighterDay() = act { planRepository.lighterDay(currentDate) }
     fun changeDay(freeMinutes: Int, energy: Energy) = act { planRepository.changeDay(currentDate, freeMinutes, energy) }
     fun confirm() = act { planRepository.confirm(currentDate) }
+
+    fun toggleEveningCheck() {
+        if (!isToday) return
+        _notice.value = null
+        val open = !_eveningOpen.value
+        _eveningOpen.value = open
+        if (open) act { planRepository.tickFixedBlocks(currentDate) }
+    }
 
     fun updateMilestoneStatus(milestone: Milestone, achieved: Boolean, completionDate: LocalDate) = act {
         val updated = if (achieved) {
@@ -96,7 +114,9 @@ class DiaryViewModel(
         milestoneRepository.updateMilestone(updated)
     }
 
+    /** Every action clears the last notice first; swap may set a new one. */
     private fun act(block: suspend () -> Unit) {
+        _notice.value = null
         viewModelScope.launch { block() }
     }
 

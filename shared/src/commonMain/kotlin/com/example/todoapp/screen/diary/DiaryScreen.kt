@@ -5,8 +5,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -17,10 +20,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.todoapp.db.data.mood.TodayMoodWithDetails
 import com.example.todoapp.db.data.water.WaterIntake
 import com.example.todoapp.screen.basicutils.Blue80
+import com.example.todoapp.screen.basicutils.InkGray
 import com.example.todoapp.screen.basicutils.Light_Yellowww
 import com.example.todoapp.screen.basicutils.Orange80
 import com.example.todoapp.screen.basicutils.Red80
@@ -60,7 +66,8 @@ fun DiaryScreen(
     val todayMoodList: List<TodayMoodWithDetails>? by moodViewModel.todayMoodStatuses.collectAsState(emptyList())
     val waterIntake: WaterIntake? by waterIntakeViewModel.waterIntake.collectAsState()
 
-    val evening = diaryViewModel.isEvening
+    val evening by diaryViewModel.eveningOpen.collectAsState()
+    val notice by diaryViewModel.notice.collectAsState()
     var editMode by remember(selection) { mutableStateOf(false) }
     var showCapacity by remember { mutableStateOf(false) }
     var showAdd by remember { mutableStateOf(false) }
@@ -119,7 +126,19 @@ fun DiaryScreen(
                     item(key = "plan-subline") { PlanSubline(s, onChange = { showCapacity = true }) }
                 }
                 item(key = "plan-section") {
-                    PlanSection(s, isToday = diaryViewModel.isToday, evening = evening, editMode = editMode, actions = actions)
+                    PlanSection(
+                        s, isToday = diaryViewModel.isToday, evening = evening, editMode = editMode, actions = actions,
+                        onToggleEvening = diaryViewModel::toggleEveningCheck
+                    )
+                }
+                notice?.let { text ->
+                    item(key = "notice") {
+                        Text(
+                            text,
+                            fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp)
+                        )
+                    }
                 }
                 s.didntFit?.let { row -> item(key = "didnt-fit") { DidntFitNote(row) } }
                 if (diaryViewModel.isToday && !evening) {
