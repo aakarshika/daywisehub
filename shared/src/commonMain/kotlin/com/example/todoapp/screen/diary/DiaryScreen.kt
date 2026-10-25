@@ -1,6 +1,8 @@
 package com.example.todoapp.screen.diary
 
+import KottieAnimation
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -9,7 +11,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.todoapp.db.data.mood.TodayMoodWithDetails
 import com.example.todoapp.db.data.water.WaterIntake
@@ -21,8 +28,24 @@ import com.example.todoapp.screen.basicutils.Yellow180
 import com.example.todoapp.screen.diary.diaryitem.components.DiaryMilestoneSection
 import com.example.todoapp.screen.diary.diaryitem.components.diarymood.MoodViewModel
 import com.example.todoapp.screen.diary.diaryitem.components.waterintake.WaterIntakeViewModel
+import com.example.todoapp.screen.diary.plan.AddMissionDialog
+import com.example.todoapp.screen.diary.plan.DayCapacityDialog
+import com.example.todoapp.screen.diary.plan.DayHighlightsCard
+import com.example.todoapp.screen.diary.plan.DidntFitNote
+import com.example.todoapp.screen.diary.plan.PillarWeekStrip
+import com.example.todoapp.screen.diary.plan.PlanActions
+import com.example.todoapp.screen.diary.plan.PlanRowActions
+import com.example.todoapp.screen.diary.plan.PlanSection
+import com.example.todoapp.screen.diary.plan.PlanSubline
 import kotlinx.datetime.LocalDate
+import kottieAnimationState.KottieAnimationState
+import kottieComposition.KottieCompositionSpec
+import kottieComposition.animateKottieCompositionAsState
+import kottieComposition.rememberKottieComposition
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import todoapp.shared.generated.resources.Res
 
+@OptIn(ExperimentalResourceApi::class)
 @Composable
 fun DiaryScreen(
     diaryViewModel: DiaryViewModel,
@@ -31,29 +54,144 @@ fun DiaryScreen(
     selection: LocalDate,
     changeDate: (LocalDate) -> Unit
 ) {
+    val state by diaryViewModel.state.collectAsState()
+    val missions by diaryViewModel.missions.collectAsState()
     val milestones by diaryViewModel.milestones.collectAsState()
     val todayMoodList: List<TodayMoodWithDetails>? by moodViewModel.todayMoodStatuses.collectAsState(emptyList())
     val waterIntake: WaterIntake? by waterIntakeViewModel.waterIntake.collectAsState()
+
+    val evening = diaryViewModel.isEvening
+    var editMode by remember(selection) { mutableStateOf(false) }
+    var showCapacity by remember { mutableStateOf(false) }
+    var showAdd by remember { mutableStateOf(false) }
+
+    var confettiJson by remember { mutableStateOf("") }
+    var waterJson by remember { mutableStateOf("") }
+    var confettiPlaying by remember { mutableStateOf(false) }
+    var waterPlaying by remember { mutableStateOf(false) }
+    var wasAllDone by remember(selection) { mutableStateOf<Boolean?>(null) }
 
     LaunchedEffect(selection) {
         moodViewModel.loadDailyMoodStatus(selection)
         waterIntakeViewModel.loadWaterIntake(selection)
     }
+    LaunchedEffect(Unit) {
+        confettiJson = Res.readBytes("files/confetti-big-animation.json").decodeToString()
+        waterJson = Res.readBytes("files/water-bubbles-animation.json").decodeToString()
+    }
+    // Confetti when the last open pick gets done in this session, not when opening a finished day.
+    LaunchedEffect(state?.allPicksDone) {
+        val allDone = state?.allPicksDone ?: return@LaunchedEffect
+        if (wasAllDone == false && allDone) confettiPlaying = true
+        wasAllDone = allDone
+    }
 
-    LazyColumn(modifier = Modifier.fillMaxSize().background(Light_Yellowww)) {
-        DateHeaderItem(selection, changeDate = changeDate)
-        HeadingText("MOOD", Red80)
-        MoodHeaderItem(todayMoodList, selection, upsertMood = { moodViewModel.upsertTodayMood(it) })
-        HeadingText("WATER INTAKE", Blue80)
-        WaterIntakeHeaderItem(waterIntake, selection, upsertWaterIntake = { waterIntakeViewModel.upsertWaterIntake(it) }, waterIntakeCompleted = {})
-        if (milestones.isNotEmpty()) {
-            HeadingText("MILESTONE", Orange80)
-            DiaryMilestoneSection(milestones = milestones, onMilestoneChecked = { mwd, achieved ->
-                diaryViewModel.updateMilestoneStatus(mwd.milestone, achieved, selection)
-            })
+    val confetti = rememberKottieComposition(spec = KottieCompositionSpec.File(confettiJson))
+    val confettiState by animateKottieCompositionAsState(composition = confetti, speed = 2.5f, isPlaying = confettiPlaying)
+    val water = rememberKottieComposition(spec = KottieCompositionSpec.File(waterJson))
+    val waterState by animateKottieCompositionAsState(composition = water, speed = 2.5f, isPlaying = waterPlaying)
+    LaunchedEffect(confettiState.isCompleted) { if (confettiState.isCompleted) confettiPlaying = false }
+    LaunchedEffect(waterState.isCompleted) { if (waterState.isCompleted) waterPlaying = false }
+
+    val actions = remember(diaryViewModel) {
+        PlanRowActions(
+            onToggle = diaryViewModel::toggleDone,
+            onCrown = diaryViewModel::toggleCrown,
+            onSwap = diaryViewModel::swap,
+            onRemove = diaryViewModel::removeTask,
+            onDidSome = diaryViewModel::didSome,
+            onMove = diaryViewModel::moveTask,
+            onSkip = diaryViewModel::skipTask,
+        )
+    }
+
+    Box(modifier = Modifier.fillMaxSize().background(Light_Yellowww)) {
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            DateHeaderItem(selection, changeDate = changeDate)
+            state?.let { s -> item { PillarWeekStrip(s.pillars) } }
+            HeadingText("MOOD", Red80)
+            MoodHeaderItem(todayMoodList, selection, upsertMood = { moodViewModel.upsertTodayMood(it) })
+            ToDoListHeader("TO DO LIST", Orange80, editClicked = { showAdd = true })
+            state?.let { s ->
+                if (s.hasPlan) item { PlanSubline(s, onChange = { showCapacity = true }) }
+                item { PlanSection(s, evening, editMode, actions) }
+                s.didntFit?.let { row -> item { DidntFitNote(row) } }
+                if (diaryViewModel.isToday && !evening && !s.confirmed) {
+                    item {
+                        PlanActions(
+                            editMode = editMode,
+                            onEdit = { editMode = !editMode },
+                            onLighter = { diaryViewModel.lighterDay() },
+                            onLooksGood = {
+                                editMode = false
+                                diaryViewModel.confirm()
+                            }
+                        )
+                    }
+                }
+                if (evening) item { DayHighlightsCard(s, selection) }
+            }
+            HeadingText("WATER INTAKE", Blue80)
+            WaterIntakeHeaderItem(
+                waterIntake, selection,
+                upsertWaterIntake = { waterIntakeViewModel.upsertWaterIntake(it) },
+                waterIntakeCompleted = { waterPlaying = it }
+            )
+            if (milestones.isNotEmpty()) {
+                HeadingText("MILESTONE", Orange80)
+                DiaryMilestoneSection(milestones = milestones, onMilestoneChecked = { mwd, achieved ->
+                    diaryViewModel.updateMilestoneStatus(mwd.milestone, achieved, selection)
+                })
+            }
+            HeadingText("NOTES", Yellow180)
+            Notes(waterIntake, selection, upsertWaterIntake = { waterIntakeViewModel.upsertWaterIntake(it) })
+            item { Spacer(Modifier.height(120.dp)) }
         }
-        HeadingText("NOTES", Yellow180)
-        Notes(waterIntake, selection, upsertWaterIntake = { waterIntakeViewModel.upsertWaterIntake(it) })
-        item { Spacer(Modifier.height(120.dp)) }
+        if (confettiPlaying) AnimationConfetti(confetti, confettiState)
+        if (waterPlaying) AnimationWater(water, waterState)
+    }
+
+    state?.let { s ->
+        if (showCapacity) {
+            DayCapacityDialog(
+                freeMinutes = s.freeMinutes,
+                energy = s.energy,
+                onSave = { minutes, energy ->
+                    showCapacity = false
+                    diaryViewModel.changeDay(minutes, energy)
+                },
+                onDismiss = { showCapacity = false }
+            )
+        }
+        if (showAdd) {
+            AddMissionDialog(
+                missions = missions,
+                todayMissionIds = s.todayMissionIds,
+                onAdd = { diaryViewModel.addMission(it) },
+                onDismiss = { showAdd = false }
+            )
+        }
+    }
+}
+
+@Composable
+private fun AnimationWater(composition: Any?, animationState: KottieAnimationState) {
+    Box(modifier = Modifier.fillMaxSize().background(Color.Transparent), contentAlignment = Alignment.Center) {
+        KottieAnimation(
+            composition = composition,
+            progress = { animationState.progress },
+            modifier = Modifier.fillMaxSize().background(Color.Transparent)
+        )
+    }
+}
+
+@Composable
+private fun AnimationConfetti(composition: Any?, animationState: KottieAnimationState) {
+    Box(modifier = Modifier.fillMaxSize().background(Color.Transparent), contentAlignment = Alignment.Center) {
+        KottieAnimation(
+            composition = composition,
+            progress = { animationState.progress },
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
