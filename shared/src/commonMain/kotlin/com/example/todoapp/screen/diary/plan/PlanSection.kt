@@ -221,7 +221,7 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
                 FlowRow(modifier = Modifier.padding(top = 4.dp)) {
                     val half = (row.points + 1) / 2
                     SmallChip(if (row.pillar.scored) "Did some · +$half" else "Did some") { actions.onDidSome(row.taskId) }
-                    SmallChip("Move it") { actions.onMove(row.taskId) }
+                    SmallChip(row.moveTo?.let { "Move to $it" } ?: "Move it") { actions.onMove(row.taskId) }
                     SmallChip("Skip today") { actions.onSkip(row.taskId) }
                 }
             }
@@ -254,7 +254,7 @@ private fun subline(row: PlanRow): String = when (row.state) {
     TaskState.MOVED -> "Moved to ${row.movedTo ?: "another day"}"
     TaskState.SKIPPED -> "Skipped today"
     TaskState.PARTIAL -> "Did some · half points"
-    else -> row.reason
+    else -> if (row.tickedForYou) "${row.reason} · ticked for you" else row.reason
 }
 
 /** Small rounded choice used for evening options, swap mode and the energy picker. */

@@ -17,6 +17,7 @@ import com.example.todoapp.repo.TodayTaskRepository
 import com.example.todoapp.repo.WeekRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -48,7 +49,7 @@ class DiaryViewModel(
     val isEvening: Boolean = currentDate < now.date || (currentDate == now.date && now.hour >= EVENING_HOUR)
 
     private val _eveningOpen = MutableStateFlow(isEvening)
-    /** Today's list can switch to the evening check at any time; past days always show it. */
+    /** Today's list switches to the evening check at 18:00, or anytime by hand; past days always show it. */
     val eveningOpen: StateFlow<Boolean> = _eveningOpen
 
     private val _notice = MutableStateFlow<String?>(null)
@@ -63,21 +64,22 @@ class DiaryViewModel(
     /** False until today's plan is built, so the list doesn't flicker through half-built states. */
     private val planReady = MutableStateFlow(!isToday)
 
+    /** The last day the diary looks at: a week past this day or today, whichever is later, for room to move into. */
+    private val lookAhead = maxOf(currentDate, today).plus(7, DateTimeUnit.DAY)
+
     private val extras = combine(
-        // This day's plan and the week's earlier ones, which decide whether this day opens the week.
-        planRepository.observePlans(WeekMath.weekStart(currentDate), currentDate),
+        // The week's earlier plans decide whether this day opens the week; later ones give the room ahead.
+        planRepository.observePlans(WeekMath.weekStart(currentDate), lookAhead),
+        planRepository.observeSettings(),
         weekRepository.observeSummary(WeekMath.weekStart(currentDate).minus(7, DateTimeUnit.DAY)),
         weekRepository.observeOffers(WeekMath.weekStart(today)),
-    ) { plans, summary, offers -> DiaryExtras(plans, summary, offers) }
+    ) { plans, settings, summary, offers -> DiaryExtras(plans, settings, summary, offers) }
 
     /** Archived missions come in too, only so their points earned this week still count in the bars. */
     val state: StateFlow<DiaryUiState?> = combine(
         missionRepository.observeActive(),
         missionRepository.observeAll(),
-        todayTaskRepository.observeBetween(
-            currentDate.minus(PlanRepository.HISTORY_DAYS, DateTimeUnit.DAY),
-            currentDate.plus(7, DateTimeUnit.DAY),
-        ),
+        todayTaskRepository.observeBetween(currentDate.minus(PlanRepository.HISTORY_DAYS, DateTimeUnit.DAY), lookAhead),
         extras,
         planReady,
     ) { missions, allMissions, tasks, extras, ready ->
@@ -95,6 +97,27 @@ class DiaryViewModel(
                 if (isEvening) planRepository.tickFixedBlocks(currentDate)   // past days too; it does nothing without a plan
             } finally {
                 planReady.value = true
+            }
+        }
+        if (isToday && !isEvening) viewModelScope.launch { openEveningAtSix() }
+    }
+
+    /**
+     * Opens the evening check at 18:00 while today's diary stays on screen. It checks the clock every
+     * half minute rather than sleeping until 18:00, because a sleeping phone pauses timers.
+     */
+    private suspend fun openEveningAtSix() {
+        while (true) {
+            delay(EVENING_CHECK_MILLIS)
+            val clock = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+            // After midnight CalDiaryViewModel moves the diary to the new day, with a new view model.
+            if (clock.date != currentDate) return
+            if (clock.hour >= EVENING_HOUR) {
+                if (!_eveningOpen.value) {
+                    _eveningOpen.value = true
+                    act { planRepository.tickFixedBlocks(currentDate) }
+                }
+                return
             }
         }
     }
@@ -154,5 +177,6 @@ class DiaryViewModel(
 
     companion object {
         const val EVENING_HOUR = 18
+        private const val EVENING_CHECK_MILLIS = 30_000L
     }
 }

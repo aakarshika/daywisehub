@@ -72,6 +72,7 @@ fun DiaryScreen(
     val evening by diaryViewModel.eveningOpen.collectAsState()
     val notice by diaryViewModel.notice.collectAsState()
     var editMode by remember(selection) { mutableStateOf(false) }
+    LaunchedEffect(evening) { if (evening) editMode = false }
     var showCapacity by remember { mutableStateOf(false) }
 
     var confettiJson by remember { mutableStateOf("") }

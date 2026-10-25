@@ -2,6 +2,7 @@ package com.example.todoapp.screen.diary
 
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.plan.DayPlan
+import com.example.todoapp.db.data.plan.DaySettings
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.week.PaceOffer
 import com.example.todoapp.db.data.week.WeekSummary
@@ -47,8 +48,10 @@ data class OfferNote(val offerId: Long, val words: OfferWords)
 
 /** What the diary reads besides missions and tasks. */
 data class DiaryExtras(
-    /** This day's plan and those of the week's earlier days. */
+    /** Plans from the start of this day's week to a week after today, for "opens the week" and room ahead. */
     val plans: List<DayPlan>,
+    /** Free minutes per weekday, for days ahead that have no plan yet. */
+    val settings: List<DaySettings>,
     /** The summary of the week before this day's week. */
     val lastWeek: WeekSummary?,
     /** Offers made for the week that has today in it. */

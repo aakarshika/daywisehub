@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.todoapp.screen.basicutils.InkGray
 import com.example.todoapp.screen.basicutils.TrackBeige
+import com.example.todoapp.screen.basicutils.pillarInk
 import com.example.todoapp.screen.basicutils.pillarStrong
 import com.example.todoapp.screen.diary.PillarProgress
 
@@ -44,6 +45,13 @@ fun PillarWeekStrip(pillars: List<PillarProgress>, freshStart: Boolean = false) 
                         Box(
                             modifier = Modifier.fillMaxWidth(progress.share).fillMaxHeight()
                                 .clip(RoundedCornerShape(4.dp)).background(pillarStrong(progress.pillar))
+                        )
+                    }
+                    if (progress.extra > 0) {
+                        Text(
+                            "+${progress.extra} extra",
+                            fontSize = 11.sp, color = pillarInk(progress.pillar),
+                            modifier = Modifier.padding(top = 3.dp)
                         )
                     }
                 }

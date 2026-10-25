@@ -2,10 +2,12 @@ package com.example.todoapp.screen.diary
 
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.plan.DayPlan
+import com.example.todoapp.db.data.plan.DaySettings
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.domain.Energy
 import com.example.todoapp.domain.History
+import com.example.todoapp.domain.Moves
 import com.example.todoapp.domain.Pick
 import com.example.todoapp.domain.PillarType
 import com.example.todoapp.domain.Points
@@ -19,9 +21,12 @@ import com.example.todoapp.domain.shortLabel
 import com.example.todoapp.domain.taskState
 import com.example.todoapp.domain.weekdayName
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.isoDayNumber
 
 data class PillarProgress(val pillar: PillarType, val earned: Int, val target: Int) {
     val share: Float get() = if (target == 0) 0f else (earned.toFloat() / target).coerceAtMost(1f)
+    /** Points past the target, shown as "+N extra" on this pillar only (spec 5). */
+    val extra: Int get() = (earned - target).coerceAtLeast(0)
 }
 
 data class PlanRow(
@@ -41,6 +46,10 @@ data class PlanRow(
     val movedTo: String?,
     /** Moved in from another day; it can't be swapped. */
     val movedIn: Boolean,
+    /** Where "Move it" would send it: a weekday, or "today" from an earlier day. Set on planned flexible rows. */
+    val moveTo: String?,
+    /** A fixed block the evening check ticked (spec 6.4: "Ticked for you"). */
+    val tickedForYou: Boolean,
 )
 
 data class DidntFitRow(val title: String, val text: String)
@@ -117,7 +126,17 @@ object DiaryStateBuilder {
             )
         }
         val todayTasks = tasks.filter { it.date == date }.sortedWith(compareBy({ it.sortOrder }, { it.todayTaskId }))
-        val rows = todayTasks.mapNotNull { task -> byId[task.missionId]?.let { toRow(task, it, tasks) } }
+        // "Move it" names its day, found the way PlanRepository.moveToNextRoom finds it.
+        val after = Moves.anchor(date, today)
+        val room = Moves.roomByDay(after, missions.associate { it.missionId to it.durationMinutes }, tasks) { day -> freeOn(day, extras) }
+        val rows = todayTasks.mapNotNull { task ->
+            val mission = byId[task.missionId] ?: return@mapNotNull null
+            val moveTo = if (task.taskState == TaskState.PLANNED && !task.isFixedBlock) {
+                Moves.target(mission, after, tasks, room).let { if (it == today) "today" else it.weekdayName() }
+            } else null
+            val ticked = task.isFixedBlock && task.taskState == TaskState.DONE && plan?.fixedTicked == true
+            toRow(task, mission, tasks, moveTo, ticked)
+        }
         val open = rows.filter { it.state.isOpen }
         val crowned = rows.filter { it.crowned && it.state.isOpen }
         val picks = rows.filter { !it.isFixedBlock }
@@ -144,7 +163,15 @@ object DiaryStateBuilder {
         )
     }
 
-    private fun toRow(task: TodayTask, mission: Mission, tasks: List<TodayTask>): PlanRow {
+    /** Free minutes on [day]: its plan's if it has one, else its weekday's setting, as in PlanRepository. */
+    private fun freeOn(day: LocalDate, extras: DiaryExtras): Int {
+        val key = MyDate.fromLocalDate(day).dateString
+        extras.plans.firstOrNull { it.date == key }?.let { return it.freeMinutes }
+        val weekday = day.dayOfWeek.isoDayNumber
+        return extras.settings.firstOrNull { it.weekday == weekday }?.freeMinutes ?: DaySettings.defaultFor(weekday)
+    }
+
+    private fun toRow(task: TodayTask, mission: Mission, tasks: List<TodayTask>, moveTo: String?, tickedForYou: Boolean): PlanRow {
         val movedTo = if (task.taskState == TaskState.MOVED) {
             tasks.firstOrNull { it.missionId == task.missionId && it.movedFromDate == task.taskDate }?.date?.weekdayName()
         } else null
@@ -161,6 +188,8 @@ object DiaryStateBuilder {
             isFixedBlock = task.isFixedBlock,
             movedTo = movedTo,
             movedIn = task.movedFromDate != null,
+            moveTo = moveTo,
+            tickedForYou = tickedForYou,
         )
     }
 
