@@ -11,6 +11,7 @@ import com.example.todoapp.domain.MilestoneDraft
 import com.example.todoapp.domain.MissionDraft
 import com.example.todoapp.domain.MissionDrafts
 import com.example.todoapp.domain.MissionKind
+import com.example.todoapp.domain.PaceOffers
 import com.example.todoapp.domain.Period
 import com.example.todoapp.domain.PillarType
 import com.example.todoapp.domain.WeekCost
@@ -273,6 +274,8 @@ class MissionEditorViewModel(
     /**
      * Saves once, then re-picks today if it isn't confirmed yet. Both finish even if the screen goes away.
      * A failed save stays on screen to try again, keeping any id already saved so a retry updates, not copies.
+     * A new pace or weight starts the mission's run of weeks for pace offers again from today, and
+     * withdraws this week's unanswered offers for it (PlanRepository.missionSaved).
      */
     fun save() {
         val s = _state.value ?: return
@@ -282,11 +285,14 @@ class MissionEditorViewModel(
             var savedId = s.draft.missionId
             try {
                 withContext(NonCancellable) {
-                    val mission = s.draft.toMission()
+                    val drafted = s.draft.toMission()
+                    // Both sides go through the draft, so only a real change counts, not how the draft tidies a stored row.
+                    val paceChanged = !s.isNew && initial?.let { PaceOffers.paceChanged(it.toMission(), drafted) } == true
+                    val mission = if (paceChanged) drafted.copy(paceSince = MyDate.fromLocalDate(today).dateString) else drafted
                     val milestones = if (s.draft.kind == MissionKind.FINISH_LINE) s.draft.milestones else emptyList()
                     savedId = missionRepository.saveWithMilestones(mission, milestones)
                     // The mission is saved by now; a failed re-pick of today mustn't make it look unsaved.
-                    runCatching { planRepository.refreshToday() }
+                    runCatching { planRepository.missionSaved(savedId, paceChanged) }
                 }
                 _state.value = _state.value?.let { it.copy(draft = it.draft.copy(missionId = savedId)) }
                 _finished.value = true

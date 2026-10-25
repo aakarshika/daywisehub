@@ -14,21 +14,27 @@ enum class OfferType {
     LOWER,
     /** An every-so-often mission ran late 3 times in a row: one step longer between times. */
     LENGTHEN,
-    /** A gentle start had 3 full weeks: up to its goal pace. */
+    /** A gentle start had 3 full weeks: one more a week, toward its goal pace. */
     STEP_UP_GENTLE,
     /** A weekly habit had 4 full weeks and this week has room: one more a week. */
     STEP_UP,
 }
 
-/** Stored by name in PaceOffer.response. */
-enum class OfferResponse { ACCEPTED, KEPT, PAUSED, NOT_YET }
+/**
+ * Stored by name in PaceOffer.response: add answers, never rename one. [WITHDRAWN] isn't a button:
+ * the mission's pace or weight was edited before the offer was answered.
+ */
+enum class OfferResponse { ACCEPTED, KEPT, PAUSED, NOT_YET, WITHDRAWN }
 
 data class OfferFound(val mission: Mission, val type: OfferType)
 
 /** A piece of a sentence. With [pillar] it's a mission title, drawn as a chip in that pillar's color (spec 7.1). */
 data class LinePart(val text: String, val pillar: PillarType? = null)
 
-/** What a pace-offer sticky says. Step-ups have no [pause], and their [keep] is "Not yet". */
+/**
+ * What a pace-offer sticky says. Step-ups have no [pause], and their [keep] is "Not yet". Easing off
+ * has no [pause] either when a month's pause would run past a finish line's end.
+ */
 data class OfferWords(
     val header: String,
     val goingWell: Boolean,
@@ -55,9 +61,10 @@ object PaceOffers {
 
     /**
      * Offers for the week starting [weekStart], judged on finished weeks only: at most [MAX_PER_WEEK],
-     * one per mission. [freeMinutesLeft] is this week's free time minus what its flexible missions need.
-     * Weeks before a mission's last answered offer don't count, so after any answer the mission gets
-     * a fresh run of weeks before it's asked again. "Not yet" also holds that offer back [SNOOZE_WEEKS].
+     * one per mission. [freeMinutesLeft] is this week's free time minus what its flexible missions need;
+     * two step-ups share it. A mission's run of weeks starts at its last answered offer or its last
+     * pace change ([since]), so it's judged only at its current pace. "Not yet" also holds that offer
+     * back [SNOOZE_WEEKS]. A finish line that ends before the end of this week gets no offer.
      */
     fun find(
         weekStart: LocalDate,
@@ -68,16 +75,22 @@ object PaceOffers {
         freeMinutesLeft: Int,
     ): List<OfferFound> {
         val found = mutableListOf<OfferFound>()
+        val weekEnd = weekStart.plus(6, DateTimeUnit.DAY)
+        // Weeks with any item at all. A week the app wasn't opened in breaks a run, so a holiday isn't three slipped weeks.
+        val opened = history.all.map { WeekMath.weekStart(it.date) }.toSet()
+        var freeLeft = freeMinutesLeft
         for (type in OfferType.entries) {
             for (mission in missions) {
                 if (found.size >= MAX_PER_WEEK) return found
                 if (found.any { it.mission.missionId == mission.missionId }) continue
                 if (!mission.isLiveOn(today) || accepted(mission, type) == null) continue
+                if (mission.endDate?.let { it.toLocalDate() < weekEnd } == true) continue
                 if (snoozed(mission, type, past, weekStart)) continue
-                val since = past
-                    .filter { it.missionId == mission.missionId && it.response != null }
-                    .maxOfOrNull { MyDate(it.week).toLocalDate() }
-                if (triggers(mission, type, weekStart, history, since, freeMinutesLeft)) found += OfferFound(mission, type)
+                if (triggers(mission, type, weekStart, history, opened, since(mission, past), freeLeft)) {
+                    found += OfferFound(mission, type)
+                    // The next step-up has to fit in what this one leaves.
+                    if (type == OfferType.STEP_UP) freeLeft -= mission.durationMinutes
+                }
             }
         }
         return found
@@ -101,7 +114,11 @@ object PaceOffers {
                 } else null
             OfferType.STEP_UP_GENTLE -> {
                 val goal = mission.goalCount
-                if (counted && weekly && goal != null && goal > mission.count) mission.copy(count = goal, goalCount = null) else null
+                if (counted && weekly && goal != null && goal > mission.count) {
+                    // One more a week; the goal goes once it's reached, so the card drops "up to".
+                    val next = minOf(goal, mission.count + 1)
+                    mission.copy(count = next, goalCount = goal.takeIf { it > next })
+                } else null
             }
             OfferType.STEP_UP -> {
                 val gentle = (mission.goalCount ?: 0) > mission.count
@@ -114,11 +131,32 @@ object PaceOffers {
 
     /** "Pause a month": back on the same date next month. */
     fun paused(mission: Mission, today: LocalDate): Mission =
-        mission.copy(pausedUntil = MyDate.fromLocalDate(today.plus(1, DateTimeUnit.MONTH)))
+        mission.copy(pausedUntil = MyDate.fromLocalDate(pauseEnd(today)))
 
-    /** The sticky's words, or null when the offer no longer applies. Built from stored fields; the title is only shown. */
-    fun words(mission: Mission, type: OfferType): OfferWords? {
+    /**
+     * The answers [type]'s sticky offers [mission] on [today], matching [words]' buttons: easing off can be
+     * kept or paused (no pause past a finish line's end), and a step-up can wait ("Not yet").
+     */
+    fun answers(mission: Mission, type: OfferType, today: LocalDate): Set<OfferResponse> = when (type) {
+        OfferType.LOWER, OfferType.LENGTHEN ->
+            if (canPause(mission, today)) setOf(OfferResponse.ACCEPTED, OfferResponse.KEPT, OfferResponse.PAUSED)
+            else setOf(OfferResponse.ACCEPTED, OfferResponse.KEPT)
+        OfferType.STEP_UP_GENTLE, OfferType.STEP_UP -> setOf(OfferResponse.ACCEPTED, OfferResponse.NOT_YET)
+    }
+
+    /**
+     * True when an edit changes what the offers judge: the kind, the pace (count, period, goal, interval,
+     * days) or the weight. The editor then starts the mission's run of weeks again (Mission.paceSince).
+     */
+    fun paceChanged(before: Mission, after: Mission): Boolean =
+        before.kind != after.kind || before.count != after.count || before.period != after.period ||
+            before.goalCount != after.goalCount || before.intervalCount != after.intervalCount ||
+            before.intervalUnit != after.intervalUnit || before.weekDays != after.weekDays || before.weight != after.weight
+
+    /** The sticky's words on [today], or null when the offer no longer applies. Built from stored fields; the title is only shown. */
+    fun words(mission: Mission, type: OfferType, today: LocalDate): OfferWords? {
         val next = accepted(mission, type) ?: return null
+        val pause = "Pause a month".takeIf { canPause(mission, today) }
         val title = LinePart(mission.title, mission.pillarType)
         return when (type) {
             OfferType.LOWER -> OfferWords(
@@ -131,9 +169,9 @@ object PaceOffers {
                             "for now? You can step back up anytime."
                     ),
                 ),
-                accept = "Make it ${next.count}×",
+                accept = if (next.count == 1) "Make it once a week" else "Make it ${next.count}×",
                 keep = if (mission.periodUnit == Period.DAY) "Keep every day" else "Keep ${mission.count}×",
-                pause = "Pause a month",
+                pause = pause,
             )
             OfferType.LENGTHEN -> {
                 val longer = MissionWords.intervalPhrase(next.intervalCount, next.intervalPeriod)
@@ -146,7 +184,7 @@ object PaceOffers {
                     ),
                     accept = longer.replaceFirstChar { it.uppercase() },
                     keep = "Keep ${MissionWords.intervalPhrase(mission.intervalCount, mission.intervalPeriod)}",
-                    pause = "Pause a month",
+                    pause = pause,
                 )
             }
             OfferType.STEP_UP_GENTLE -> OfferWords(
@@ -170,6 +208,24 @@ object PaceOffers {
 
     private fun weeklyPace(count: Int): String = if (count == 1) "once a week" else "$count× a week"
 
+    private fun pauseEnd(today: LocalDate): LocalDate = today.plus(1, DateTimeUnit.MONTH)
+
+    /** A month's pause mustn't run past a finish line's end. */
+    private fun canPause(mission: Mission, today: LocalDate): Boolean =
+        mission.endDate?.let { pauseEnd(today) <= it.toLocalDate() } ?: true
+
+    /**
+     * Where [mission]'s run of weeks starts: its last answered offer's week, or the day its pace last
+     * changed, whichever is later. Weeks before its start date weren't due, so they break a run anyway.
+     */
+    private fun since(mission: Mission, past: List<PaceOffer>): LocalDate? {
+        val answered = past
+            .filter { it.missionId == mission.missionId && it.response != null }
+            .maxOfOrNull { MyDate(it.week).toLocalDate() }
+        val paced = mission.paceSince?.let { MyDate(it).toLocalDate() }
+        return listOfNotNull(answered, paced).maxOrNull()
+    }
+
     private fun snoozed(mission: Mission, type: OfferType, past: List<PaceOffer>, weekStart: LocalDate): Boolean =
         past.any { offer ->
             offer.missionId == mission.missionId && offer.type == type.name &&
@@ -181,12 +237,14 @@ object PaceOffers {
         type: OfferType,
         weekStart: LocalDate,
         history: History,
+        opened: Set<LocalDate>,
         since: LocalDate?,
         freeMinutesLeft: Int,
     ): Boolean {
-        // The last n finished weeks, or null when some of them come before the last answer.
+        // The last n finished weeks, or null when one starts before [since] or has no items at all.
         fun lastWeeks(n: Int): List<LocalDate>? =
-            (1..n).map { weekStart.minus(7 * it, DateTimeUnit.DAY) }.takeIf { weeks -> since == null || weeks.all { it >= since } }
+            (1..n).map { weekStart.minus(7 * it, DateTimeUnit.DAY) }
+                .takeIf { weeks -> weeks.all { (since == null || it >= since) && it in opened } }
         return when (type) {
             OfferType.LOWER -> lastWeeks(SLIP_WEEKS)?.all { slipped(mission, it, history) } ?: false
             OfferType.LENGTHEN -> ranLate(mission, weekStart, history, since)
@@ -203,12 +261,18 @@ object PaceOffers {
         return due > 0 && done * 2 < due
     }
 
-    /** At 80% of its own points that week, the way a pillar counts as full. A week it wasn't due doesn't count. */
+    /**
+     * At 80% of its own points that week, the way a pillar counts as full. Points are worked out from what
+     * was done, at today's weight, so a week stored at an older weight is judged like the rest.
+     * A week it wasn't due doesn't count.
+     */
     private fun full(mission: Mission, week: LocalDate, history: History): Boolean {
         val due = Points.occurrencesInWeek(mission, week, history)
         if (due == 0) return false
         val end = week.plus(6, DateTimeUnit.DAY)
-        val earned = history.tasksFor(mission.missionId).filter { it.date >= week && it.date <= end }.sumOf { it.pointsEarned }
+        val earned = history.tasksFor(mission.missionId)
+            .filter { it.date >= week && it.date <= end }
+            .sumOf { Points.forTask(mission, it.taskState) }
         return Points.isFull(earned, mission.weight * due)
     }
 

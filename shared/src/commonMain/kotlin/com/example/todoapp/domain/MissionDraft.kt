@@ -44,6 +44,8 @@ data class MissionDraft(
     val startDate: LocalDate,
     val pausedUntil: MyDate? = null,
     val motivation: String? = null,
+    /** Kept as stored; the editor sets it when a save changes the pace (Mission.paceSince). */
+    val paceSince: String? = null,
 ) {
     val pillar: PillarType
         get() = if (kind == MissionKind.RECHARGE) PillarType.RECHARGE else pillarChoice ?: PillarType.LIFE
@@ -135,6 +137,7 @@ data class MissionDraft(
             endDate = if (k == MissionKind.FINISH_LINE) endDate?.let { MyDate.fromLocalDate(it) } else null,
             pausedUntil = pausedUntil,
             motivation = motivation,
+            paceSince = paceSince,
         )
     }
 }
@@ -203,6 +206,7 @@ object MissionDrafts {
             startDate = mission.startDate.toLocalDate(),
             pausedUntil = mission.pausedUntil,
             motivation = mission.motivation,
+            paceSince = mission.paceSince,
         )
     }
 

@@ -158,7 +158,7 @@ object DiaryStateBuilder {
             donePicks = picks.count { it.state.countsAsDone },
             hasMissions = missions.isNotEmpty(),
             lastWeek = lastWeek,
-            offers = if (date == today && opensWeek) WeekStateBuilder.offers(extras.offers, missions) else emptyList(),
+            offers = if (date == today && opensWeek) WeekStateBuilder.offers(extras.offers, missions, today) else emptyList(),
             freshStart = lastWeek != null && pillars.all { it.earned == 0 },
         )
     }

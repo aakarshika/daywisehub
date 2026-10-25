@@ -193,12 +193,23 @@ class PlanRepository(
         )
     }
 
-    /** After a mission is saved: re-picks today's open items, unless the day was confirmed with "Looks good". */
-    suspend fun refreshToday() = write { refreshTodayIfOpen() }
+    /**
+     * After the editor saves a mission. When its pace or weight changed ([paceChanged]), this week's
+     * unanswered offers for it are withdrawn: they were judged on the old pace. Then today's open items
+     * are re-picked, unless the day was confirmed with "Looks good".
+     */
+    suspend fun missionSaved(missionId: Long, paceChanged: Boolean) = write {
+        if (paceChanged) {
+            weekRepository.getOffers(WeekMath.weekStart(today()))
+                .filter { it.missionId == missionId && it.response == null }
+                .forEach { weekRepository.updateOffer(it.copy(response = OfferResponse.WITHDRAWN.name)) }
+        }
+        refreshTodayIfOpen()
+    }
 
     /**
      * Archives a mission: it leaves the Missions screen and the planner, and its still-planned
-     * items from today on are removed. Then today is re-picked as in [refreshToday]; a failed re-pick
+     * items from today on are removed. Then today is re-picked as in [missionSaved]; a failed re-pick
      * doesn't undo the archive, so it doesn't report failure.
      */
     suspend fun archiveMission(missionId: Long) = write {
@@ -209,22 +220,27 @@ class PlanRepository(
 
     /**
      * Spec 5.2: the answer to a pace offer. Only "yes" or "pause a month" changes the mission, and then
-     * today's open picks are redone, as after any mission save. A second tap on the same offer does nothing.
+     * today's open picks are redone, as after any mission save. A second tap on the same offer does nothing,
+     * and so does an answer its sticky doesn't offer, or any answer once the mission is archived. A "yes"
+     * that no longer changes anything leaves the offer unanswered. An accepted pace starts a fresh run of
+     * weeks from today (Mission.paceSince).
      */
     suspend fun answerOffer(offerId: Long, response: OfferResponse) = write {
         val offer = weekRepository.getOffer(offerId) ?: return@write
         if (offer.response != null) return@write
         val type = OfferType.entries.firstOrNull { it.name == offer.type } ?: return@write
+        val mission = missionRepository.get(offer.missionId)?.takeIf { it.active } ?: return@write
+        val today = today()
+        if (response !in PaceOffers.answers(mission, type, today)) return@write
+        val changed = when (response) {
+            OfferResponse.ACCEPTED -> PaceOffers.accepted(mission, type)?.copy(paceSince = key(today)) ?: return@write
+            OfferResponse.PAUSED -> PaceOffers.paused(mission, today)
+            OfferResponse.KEPT, OfferResponse.NOT_YET, OfferResponse.WITHDRAWN -> null
+        }
         val week = MyDate(offer.week).toLocalDate()
         val snoozeUntil = if (response == OfferResponse.NOT_YET) week.plus(PaceOffers.SNOOZE_WEEKS * 7, DateTimeUnit.DAY) else null
         weekRepository.updateOffer(offer.copy(response = response.name, snoozeUntil = snoozeUntil?.let { key(it) }))
-        val mission = missionRepository.get(offer.missionId) ?: return@write
-        val today = today()
-        val changed = when (response) {
-            OfferResponse.ACCEPTED -> PaceOffers.accepted(mission, type)
-            OfferResponse.PAUSED -> PaceOffers.paused(mission, today)
-            OfferResponse.KEPT, OfferResponse.NOT_YET -> null
-        } ?: return@write
+        if (changed == null) return@write
         missionRepository.save(changed)
         // A paused mission leaves today's list and anything moved ahead, as when it's archived.
         if (response == OfferResponse.PAUSED) todayTaskRepository.deletePlannedFrom(changed.missionId, today)

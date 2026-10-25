@@ -96,12 +96,12 @@ object WeekStateBuilder {
     }
 
     /** This week's unanswered offers whose mission is still active and can still take the change. */
-    fun offers(offers: List<PaceOffer>, missions: List<Mission>): List<OfferNote> {
+    fun offers(offers: List<PaceOffer>, missions: List<Mission>, today: LocalDate): List<OfferNote> {
         val byId = missions.associateBy { it.missionId }
         return offers.filter { it.response == null }.mapNotNull { offer ->
             val mission = byId[offer.missionId] ?: return@mapNotNull null
             val type = OfferType.entries.firstOrNull { it.name == offer.type } ?: return@mapNotNull null
-            PaceOffers.words(mission, type)?.let { OfferNote(offer.offerId, it) }
+            PaceOffers.words(mission, type, today)?.let { OfferNote(offer.offerId, it) }
         }
     }
 
