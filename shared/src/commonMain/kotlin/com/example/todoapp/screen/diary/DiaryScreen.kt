@@ -69,7 +69,6 @@ fun DiaryScreen(
     var waterJson by remember { mutableStateOf("") }
     var confettiPlaying by remember { mutableStateOf(false) }
     var waterPlaying by remember { mutableStateOf(false) }
-    var wasAllDone by remember(selection) { mutableStateOf<Boolean?>(null) }
 
     LaunchedEffect(selection) {
         moodViewModel.loadDailyMoodStatus(selection)
@@ -80,10 +79,13 @@ fun DiaryScreen(
         waterJson = Res.readBytes("files/water-bubbles-animation.json").decodeToString()
     }
     // Confetti when the last open pick gets done in this session, not when opening a finished day.
-    LaunchedEffect(state?.allPicksDone) {
-        val allDone = state?.allPicksDone ?: return@LaunchedEffect
-        if (wasAllDone == false && allDone) confettiPlaying = true
-        wasAllDone = allDone
+    var lastDone by remember(selection) { mutableStateOf<Int?>(null) }
+    var wasAllDone by remember(selection) { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(state?.allPicksDone, state?.donePicks) {
+        val s = state ?: return@LaunchedEffect
+        if (wasAllDone == false && s.allPicksDone && (lastDone ?: 0) < s.donePicks) confettiPlaying = true
+        wasAllDone = s.allPicksDone
+        lastDone = s.donePicks
     }
 
     val confetti = rememberKottieComposition(spec = KottieCompositionSpec.File(confettiJson))
@@ -108,18 +110,23 @@ fun DiaryScreen(
     Box(modifier = Modifier.fillMaxSize().background(Light_Yellowww)) {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             DateHeaderItem(selection, changeDate = changeDate)
-            state?.let { s -> item { PillarWeekStrip(s.pillars) } }
+            state?.let { s -> item(key = "week-strip") { PillarWeekStrip(s.pillars) } }
             HeadingText("MOOD", Red80)
             MoodHeaderItem(todayMoodList, selection, upsertMood = { moodViewModel.upsertTodayMood(it) })
             ToDoListHeader("TO DO LIST", Orange80, editClicked = { showAdd = true })
             state?.let { s ->
-                if (s.hasPlan) item { PlanSubline(s, onChange = { showCapacity = true }) }
-                item { PlanSection(s, evening, editMode, actions) }
-                s.didntFit?.let { row -> item { DidntFitNote(row) } }
-                if (diaryViewModel.isToday && !evening && !s.confirmed) {
-                    item {
+                if (s.hasPlan && diaryViewModel.isToday && !evening) {
+                    item(key = "plan-subline") { PlanSubline(s, onChange = { showCapacity = true }) }
+                }
+                item(key = "plan-section") {
+                    PlanSection(s, isToday = diaryViewModel.isToday, evening = evening, editMode = editMode, actions = actions)
+                }
+                s.didntFit?.let { row -> item(key = "didnt-fit") { DidntFitNote(row) } }
+                if (diaryViewModel.isToday && !evening) {
+                    item(key = "plan-actions") {
                         PlanActions(
                             editMode = editMode,
+                            showLooksGood = !s.confirmed,
                             onEdit = { editMode = !editMode },
                             onLighter = { diaryViewModel.lighterDay() },
                             onLooksGood = {
@@ -129,7 +136,9 @@ fun DiaryScreen(
                         )
                     }
                 }
-                if (evening) item { DayHighlightsCard(s, selection) }
+                if (evening && (s.hasPlan || s.picks.isNotEmpty() || s.fixed.isNotEmpty())) {
+                    item(key = "highlights") { DayHighlightsCard(s, selection) }
+                }
             }
             HeadingText("WATER INTAKE", Blue80)
             WaterIntakeHeaderItem(

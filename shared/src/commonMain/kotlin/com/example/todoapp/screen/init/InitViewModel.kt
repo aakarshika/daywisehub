@@ -9,6 +9,7 @@ import com.example.todoapp.repo.MissionRepository
 import com.example.todoapp.repo.PlanRepository
 import com.example.todoapp.repo.TodayMoodRepository
 import com.example.todoapp.repo.TodayTaskRepository
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -22,9 +23,11 @@ class InitViewModel(
 
     private val _isReady = MutableStateFlow(false)
     val isReady: StateFlow<Boolean> get() = _isReady
+    private var job: Job? = null
 
     fun insertDefaultData() {
-        viewModelScope.launch {
+        if (job != null) return
+        job = viewModelScope.launch {
             todayMoodRepository.insertDefaultMoods(LOCAL_USER_ID)
             planRepository.ensureDefaults()
             if (SEED_SAMPLE_MISSIONS && missionRepository.count() == 0) {

@@ -13,13 +13,20 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
@@ -27,6 +34,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -78,17 +87,22 @@ fun PlanSubline(state: DiaryUiState, onChange: () -> Unit) {
             "Picked for you · ${minutesLabel(state.plannedMinutes)} of your ${minutesLabel(state.freeMinutes)} free$energy",
             fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray, textAlign = TextAlign.Center
         )
-        Text(
-            "change",
-            fontSize = 13.sp, fontStyle = FontStyle.Italic, color = PeachText,
-            textDecoration = TextDecoration.Underline,
-            modifier = Modifier.clickable { onChange() }.padding(horizontal = 12.dp, vertical = 6.dp)
-        )
+        Box(
+            modifier = Modifier.heightIn(min = 44.dp).widthIn(min = 44.dp).clickable(role = Role.Button) { onChange() },
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "change",
+                fontSize = 13.sp, fontStyle = FontStyle.Italic, color = PeachText,
+                textDecoration = TextDecoration.Underline,
+                modifier = Modifier.padding(horizontal = 12.dp)
+            )
+        }
     }
 }
 
 @Composable
-fun PlanSection(state: DiaryUiState, evening: Boolean, editMode: Boolean, actions: PlanRowActions) {
+fun PlanSection(state: DiaryUiState, isToday: Boolean, evening: Boolean, editMode: Boolean, actions: PlanRowActions) {
     Column(
         modifier = Modifier.fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 6.dp)
@@ -99,16 +113,16 @@ fun PlanSection(state: DiaryUiState, evening: Boolean, editMode: Boolean, action
             GroupLabel("ALREADY IN YOUR DAY")
             state.fixed.forEach { PlanRowItem(it, evening, editMode, actions) }
         }
-        GroupLabel(if (evening) "TODAY" else "PICKED FOR TODAY")
+        GroupLabel(if (!isToday) "THIS DAY" else if (evening) "TODAY" else "PICKED FOR TODAY")
         if (state.picks.isEmpty()) {
             Text(
-                "Nothing picked yet. Tap the pencil to add something.",
+                if (isToday) "Nothing picked yet. Tap the pencil to add something." else "Nothing was planned for this day.",
                 fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray,
                 modifier = Modifier.padding(vertical = 10.dp)
             )
         }
         state.picks.forEach { PlanRowItem(it, evening, editMode, actions) }
-        if (!evening) {
+        if (isToday && !evening) {
             Text(
                 "Hold a title to crown it.",
                 fontSize = 11.sp, color = InkGray, modifier = Modifier.padding(top = 8.dp)
@@ -136,13 +150,16 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
             .padding(vertical = 9.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.Top
     ) {
-        Box(modifier = Modifier.size(width = 36.dp, height = 30.dp)) {
+        Box(
+            modifier = Modifier.size(44.dp)
+                .clickable(enabled = row.state != TaskState.MOVED, role = Role.Checkbox) { actions.onToggle(row.taskId) },
+            contentAlignment = Alignment.Center
+        ) {
             Image(
                 painter = painterResource(if (done) Res.drawable.check_square else Res.drawable.square_b),
                 contentDescription = if (done) "Untick ${row.title}" else "Tick ${row.title}",
                 colorFilter = ColorFilter.tint(strong),
-                modifier = Modifier.align(Alignment.CenterStart).size(24.dp)
-                    .clickable(enabled = !closed) { actions.onToggle(row.taskId) }
+                modifier = Modifier.size(24.dp).alpha(if (closed) 0.4f else 1f)
             )
             if (row.crowned) {
                 Image(
@@ -153,19 +170,31 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
                 )
             }
         }
+        val crownable = !row.isFixedBlock && row.state.isOpen
         Column(
-            modifier = Modifier.weight(1f)
-                .pointerInput(row.taskId) { detectTapGestures(onLongPress = { actions.onCrown(row.taskId) }) }
+            modifier = Modifier.weight(1f).then(
+                if (crownable) {
+                    Modifier.pointerInput(row.taskId) { detectTapGestures(onLongPress = { actions.onCrown(row.taskId) }) }
+                } else Modifier
+            )
         ) {
+            var titleLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
             Text(
                 row.title,
                 fontSize = 20.sp, fontStyle = FontStyle.Italic, fontWeight = FontWeight.Light, letterSpacing = 0.6.sp,
                 color = if (closed) InkGray else InkBlack,
+                onTextLayout = { titleLayout = it },
                 modifier = Modifier.drawWithContent {
                     drawContent()
-                    if (done) {
-                        val y = size.height * 0.58f
-                        drawLine(strong, Offset(0f, y), Offset(size.width, y), strokeWidth = 3.dp.toPx())
+                    val layout = titleLayout
+                    if (done && layout != null) {
+                        for (line in 0 until layout.lineCount) {
+                            val y = (layout.getLineTop(line) + layout.getLineBottom(line)) / 2
+                            drawLine(
+                                strong, Offset(layout.getLineLeft(line), y), Offset(layout.getLineRight(line), y),
+                                strokeWidth = 3.dp.toPx()
+                            )
+                        }
                     }
                 }
             )
@@ -175,7 +204,7 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
                     val half = (row.points + 1) / 2
                     SmallChip(if (row.pillar.scored) "Did some · +$half" else "Did some") { actions.onDidSome(row.taskId) }
                     SmallChip("Move it") { actions.onMove(row.taskId) }
-                    SmallChip("Skip this week") { actions.onSkip(row.taskId) }
+                    SmallChip("Skip today") { actions.onSkip(row.taskId) }
                 }
             }
             if (editMode && row.state == TaskState.PLANNED && !row.isFixedBlock) {
@@ -189,7 +218,11 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
             Text(minutesLabel(row.minutes), fontSize = 11.sp, color = InkGray)
             Spacer(Modifier.height(5.dp))
             Text(
-                if (row.pillar.scored) "+${row.points}" else "recharge",
+                when {
+                    !row.pillar.scored -> "recharge"
+                    row.state == TaskState.PARTIAL -> "+${row.pointsEarned} of ${row.points}"
+                    else -> "+${row.points}"
+                },
                 fontSize = 12.sp, fontWeight = FontWeight.Medium, color = pillarInk(row.pillar),
                 modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(pillarLight(row.pillar))
                     .padding(horizontal = 8.dp, vertical = 2.dp)
@@ -200,22 +233,25 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
 
 private fun subline(row: PlanRow): String = when (row.state) {
     TaskState.MOVED -> "Moved to ${row.movedTo ?: "another day"}"
-    TaskState.SKIPPED -> "Skipped this week"
+    TaskState.SKIPPED -> "Skipped today"
+    TaskState.PARTIAL -> "Did some · half points"
     else -> row.reason
 }
 
 /** Small rounded choice used for evening options, swap mode and the energy picker. */
 @Composable
 fun SmallChip(text: String, selected: Boolean = false, onClick: () -> Unit) {
-    Text(
-        text,
-        fontSize = 13.sp,
-        color = Color(0xFF4A4A4A),
-        modifier = Modifier.padding(top = 6.dp, end = 6.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .border(1.dp, if (selected) Orange180 else ChipBorder, RoundedCornerShape(16.dp))
-            .background(if (selected) Orange80 else Color.Transparent)
-            .clickable { onClick() }
-            .padding(horizontal = 12.dp, vertical = 7.dp)
-    )
+    val shape = RoundedCornerShape(16.dp)
+    Box(
+        modifier = Modifier.heightIn(min = 44.dp).clickable(role = Role.Button, onClick = onClick).padding(end = 6.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text, fontSize = 13.sp, color = Color(0xFF4A4A4A),
+            modifier = Modifier.clip(shape)
+                .border(1.dp, if (selected) Orange180 else ChipBorder, shape)
+                .background(if (selected) Orange80 else Color.Transparent)
+                .padding(horizontal = 12.dp, vertical = 7.dp)
+        )
+    }
 }

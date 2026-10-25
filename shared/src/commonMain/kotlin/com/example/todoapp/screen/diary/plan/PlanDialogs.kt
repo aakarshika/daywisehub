@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -37,6 +38,7 @@ import com.example.todoapp.domain.missionKind
 import com.example.todoapp.domain.pillarType
 import com.example.todoapp.screen.basicutils.InkGray
 import com.example.todoapp.screen.basicutils.Light_Yellowww
+import com.example.todoapp.screen.basicutils.PeachText
 import com.example.todoapp.screen.basicutils.pillarStrong
 
 /** "change" on the diary: today's free time and energy. Saving re-picks the open items. */
@@ -44,18 +46,19 @@ import com.example.todoapp.screen.basicutils.pillarStrong
 fun DayCapacityDialog(freeMinutes: Int, energy: Energy, onSave: (Int, Energy) -> Unit, onDismiss: () -> Unit) {
     var minutes by remember { mutableStateOf(freeMinutes) }
     var level by remember { mutableStateOf(energy) }
+    val buttonColors = ButtonDefaults.textButtonColors(contentColor = PeachText)
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = { onSave(minutes, level) }) { Text("Save") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = { TextButton(onClick = { onSave(minutes, level) }, colors = buttonColors) { Text("Save") } },
+        dismissButton = { TextButton(onClick = onDismiss, colors = buttonColors) { Text("Cancel") } },
         title = { Text("Your day") },
         text = {
             Column {
                 Text("Free time today", fontSize = 14.sp, color = InkGray)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = { minutes = (minutes - 30).coerceAtLeast(0) }) { Text("−30 min") }
+                    TextButton(onClick = { minutes = (minutes - 30).coerceAtLeast(0) }, colors = buttonColors) { Text("−30 min") }
                     Text(minutesLabel(minutes), fontSize = 18.sp, modifier = Modifier.padding(horizontal = 8.dp))
-                    TextButton(onClick = { minutes = (minutes + 30).coerceAtMost(16 * 60) }) { Text("+30 min") }
+                    TextButton(onClick = { minutes = (minutes + 30).coerceAtMost(16 * 60) }, colors = buttonColors) { Text("+30 min") }
                 }
                 Spacer(Modifier.height(12.dp))
                 Text("Energy", fontSize = 14.sp, color = InkGray)
@@ -74,9 +77,10 @@ fun AddMissionDialog(missions: List<Mission>, todayMissionIds: Set<Long>, onAdd:
     val available = missions
         .filter { it.missionKind != MissionKind.BLOCK && it.missionId !in todayMissionIds }
         .sortedBy { it.pillarType.ordinal }
+    val buttonColors = ButtonDefaults.textButtonColors(contentColor = PeachText)
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+        confirmButton = { TextButton(onClick = onDismiss, colors = buttonColors) { Text("Done") } },
         title = { Text("Add to today") },
         text = {
             if (available.isEmpty()) {

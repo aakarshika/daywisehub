@@ -14,6 +14,7 @@ import com.example.todoapp.repo.MissionRepository
 import com.example.todoapp.repo.PlanRepository
 import com.example.todoapp.repo.TodayTaskRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -36,16 +37,13 @@ class DiaryViewModel(
     private val currentDate: LocalDate,
 ) : ViewModel() {
 
-    val isToday: Boolean = currentDate == MyDate.now().toLocalDate()
+    private val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    val isToday: Boolean = currentDate == now.date
+    /** Past days, and today from 18:00. Fixed for this view model's life. */
+    val isEvening: Boolean = currentDate < now.date || (currentDate == now.date && now.hour >= EVENING_HOUR)
 
-    /** Past days, and today from 18:00, show the evening check. */
-    val isEvening: Boolean
-        get() {
-            val today = MyDate.now().toLocalDate()
-            if (currentDate < today) return true
-            if (currentDate > today) return false
-            return Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).hour >= EVENING_HOUR
-        }
+    /** False until today's plan is built, so the list doesn't flicker through half-built states. */
+    private val planReady = MutableStateFlow(!isToday)
 
     val state: StateFlow<DiaryUiState?> = combine(
         missionRepository.observeActive(),
@@ -54,8 +52,9 @@ class DiaryViewModel(
             currentDate.plus(7, DateTimeUnit.DAY),
         ),
         planRepository.observePlan(currentDate),
-    ) { missions, tasks, plan ->
-        DiaryStateBuilder.build(currentDate, missions, tasks, plan)
+        planReady,
+    ) { missions, tasks, plan, ready ->
+        if (ready) DiaryStateBuilder.build(currentDate, missions, tasks, plan) else null
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val missions: StateFlow<List<Mission>> = missionRepository.observeActive()
@@ -67,9 +66,11 @@ class DiaryViewModel(
 
     init {
         viewModelScope.launch {
-            if (isToday) {
-                planRepository.ensurePlanned(currentDate)
-                if (isEvening) planRepository.tickFixedBlocks(currentDate)
+            try {
+                if (isToday) planRepository.ensurePlanned(currentDate)
+                if (isEvening) planRepository.tickFixedBlocks(currentDate)   // past days too; it does nothing without a plan
+            } finally {
+                planReady.value = true
             }
         }
     }

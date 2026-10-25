@@ -8,6 +8,7 @@ import com.example.todoapp.domain.IfMissed
 import com.example.todoapp.domain.MissionKind
 import com.example.todoapp.domain.Period
 import com.example.todoapp.domain.PillarType
+import com.example.todoapp.domain.Reason
 import com.example.todoapp.domain.ReasonCode
 import com.example.todoapp.domain.TaskState
 import com.example.todoapp.repo.MissionRepository
@@ -23,19 +24,23 @@ object SampleData {
         val ids = missions(start = today.subtractDays(120), today = today)
             .associate { it.title to missionRepository.save(it) }
         val history = buildList {
-            (1..9).forEach { add(done(ids.getValue("Gym"), today.subtractDays(it), points = 2)) }
-            add(done(ids.getValue("Call Grandma"), today.subtractDays(13), points = 2))
-            add(done(ids.getValue("Plan winter trip"), today.subtractDays(89), points = 3))
+            val gym = Reason(ReasonCode.STREAK, listOf("0"))
+            (1..9).forEach { add(done(ids.getValue("Gym"), today.subtractDays(it), points = 2, reason = gym)) }
+            add(done(ids.getValue("Call Grandma"), today.subtractDays(13), points = 2,
+                reason = Reason(ReasonCode.RHYTHM_FIRST, listOf("2 weeks"))))
+            add(done(ids.getValue("Plan winter trip"), today.subtractDays(89), points = 3,
+                reason = Reason(ReasonCode.RHYTHM_FIRST, listOf("3 months"))))
         }
         todayTaskRepository.insertAll(history)
     }
 
-    private fun done(missionId: Long, date: MyDate, points: Int) = TodayTask(
+    private fun done(missionId: Long, date: MyDate, points: Int, reason: Reason) = TodayTask(
         missionId = missionId,
         taskDate = date,
         state = TaskState.DONE.name,
         pointsEarned = points,
-        reasonCode = ReasonCode.ADDED.name,
+        reasonCode = reason.code.name,
+        reasonArgs = reason.encodeArgs(),
     )
 
     private fun missions(start: MyDate, today: MyDate): List<Mission> = listOf(

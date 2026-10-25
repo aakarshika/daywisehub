@@ -30,10 +30,6 @@ data class MyDate(
         return fromLocalDate(toLocalDate().minusDays(days))
     }
     fun toLocalDate(): LocalDate {
-        val parts = dateString.split("-").map { it.toInt() }
-        val year = parts[0]
-        val month = parts[1]
-        val day = parts[2]
-        return LocalDate(year, month, day)
+        return LocalDate.parse(dateString)
     }
 }

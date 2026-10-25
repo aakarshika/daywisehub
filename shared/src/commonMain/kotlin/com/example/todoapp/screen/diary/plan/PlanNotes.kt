@@ -78,16 +78,16 @@ fun DidntFitNote(row: DidntFitRow) {
     }
 }
 
-/** Morning buttons: Swap one, Lighter day, Looks good. */
+/** Morning buttons: Swap one, Lighter day, and Looks good when [showLooksGood]. */
 @Composable
-fun PlanActions(editMode: Boolean, onEdit: () -> Unit, onLighter: () -> Unit, onLooksGood: () -> Unit) {
+fun PlanActions(editMode: Boolean, showLooksGood: Boolean, onEdit: () -> Unit, onLighter: () -> Unit, onLooksGood: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
     ) {
         PlanButton(if (editMode) "Done swapping" else "Swap one", filled = false, onClick = onEdit)
         PlanButton("Lighter day", filled = false, onClick = onLighter)
-        PlanButton("Looks good", filled = true, onClick = onLooksGood)
+        if (showLooksGood) PlanButton("Looks good", filled = true, onClick = onLooksGood)
     }
 }
 
@@ -127,7 +127,7 @@ fun DayHighlightsCard(state: DiaryUiState, date: LocalDate) {
             )
         }
         Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).height(1.dp).background(Color(0xFFDDD6C2)))
-        HighlightLine(Res.drawable.star_filled, "+${state.pointsToday} points today")
+        HighlightLine(Res.drawable.star_filled, "+${state.pointsToday} points")
         HighlightLine(
             Res.drawable.heart_filled,
             "${state.pillarsTouched} of ${PillarType.scoredPillars.size} pillars got something."
