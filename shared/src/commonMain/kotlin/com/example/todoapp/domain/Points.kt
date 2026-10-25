@@ -4,6 +4,7 @@ import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.todotask.TodayTask
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.daysUntil
 import kotlinx.datetime.plus
 
 /** Spec section 5. */
@@ -17,6 +18,10 @@ object Points {
         TaskState.PARTIAL -> (weight + 1) / 2
         else -> 0
     }
+
+    /** Points for doing [mission] in [state]. Recharge never scores, whatever its weight. */
+    fun forTask(mission: Mission, state: TaskState): Int =
+        if (mission.scored) forState(mission.weight, state) else 0
 
     /**
      * Due date of an interval mission, judged only from what was done before [weekStart],
@@ -34,9 +39,16 @@ object Points {
         if (liveDays.isEmpty()) return 0
         return when {
             mission.missionKind == MissionKind.BLOCK -> liveDays.count { mission.isScheduledOn(it) }
-            mission.repeatsByInterval -> if (dueDate(mission, history, weekStart) <= days.last()) 1 else 0
+            mission.repeatsByInterval -> {
+                // Once per interval: more than once a week for intervals under 7 days, at most once otherwise.
+                val due = dueDate(mission, history, weekStart)
+                val lastLive = liveDays.last()
+                if (due > lastLive) 0
+                else 1 + maxOf(due, liveDays.first()).daysUntil(lastLive) / mission.intervalDays()
+            }
             mission.periodUnit == Period.DAY -> liveDays.size
-            else -> mission.count
+            // At most once per live day, so a mission starting mid-week can still be full.
+            else -> mission.count.coerceAtMost(liveDays.size)
         }
     }
 
