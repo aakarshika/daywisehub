@@ -6,18 +6,23 @@ import com.example.todoapp.db.data.plan.DayPlan
 import com.example.todoapp.db.data.plan.DaySettings
 import com.example.todoapp.db.data.plan.PlanDao
 import com.example.todoapp.db.data.todotask.TodayTask
+import com.example.todoapp.db.data.week.PaceOffer
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.domain.DayClose
 import com.example.todoapp.domain.Energy
 import com.example.todoapp.domain.History
 import com.example.todoapp.domain.MissionKind
 import com.example.todoapp.domain.Moves
+import com.example.todoapp.domain.OfferResponse
+import com.example.todoapp.domain.OfferType
+import com.example.todoapp.domain.PaceOffers
 import com.example.todoapp.domain.PlanInput
 import com.example.todoapp.domain.Planner
 import com.example.todoapp.domain.Points
 import com.example.todoapp.domain.Reason
 import com.example.todoapp.domain.ReasonCode
 import com.example.todoapp.domain.TaskState
+import com.example.todoapp.domain.WeekLoad
 import com.example.todoapp.domain.WeekMath
 import com.example.todoapp.domain.WeekSummaries
 import com.example.todoapp.domain.date
@@ -170,6 +175,31 @@ class PlanRepository(
         runCatching { refreshTodayIfOpen() }
     }
 
+    /**
+     * Spec 5.2: the answer to a pace offer. Only "yes" or "pause a month" changes the mission, and then
+     * today's open picks are redone, as after any mission save. A second tap on the same offer does nothing.
+     */
+    suspend fun answerOffer(offerId: Long, response: OfferResponse) = write {
+        val offer = weekRepository.getOffer(offerId) ?: return@write
+        if (offer.response != null) return@write
+        val type = OfferType.entries.firstOrNull { it.name == offer.type } ?: return@write
+        val week = MyDate(offer.week).toLocalDate()
+        val snoozeUntil = if (response == OfferResponse.NOT_YET) week.plus(PaceOffers.SNOOZE_WEEKS * 7, DateTimeUnit.DAY) else null
+        weekRepository.updateOffer(offer.copy(response = response.name, snoozeUntil = snoozeUntil?.let { key(it) }))
+        val mission = missionRepository.get(offer.missionId) ?: return@write
+        val today = today()
+        val changed = when (response) {
+            OfferResponse.ACCEPTED -> PaceOffers.accepted(mission, type)
+            OfferResponse.PAUSED -> PaceOffers.paused(mission, today)
+            OfferResponse.KEPT, OfferResponse.NOT_YET -> null
+        } ?: return@write
+        missionRepository.save(changed)
+        // A paused mission leaves today's list and anything moved ahead, as when it's archived.
+        if (response == OfferResponse.PAUSED) todayTaskRepository.deletePlannedFrom(changed.missionId, today)
+        // As in archiveMission: a failed re-pick doesn't undo the answer.
+        runCatching { refreshTodayIfOpen() }
+    }
+
     /** All writes: one at a time, finished even if the caller's screen goes away, and off the main thread. */
     private suspend fun write(block: suspend () -> Unit) = writeFor(block)
 
@@ -249,7 +279,9 @@ class PlanRepository(
 
     /**
      * Spec 5.1: every finished week since the first item gets a summary, once. Its points are what the
-     * week's tasks earned, after the ticks and skips above. Call only inside [write].
+     * week's tasks earned, after the ticks and skips above. When last week is among them, this is the
+     * first open of a new week, which also makes this week's pace offers (spec 5.2). The offers are
+     * written before the summaries, so a close-out cut short is redone next time. Call only inside [write].
      */
     private suspend fun closeWeeks(today: LocalDate) {
         val thisWeek = WeekMath.weekStart(today)
@@ -264,9 +296,20 @@ class PlanRepository(
         if (missing.isEmpty()) return
         val missions = missionRepository.getActive()
         val allMissions = missionRepository.getAll()
-        val from = missing.first().minus(HISTORY_DAYS, DateTimeUnit.DAY)
+        val from = minOf(missing.first().minus(HISTORY_DAYS, DateTimeUnit.DAY), thisWeek.minus(PaceOffers.HISTORY_DAYS, DateTimeUnit.DAY))
         val history = History(todayTaskRepository.getBetween(from, today.plus(7, DateTimeUnit.DAY)))
+        if (lastWeek in missing) makeOffers(thisWeek, today, missions, history)
         missing.forEach { weekRepository.saveSummary(WeekSummaries.summarize(it, missions, allMissions, history)) }
+    }
+
+    /** This week's pace offers, unless it already has some. Call only inside [write]. */
+    private suspend fun makeOffers(thisWeek: LocalDate, today: LocalDate, missions: List<Mission>, history: History) {
+        if (weekRepository.getOffers(thisWeek).isNotEmpty()) return
+        val freeLeft = WeekLoad.freeMinutes(planDao.getSettings()) - WeekLoad.plannedMinutes(missions, thisWeek, history)
+        val found = PaceOffers.find(thisWeek, today, missions, history, weekRepository.getAllOffers(), freeLeft)
+        weekRepository.insertOffers(
+            found.map { PaceOffer(missionId = it.mission.missionId, type = it.type.name, week = key(thisWeek)) }
+        )
     }
 
     private suspend fun currentPlan(date: LocalDate): DayPlan =

@@ -16,6 +16,7 @@ import com.example.todoapp.repo.MissionRepository
 import com.example.todoapp.repo.TodayTaskRepository
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.isoDayNumber
+import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
 /**
@@ -32,7 +33,7 @@ object SampleData {
         val ids = missions.associate { it.title to missionRepository.save(it) }
         val history = buildList {
             val gym = Reason(ReasonCode.STREAK, listOf("0"))
-            (1..9).forEach { add(done(ids.getValue("Gym"), today.subtractDays(it), points = 2, reason = gym)) }
+            (1..21).forEach { add(done(ids.getValue("Gym"), today.subtractDays(it), points = 2, reason = gym)) }
             add(done(ids.getValue("Call Grandma"), today.subtractDays(13), points = 2,
                 reason = Reason(ReasonCode.RHYTHM_FIRST, listOf("2 weeks"))))
             add(done(ids.getValue("Plan winter trip"), today.subtractDays(89), points = 3,
@@ -50,6 +51,16 @@ object SampleData {
                     }
                 }
                 day = day.plus(1, DateTimeUnit.DAY)
+            }
+            // Guitar at its gentle 2× for the last 3 weeks, so the first open offers to step it up (spec 5.2).
+            // "New ideas" has no history, so it shows as slipped and gets the other offer.
+            val thisWeek = WeekMath.weekStart(todayDate)
+            val guitar = Reason(ReasonCode.QUOTA, listOf("0", "2", "7"))
+            for (weeksBack in 1..3) {
+                val monday = thisWeek.minus(7 * weeksBack, DateTimeUnit.DAY)
+                listOf(0, 3).forEach { offset ->
+                    add(done(ids.getValue("Guitar"), MyDate.fromLocalDate(monday.plus(offset, DateTimeUnit.DAY)), points = 3, reason = guitar))
+                }
             }
         }
         todayTaskRepository.insertAll(history)
