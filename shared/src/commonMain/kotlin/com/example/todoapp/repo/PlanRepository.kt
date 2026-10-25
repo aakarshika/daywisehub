@@ -36,6 +36,9 @@ class PlanRepository(
     private val planDao: PlanDao by lazy { database.getPlanDao() }
     private val mutex = Mutex()
 
+    /** Missions swapped out per day, so "Swap one" doesn't bounce between two. Kept in memory only. */
+    private val swappedOut = mutableMapOf<LocalDate, MutableSet<Long>>()
+
     fun observePlan(date: LocalDate): Flow<DayPlan?> = planDao.observePlan(key(date))
 
     suspend fun ensureDefaults() {
@@ -126,10 +129,14 @@ class PlanRepository(
     suspend fun swap(taskId: Long) {
         mutex.withLock {
             val task = todayTaskRepository.get(taskId) ?: return@withLock
+            // A moved-in task stays; it can still be moved again or skipped in the evening.
+            if (task.movedFromDate != null) return@withLock
+            val mission = missionRepository.get(task.missionId) ?: return@withLock
             val date = task.date
             val plan = planDao.getPlan(key(date)) ?: return@withLock
+            val excluded = swappedOut.getOrPut(date) { mutableSetOf() }.apply { add(task.missionId) }
             todayTaskRepository.delete(taskId)
-            val next = Planner.nextCandidate(input(date, plan), exclude = setOf(task.missionId)) ?: return@withLock
+            val next = Planner.nextCandidate(input(date, plan), swappedOut = mission, exclude = excluded) ?: return@withLock
             todayTaskRepository.insert(newTask(next.mission, date, next.reason, fixed = false, order = task.sortOrder))
         }
     }

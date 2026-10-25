@@ -37,7 +37,10 @@ object Planner {
 
     private data class Candidate(
         val mission: Mission,
-        /** Lower is more urgent: 2 overdue, 3 streak at risk, 4 quota due or preferred day, 5 milestone soon, 6 the rest. */
+        /**
+         * Lower is more urgent: 2 overdue, 3 streak at risk, 4 quota due, preferred day or recharge on a heavy day,
+         * 5 milestone soon, 6 the rest.
+         */
         val tier: Int,
         /** How far behind the mission's pillar is this week, 0 to 1. Recharge uses -1 so it sorts last. */
         val gap: Double,
@@ -53,25 +56,30 @@ object Planner {
         var left = budget(input)
         for (candidate in candidates(input, fixed)) {
             val mission = candidate.mission
-            val tooHard = input.energy == Energy.LOW && mission.effortLevel == Effort.DRAINING
-            if (!tooHard && mission.durationMinutes <= left) {
+            if (fits(mission, input.energy, left)) {
                 picks += Pick(mission, candidate.reason, isFixedBlock = false)
                 left -= mission.durationMinutes
             } else {
                 skipped += candidate
             }
         }
-        val didntFit = skipped.firstOrNull { it.due != null }?.let { candidate ->
-            DidntFit(candidate.mission.missionId, candidate.due!!, nextRoomDay(input, candidate.mission.durationMinutes))
+        val weekEnd = WeekMath.weekEnd(input.date)
+        val didntFit = skipped.firstNotNullOfOrNull { candidate ->
+            candidate.due?.takeIf { it <= weekEnd }?.let { due ->
+                DidntFit(candidate.mission.missionId, due, nextRoomDay(input, candidate.mission.durationMinutes))
+            }
         }
         return PlanResult(fixed + picks, didntFit)
     }
 
-    /** The best candidate not already on today's list, for "Swap one". */
-    fun nextCandidate(input: PlanInput, exclude: Set<Long>): Pick? =
-        candidates(input, fixedBlocks(input))
-            .firstOrNull { it.mission.missionId !in exclude }
-            ?.let { Pick(it.mission, it.reason, isFixedBlock = false) }
+    /** The best candidate for "Swap one": fits what's left of today, same pillar first, never one already swapped out. */
+    fun nextCandidate(input: PlanInput, swappedOut: Mission, exclude: Set<Long>): Pick? {
+        val left = budget(input)
+        val fitting = candidates(input, fixedBlocks(input))
+            .filter { it.mission.missionId !in exclude && fits(it.mission, input.energy, left) }
+        val best = fitting.firstOrNull { it.mission.pillarType == swappedOut.pillarType } ?: fitting.firstOrNull()
+        return best?.let { Pick(it.mission, it.reason, isFixedBlock = false) }
+    }
 
     /** Free minutes the flexible picks may use, after anything already on today's list. */
     fun budget(input: PlanInput): Int {
@@ -82,6 +90,9 @@ object Planner {
             .sumOf { minutesById[it.missionId] ?: 0 }
         return (input.freeMinutes * share).toInt() - alreadyPlanned
     }
+
+    private fun fits(mission: Mission, energy: Energy, minutesLeft: Int): Boolean =
+        !(energy == Energy.LOW && mission.effortLevel == Effort.DRAINING) && mission.durationMinutes <= minutesLeft
 
     private fun fixedBlocks(input: PlanInput): List<Pick> = input.missions
         .filter { it.missionKind == MissionKind.BLOCK && it.isLiveOn(input.date) && it.isScheduledOn(input.date) }
@@ -99,7 +110,13 @@ object Planner {
             .filter { it.missionKind != MissionKind.BLOCK && it.isLiveOn(input.date) }
             .filter { mission -> input.todayTasks.none { it.missionId == mission.missionId } }
             .mapNotNull { candidateFor(it, input, weekStart, weekEnd, fixedMinutesToday, gaps[it.pillarType] ?: 0.0) }
-            .sortedWith(compareBy<Candidate> { it.tier }.thenByDescending { it.gap }.thenBy { it.mission.missionId })
+            .sortedWith(
+                compareBy<Candidate> { it.tier }
+                    .thenByDescending { it.gap }
+                    .thenBy(nullsLast<LocalDate>()) { it.due }
+                    .thenByDescending { it.mission.weight }
+                    .thenBy { it.mission.missionId }
+            )
     }
 
     private fun candidateFor(
@@ -118,7 +135,7 @@ object Planner {
             val done = history.doneCount(mission.missionId, weekStart, yesterday)
             return when {
                 fixedMinutesToday >= HEAVY_DAY_MINUTES -> Candidate(
-                    mission, 6, -1.0, Reason(ReasonCode.RECHARGE_HEAVY, listOf((fixedMinutesToday / 60).toString())), null
+                    mission, 4, -1.0, Reason(ReasonCode.RECHARGE_HEAVY, listOf((fixedMinutesToday / 60).toString())), null
                 )
                 done < mission.count -> Candidate(
                     mission, 6, -1.0, Reason(ReasonCode.RECHARGE_USUAL, listOf(mission.count.toString())), null
@@ -130,7 +147,9 @@ object Planner {
         if (mission.repeatsByInterval) {
             val last = history.lastDoneBefore(mission.missionId, date)
             val due = last?.plus(mission.intervalDays(), DateTimeUnit.DAY) ?: mission.startDate.toLocalDate()
-            if (due > weekEnd) return null
+            // Weekly or slower may be done early in the week; shorter intervals wait until they're due.
+            val horizon = if (mission.intervalDays() < Period.WEEK.days) date else weekEnd
+            if (due > horizon) return null
             val label = mission.intervalLabel()
             return when {
                 due < date -> Candidate(mission, 2, gap, Reason(ReasonCode.RHYTHM_OVERDUE, listOf(due.daysUntil(date).toString())), due)
@@ -144,15 +163,21 @@ object Planner {
             return Candidate(mission, if (streak > 0) 3 else 6, gap, Reason(ReasonCode.STREAK, listOf(streak.toString())), null)
         }
 
-        // Weekly count: habits and finish lines.
+        // Weekly count: habits and finish lines. Target and days left follow the mission's live days.
+        val target = Points.occurrencesInWeek(mission, weekStart, history)
         val done = history.doneCount(mission.missionId, weekStart, yesterday)
-        val remaining = mission.count - done
+        val remaining = target - done
         if (remaining <= 0) return null
-        val daysLeft = WeekMath.daysLeftIncludingToday(date)
+        val lastDay = mission.endDate?.toLocalDate()?.let { minOf(it, weekEnd) } ?: weekEnd
+        val daysLeft = date.daysUntil(lastDay) + 1
         val urgent = remaining >= daysLeft
         val preferred = mission.isScheduledOn(date)
-        // Spread the week out: not two days in a row unless it's needed or today is a preferred day.
-        if (!urgent && !preferred && history.pickedOn(mission.missionId, yesterday)) return null
+        // Hold a habit for its preferred days still ahead this week, unless it's needed today.
+        val preferredAhead = (1 until daysLeft).count { mission.isScheduledOn(date.plus(it, DateTimeUnit.DAY)) }
+        if (!urgent && !preferred && remaining <= preferredAhead) return null
+        // Spread the week out: not two days in a row unless it's needed or preferred. Each week starts fresh.
+        val pickedYesterday = yesterday >= weekStart && history.pickedOn(mission.missionId, yesterday)
+        if (!urgent && !preferred && pickedYesterday) return null
         val milestone = nextMilestone(mission, input.milestones, date)
         val tier = when {
             urgent || preferred -> 4
@@ -160,7 +185,7 @@ object Planner {
             else -> 6
         }
         val reason = milestone?.first
-            ?: Reason(ReasonCode.QUOTA, listOf(done.toString(), mission.count.toString(), daysLeft.toString()))
+            ?: Reason(ReasonCode.QUOTA, listOf(done.toString(), target.toString(), daysLeft.toString()))
         return Candidate(mission, tier, gap, reason, milestone?.second)
     }
 
