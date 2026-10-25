@@ -131,10 +131,12 @@ class PlanRepository(
         // Pick the replacement first; if nothing fits, the item stays.
         val full = input(date, plan)
         val withoutIt = full.copy(todayTasks = full.todayTasks.filter { it.todayTaskId != taskId })
-        val excluded = swappedOut.getOrPut(date) { mutableSetOf() }.apply { add(task.missionId) }
+        val excluded = swappedOut[date].orEmpty() + task.missionId
         val next = Planner.nextCandidate(withoutIt, swappedOut = mission, exclude = excluded) ?: return@writeFor false
         todayTaskRepository.delete(taskId)
         todayTaskRepository.insert(newTask(next.mission, date, next.reason, fixed = false, order = task.sortOrder))
+        // Only a real swap keeps the mission out for the rest of the day.
+        swappedOut.getOrPut(date) { mutableSetOf() }.add(task.missionId)
         true
     }
 

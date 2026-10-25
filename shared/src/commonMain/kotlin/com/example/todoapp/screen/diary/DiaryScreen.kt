@@ -128,7 +128,10 @@ fun DiaryScreen(
                 item(key = "plan-section") {
                     PlanSection(
                         s, isToday = diaryViewModel.isToday, evening = evening, editMode = editMode, actions = actions,
-                        onToggleEvening = diaryViewModel::toggleEveningCheck
+                        onToggleEvening = {
+                            editMode = false
+                            diaryViewModel.toggleEveningCheck()
+                        }
                     )
                 }
                 notice?.let { text ->
