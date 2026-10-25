@@ -25,6 +25,9 @@ interface MissionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertPillar(pillar: Pillar)
 
+    @Query("SELECT COUNT(*) FROM pillar")
+    suspend fun getPillarCount(): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertPillarMapping(missionPillarMapping: MissionPillarMapping)
 

@@ -6,6 +6,7 @@ import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.todotask.TodayTaskDao
 import com.example.todoapp.db.data.todotask.TodayTaskReminder
 import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
+import com.example.todoapp.db.models.LOCAL_USER_ID
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.db.models.TaskStatus
 import com.example.todoapp.db.models.TaskType
@@ -94,7 +95,7 @@ class TodayTaskRepository(private val database: AppDatabase) {
         return TodayTaskWithFewDetails(
             todayTask = TodayTask(
                 todayTaskId = 0L,
-                userId = 1L,
+                userId = LOCAL_USER_ID,
                 missionId = missionId,
                 taskDate = MyDate.fromLocalDate(date),
                 taskStatus = TaskStatus.ADDED.value,

@@ -120,7 +120,7 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                     ){
                         DiaryScreen(
                             KoinF.di?.get<DiaryViewModel> {
-                                parametersOf(currentDate, calDateViewModel.userId)
+                                parametersOf(currentDate)
                             } ?: error("DiaryViewModel not found"),
                             KoinF.di?.get<MoodViewModel> { parametersOf(currentDate) }!!,
                             KoinF.di?.get<WaterIntakeViewModel> { parametersOf(currentDate) }!!,

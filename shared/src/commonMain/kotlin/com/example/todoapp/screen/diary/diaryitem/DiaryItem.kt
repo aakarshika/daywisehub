@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.todotask.TodayTaskReminder
+import com.example.todoapp.db.models.LOCAL_USER_ID
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.db.models.TaskStatus
 import com.example.todoapp.db.models.TaskType
@@ -201,7 +202,7 @@ fun upsertTask(
 fun getNewTask(missionId: Long, taskDate: LocalDate): TodayTask{
     return TodayTask(
         todayTaskId = 0L, // Example task ID
-        userId = 1L, // Example userId
+        userId = LOCAL_USER_ID,
         missionId = missionId,
         taskStatus = TaskStatus.ADDED.value,
         taskDate = MyDate.fromLocalDate(taskDate) ,

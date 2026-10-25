@@ -6,13 +6,14 @@ import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.mission.MissionWithDetails
 import com.example.todoapp.db.data.mission.missionstuff.MissionFrequency
 import com.example.todoapp.db.data.pillar.Pillar
+import com.example.todoapp.db.models.LOCAL_USER_ID
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.screen.missions.editpopup.OptimizedEditMissionPopup
 
 val pillars = listOf(
     Pillar(
         pillarId = 1L,
-        pillarUserId = 1L,
+        pillarUserId = LOCAL_USER_ID,
         pillarDescription = "Take care of your body. It is the only one you have!",
         pillarBenefits = "Proper attention to physical wellness at least 3-5 times a week is recommended for our body",
         pillarName = "HEALTH",
@@ -24,7 +25,7 @@ val pillars = listOf(
     ),
     Pillar(
         pillarId = 2L,
-        pillarUserId = 1L,
+        pillarUserId = LOCAL_USER_ID,
         pillarDescription = "Money isn't everything, but it is some things..",
         pillarBenefits = "Improve your skills, stay connected, and constantly walk towards your dreams",
         pillarName = "WEALTH",
@@ -36,7 +37,7 @@ val pillars = listOf(
     ),
     Pillar(
         pillarId = 3L,
-        pillarUserId = 1L,
+        pillarUserId = LOCAL_USER_ID,
         pillarDescription = "We all need love from our family, friends, neighbours, and internet trolls..",
         pillarBenefits = "Keep your social life alive by making it a priority",
         pillarName = "LOVE",
@@ -48,7 +49,7 @@ val pillars = listOf(
     ),
     Pillar(
         pillarId = 4L,
-        pillarUserId = 1L,
+        pillarUserId = LOCAL_USER_ID,
         pillarDescription = "Meditate, Create, Dream, Build, Destroy..",
         pillarBenefits = "Mental Peace needs attention. Multi-dimensional growth is needed to feel sustained and alive",
         pillarName = "LIFE",
@@ -63,7 +64,7 @@ val pillars = listOf(
 val defaultMissionWithDetails: MissionWithDetails = MissionWithDetails(
     mission = Mission(
         missionId = 0L,
-        userId = 1L,
+        userId = LOCAL_USER_ID,
         missionTitle = "TODO",
         importanceValue = 0.52f,
         importanceSet = "MEDIUM",

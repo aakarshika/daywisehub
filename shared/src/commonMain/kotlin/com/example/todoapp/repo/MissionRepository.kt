@@ -75,6 +75,7 @@ class MissionRepository(private val database: AppDatabase) {
     }
 
     suspend fun insertDefaultPillars(userId: Long) {
+        if (missionDao.getPillarCount() > 0) return
         missionDao.upsertPillar(
             Pillar(
                 pillarId = 1L,

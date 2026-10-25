@@ -8,9 +8,8 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import com.example.todoapp.db.data.mission.MissionWithDetails
 import com.example.todoapp.db.data.pillar.Pillar
-import com.example.todoapp.di.KoinF
+import com.example.todoapp.db.models.LOCAL_USER_ID
 import com.example.todoapp.repo.MissionRepository
-import com.example.todoapp.screen.metrics.CalDiaryViewModel
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.collectLatest
@@ -36,8 +35,7 @@ class MissionsControllerViewModel constructor(
     fun insertFullMission(updatedMission: MissionWithDetails) {
         viewModelScope.launch {
             val newMissionId = missionRepository.insertFullMission(updatedMission)
-            val userId = KoinF.di?.get<CalDiaryViewModel>()?.userId ?: -1L
-            loadMissionIds(userId)
+            loadMissionIds()
         }
     }
 
@@ -75,9 +73,9 @@ class MissionsControllerViewModel constructor(
 //    }
 
 
-    fun loadMissionIds(userId: Long) {
+    fun loadMissionIds() {
         viewModelScope.launch {
-            missionRepository.getAllMissionIds(userId)
+            missionRepository.getAllMissionIds(LOCAL_USER_ID)
                 .collect { missionList ->
                     _missionIds.tryEmit(missionList)
                 }

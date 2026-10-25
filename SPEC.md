@@ -47,10 +47,10 @@ DayWiseHub is a **Kotlin Multiplatform** (KMP) personal productivity and wellnes
               ┌────────▼────────┐
               │    App.kt       │
               │  Koin setup     │
-              │  InitScreen /   │
-              │  InitScreen2    │
+              │  Seed defaults  │
+              │  (InitViewModel)│
               └────────┬────────┘
-                       │ (after auth)
+                       │ (once seeded)
               ┌────────▼────────┐
               │   NavScreens    │
               │  PreCompose     │
@@ -77,7 +77,7 @@ DayWiseHub is a **Kotlin Multiplatform** (KMP) personal productivity and wellnes
 
 **Pattern:** MVVM with Repository pattern. ViewModels hold reactive state (`SharedFlow`/`StateFlow`), Repositories wrap DAOs, DAOs define SQL queries.
 
-**DI:** All 7 repositories are `single` scoped (one instance). Most ViewModels are `factory` scoped (new per use). `InitViewModel` and `CalDiaryViewModel` are `single` scoped.
+**DI:** All 5 repositories are `single` scoped (one instance). Most ViewModels are `factory` scoped (new per use). `InitViewModel` and `CalDiaryViewModel` are `single` scoped.
 
 ---
 
@@ -91,31 +91,23 @@ DayWiseHub is a **Kotlin Multiplatform** (KMP) personal productivity and wellnes
 | `"Missions"` | `MissionsControllerScreen` | List of all missions, add/edit |
 | `"Calendar"` | `MetricsScreen` + `DateHighlights` | Month calendar heatmap + date detail |
 
-### Pre-Navigation Screens (conditional, before NavHost)
-
-| Screen | Condition | Purpose |
-|---|---|---|
-| `InitScreen` | User not logged in | Username entry / signup |
-| `InitScreen2` | User logged in | Loads user, wraps `NavScreens` |
-
 ### Boot Sequence
+
+The app is local-only: there is no sign-up or login. All user-scoped rows use the single `LOCAL_USER_ID` (`db/models/LocalUser.kt`).
 
 1. Platform entry → `App()` composable
 2. `KoinF.setupKoin()` initializes DI
-3. `InitScreen` checks `LoginStatus` table
-4. On signup/existing login → `InitScreen2` loads user by ID
-5. `NavScreens` renders bottom nav with 3 tabs
+3. `InitViewModel.insertDefaultData()` seeds default pillars and moods if those tables are empty
+4. `NavScreens` renders bottom nav with 3 tabs
 
 ---
 
 ## 5. Database Schema
 
-### Entities (13 tables)
+### Entities (11 tables)
 
 | Entity | Table | Purpose | FK Parents |
 |---|---|---|---|
-| `User` | `users` | User account | — |
-| `LoginStatus` | `login_status` | Auth state persistence | — |
 | `Mission` | `mission` | Long-term goal | — |
 | `Pillar` | `pillar` | Category (Health, Wealth, Love, Life) | — |
 | `MissionPillarMapping` | `mission_pillar_mapping` | M:N mission↔pillar | Mission, Pillar |
@@ -131,7 +123,7 @@ DayWiseHub is a **Kotlin Multiplatform** (KMP) personal productivity and wellnes
 ### Entity Relationships
 
 ```
-User
+LOCAL_USER_ID (constant, no table)
  ├── Mission (via user_id)
  │    ├── MissionFrequency (CASCADE DELETE)
  │    ├── MissionPillarMapping → Pillar
@@ -150,13 +142,8 @@ User
 
 ```
 InitViewModel
- ├── UserRepository.insertUser
- ├── LoginRepository.insertLoginStatus, getLoginStatus
  ├── MissionRepository.insertDefaultPillars
  └── TodayMoodRepository.insertDefaultMoods
-
-UserViewModel
- └── UserRepository.getUserValueByUserId
 
 DiaryViewModel
  └── TodayTaskRepository.getAllTasksForDate1, updateStatus, insertFullTask,

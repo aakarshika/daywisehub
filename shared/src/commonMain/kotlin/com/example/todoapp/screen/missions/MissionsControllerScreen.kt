@@ -26,7 +26,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.todoapp.db.data.mission.MissionWithDetails
 import com.example.todoapp.di.KoinF
-import com.example.todoapp.screen.metrics.CalDiaryViewModel
 import com.example.todoapp.screen.missions.editpopup.OptimizedEditMissionPopup
 import org.jetbrains.compose.resources.painterResource
 import org.koin.core.parameter.parametersOf
@@ -51,8 +50,7 @@ fun MissionsControllerScreen(viewModel: MissionsControllerViewModel) {
 
         // Load mission IDs when the screen is composed
         LaunchedEffect(Unit) {
-            val userId = KoinF.di?.get<CalDiaryViewModel>()?.userId ?: -1L
-            viewModel.loadMissionIds(userId)
+            viewModel.loadMissionIds()
         }
 
         var isAddMissionPopupVisible = remember { mutableStateOf(false) }

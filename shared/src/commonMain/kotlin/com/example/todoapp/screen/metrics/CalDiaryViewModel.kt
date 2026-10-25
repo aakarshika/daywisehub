@@ -11,9 +11,6 @@ class CalDiaryViewModel(
     private val missionRepository: MissionRepository
 ) : ViewModel() {
 
-    var userId: Long = -1L
-    var username: String = ""
-
     private val _currentDate = MutableStateFlow(LocalDate.now())
     val currentDate: StateFlow<LocalDate> get() = _currentDate
 

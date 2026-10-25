@@ -6,6 +6,7 @@ import com.example.todoapp.db.data.mission.milestone.Milestone
 import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
+import com.example.todoapp.db.models.LOCAL_USER_ID
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.db.models.TaskStatus
 import com.example.todoapp.repo.MilestoneRepository
@@ -22,7 +23,6 @@ class DiaryViewModel(
     private val todayTaskRepository: TodayTaskRepository,
     private val milestoneRepository: MilestoneRepository,
     private val currentDate: LocalDate = LocalDate.now(),
-    private val userId: Long,
 ) : ViewModel() {
 
     private val _dayTasks: MutableSharedFlow<List<ComboTask>?> = MutableSharedFlow(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
@@ -42,13 +42,9 @@ class DiaryViewModel(
 
     fun loadMilestonesAround(selectionDate: LocalDate) {
         viewModelScope.launch {
-            if (userId <= 0) {
-                _milestonesForWindow.emit(emptyList())
-                return@launch
-            }
             val startDate = MyDate.fromLocalDate(selectionDate).subtractDays(7)
             val endDate = MyDate.fromLocalDate(selectionDate).addDays(7)
-            milestoneRepository.getMilestonesForUserInDateRange(userId, startDate, endDate)
+            milestoneRepository.getMilestonesForUserInDateRange(LOCAL_USER_ID, startDate, endDate)
                 .collectLatest {
                     _milestonesForWindow.emit(it)
                 }

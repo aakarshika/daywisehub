@@ -18,6 +18,7 @@ fun getDatabaseBuilder(): RoomDatabase.Builder<AppDatabase> {
         name = dbFilePath,
         factory =  { AppDatabase::class.instantiateImpl() }
     )
+        .addMigrations(MIGRATION_3_4)
         .fallbackToDestructiveMigration(true)
         .setDriver(BundledSQLiteDriver())
         .setQueryCoroutineContext(Dispatchers.IO)

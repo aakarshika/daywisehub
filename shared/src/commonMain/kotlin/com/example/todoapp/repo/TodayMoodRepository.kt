@@ -5,7 +5,6 @@ import com.example.todoapp.db.data.mood.Mood
 import com.example.todoapp.db.data.mood.TodayMood
 import com.example.todoapp.db.data.mood.TodayMoodDao
 import com.example.todoapp.db.data.mood.TodayMoodWithDetails
-import com.example.todoapp.db.data.user.User
 import com.example.todoapp.db.models.MyDate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.LocalDate
@@ -29,6 +28,7 @@ class TodayMoodRepository(private val database: AppDatabase) {
     }
 
     suspend fun insertDefaultMoods(userId: Long) {
+        if (todayMoodDao.getMoodCount() > 0) return
         todayMoodDao.upsertMood(
             Mood(
                 moodId = 0L,

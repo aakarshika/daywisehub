@@ -3,9 +3,10 @@ package com.example.todoapp.db
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.execSQL
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
-import com.example.todoapp.db.data.loginstatus.LoginStatus
-import com.example.todoapp.db.data.loginstatus.LoginStatusDao
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.mission.MissionDao
 import com.example.todoapp.db.data.mission.milestone.Milestone
@@ -22,13 +23,10 @@ import com.example.todoapp.db.data.todotask.SubTask
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.todotask.TodayTaskDao
 import com.example.todoapp.db.data.todotask.TodayTaskReminder
-import com.example.todoapp.db.data.user.User
-import com.example.todoapp.db.data.user.UserDao
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 
 @Database(entities = [
-    User::class,
     Mission::class,
     Pillar::class,
     MissionPillarMapping::class,
@@ -39,19 +37,24 @@ import kotlinx.coroutines.IO
     SubTask::class,
     Mood::class,
     TodayMood::class,
-    WaterIntake::class,
-    LoginStatus::class],
-    version = 2
+    WaterIntake::class],
+    version = 4
 )
 
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun getUserDao(): UserDao
-    abstract fun getLoginStatusDao(): LoginStatusDao
     abstract fun getMissionDao(): MissionDao
     abstract fun getMilestoneDao(): MilestoneDao
     abstract fun getTodayTaskDao(): TodayTaskDao
     abstract fun getTodayMoodDao(): TodayMoodDao
     abstract fun getWaterIntakeDao(): WaterIntakeDao
 
+}
+
+// Sign-up/login was removed; drop the tables that backed it without touching user data.
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("DROP TABLE IF EXISTS `users`")
+        connection.execSQL("DROP TABLE IF EXISTS `login_status`")
+    }
 }

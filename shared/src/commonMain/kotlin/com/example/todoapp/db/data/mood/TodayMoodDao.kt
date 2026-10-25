@@ -15,6 +15,9 @@ interface TodayMoodDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertMood(mood: Mood): Long
 
+    @Query("SELECT COUNT(*) FROM mood")
+    suspend fun getMoodCount(): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertTodayMood(todayMood: TodayMood): Long
 

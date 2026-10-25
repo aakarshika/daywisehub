@@ -20,7 +20,6 @@ import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
 import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.db.models.TaskStatus
-import com.example.todoapp.di.KoinF
 import com.example.todoapp.screen.basicutils.components.MetricCalendarDayCell
 import com.example.todoapp.screen.metrics.metriccomponents.TaskTypeDropdown
 import com.example.todoapp.screen.metrics.metriccomponents.options
@@ -61,10 +60,9 @@ fun MetricsScreen(
         }?.groupBy({ it.first }, { it.second })
             ?: mapOf()
 
-    val userId = KoinF.di?.get<CalDiaryViewModel>()?.userId ?: -1L
     LaunchedEffect(Unit) {
         metricsViewModel.loadAllTasks()
-        metricsViewModel.loadAllMilestones(userId)
+        metricsViewModel.loadAllMilestones()
     }
 
     Column {

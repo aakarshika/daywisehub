@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
 import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
+import com.example.todoapp.db.models.LOCAL_USER_ID
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.repo.MilestoneRepository
 import com.example.todoapp.repo.TodayTaskRepository
@@ -34,16 +35,12 @@ class MetricsViewModel(
         }
     }
 
-    fun loadAllMilestones(userId: Long) {
+    fun loadAllMilestones() {
         viewModelScope.launch {
-            if (userId <= 0) {
-                _allMilestones.tryEmit(emptyList())
-                return@launch
-            }
             val now = MyDate.now()
             val startMyDate = now.subtractDays(3 * 365)
             val endMyDate = now.addDays(3 * 365)
-            milestoneRepository.getMilestonesForUserInDateRange(userId, startMyDate, endMyDate)
+            milestoneRepository.getMilestonesForUserInDateRange(LOCAL_USER_ID, startMyDate, endMyDate)
                 .collectLatest {
                     _allMilestones.emit(it)
                 }
