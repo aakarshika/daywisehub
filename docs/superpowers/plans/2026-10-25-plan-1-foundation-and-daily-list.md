@@ -1922,7 +1922,7 @@ class PlanRepository(
 
     private suspend fun updateState(task: TodayTask, state: TaskState) {
         val mission = missionRepository.get(task.missionId) ?: return
-        todayTaskRepository.update(task.copy(state = state.name, pointsEarned = Points.forState(mission.weight, state)))
+        todayTaskRepository.update(task.copy(state = state.name, pointsEarned = Points.forTask(mission, state)))
     }
 
     private suspend fun rebuild(date: LocalDate, plan: DayPlan) {
@@ -2221,7 +2221,6 @@ import com.example.todoapp.domain.Energy
 import com.example.todoapp.domain.History
 import com.example.todoapp.domain.PillarType
 import com.example.todoapp.domain.Points
-import com.example.todoapp.domain.Reason
 import com.example.todoapp.domain.ReasonLines
 import com.example.todoapp.domain.TaskState
 import com.example.todoapp.domain.WeekMath
@@ -2319,7 +2318,7 @@ object DiaryStateBuilder {
             pillar = mission.pillarType,
             minutes = mission.durationMinutes,
             points = mission.weight,
-            reason = ReasonLines.render(Reason.decode(task.reasonCode, task.reasonArgs)),
+            reason = ReasonLines.render(task.reasonCode, task.reasonArgs),
             state = task.taskState,
             crowned = task.crowned,
             isFixedBlock = task.isFixedBlock,
@@ -2357,9 +2356,11 @@ import com.example.todoapp.repo.MilestoneRepository
 import com.example.todoapp.repo.MissionRepository
 import com.example.todoapp.repo.PlanRepository
 import com.example.todoapp.repo.TodayTaskRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
@@ -2398,7 +2399,7 @@ class DiaryViewModel(
         planRepository.observePlan(currentDate),
     ) { missions, tasks, plan ->
         DiaryStateBuilder.build(currentDate, missions, tasks, plan)
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val missions: StateFlow<List<Mission>> = missionRepository.observeActive()
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -3319,6 +3320,7 @@ git commit -m "docs: sync redesign spec with plan 1 schema"
   - The nine-question sentence and the before-saving week cost.
   - The Missions screen grouped by pillar, with free-hours settings per weekday.
   - Turns `SEED_SAMPLE_MISSIONS` off.
+  - Caps "every so often" at 3 months, or widens the 120-day history window (`PlanRepository.HISTORY_DAYS`) to cover the longest interval; otherwise a longer rhythm looks never-done.
 - **Plan 4, metrics:**
   - Pillar rings, patterns and the Monday-first calendar with point-sized day rings.
   - One progress line per mission.
