@@ -91,8 +91,9 @@ fun PlanActions(editMode: Boolean, showLooksGood: Boolean, onEdit: () -> Unit, o
     }
 }
 
+/** The peach button: filled with dark text, or outlined. Also used by the mission editor. */
 @Composable
-private fun PlanButton(text: String, filled: Boolean, onClick: () -> Unit) {
+internal fun PlanButton(text: String, filled: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier.height(44.dp)
             .clip(RoundedCornerShape(10.dp))

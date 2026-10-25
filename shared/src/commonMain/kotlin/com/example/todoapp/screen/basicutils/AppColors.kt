@@ -62,6 +62,7 @@ val CardCream = Color(0xFFFBF6E6)
 val CrownGold = Color(0xFFD9A93A)
 val LineBlueBorder = Color(0xFFCFE3F7)
 val ChipBorder = Color(0xFFD9CDB8)
+val CardBorder = Color(0xFFEDE6D6)
 
 /** Headings, chips and highlights. */
 fun pillarLight(pillar: PillarType): Color = when (pillar) {
