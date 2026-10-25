@@ -9,8 +9,10 @@ import com.example.todoapp.db.data.mission.Mission
 
 /**
  * A pace change offered on a week's first diary day (spec 5.2). [type] and [response] store
- * domain.OfferType and domain.OfferResponse names; [response] stays null until it's answered.
+ * domain.OfferType and domain.OfferResponse names; [response] stays null until it's answered,
+ * or until an edit to the mission's pace withdraws the offer.
  * [week] and [snoozeUntil] are Mondays, yyyy-MM-dd. "Not yet" sets [snoozeUntil].
+ * A mission gets at most one offer a week; the unique index holds that.
  */
 @Entity(
     tableName = "pace_offer",
@@ -20,7 +22,7 @@ import com.example.todoapp.db.data.mission.Mission
         childColumns = ["offer_mission_id"],
         onDelete = ForeignKey.CASCADE
     )],
-    indices = [Index(value = ["offer_mission_id"]), Index(value = ["offer_week"])]
+    indices = [Index(value = ["offer_mission_id"]), Index(value = ["offer_week", "offer_mission_id"], unique = true)]
 )
 data class PaceOffer(
     @PrimaryKey(autoGenerate = true) @ColumnInfo(name = "offer_id") val offerId: Long = 0,

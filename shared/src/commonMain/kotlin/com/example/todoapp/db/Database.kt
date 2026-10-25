@@ -24,8 +24,17 @@ import com.example.todoapp.db.data.week.WeekSummary
 
 /**
  * Version 5 replaced the old mission model; anything older is wiped (see the platform DB.kt files).
+ * A downgrade (an older build installed over a newer database) wipes everything too. That's a
+ * conscious choice: it only happens while testing, and an older build can't read newer tables.
  * From version 5 on, data is kept: each new version adds an auto migration from the one before,
- * generated from the exported schemas in shared/schemas. Version 6 adds the week tables.
+ * generated from the exported schemas in shared/schemas. Version 6 adds the week tables, the
+ * mission's pace-since day and the task's auto-ticked flag.
+ *
+ * Rules for version 7 and later:
+ * - A new column must be nullable, or have `@ColumnInfo(defaultValue = ...)`, so the auto migration can add it.
+ * - A rename or a delete needs an `AutoMigrationSpec`, or a manual `Migration`.
+ * - Keep every `N.json` in shared/schemas, and never edit one by hand.
+ * - Never change an entity at the same version: a device already on that version wouldn't migrate.
  */
 @Database(
     entities = [

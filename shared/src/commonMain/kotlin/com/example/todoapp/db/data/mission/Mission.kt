@@ -14,6 +14,9 @@ import com.example.todoapp.db.models.MyDate
  * - RHYTHM: once every [intervalCount] [intervalUnit].
  * - BLOCK: on [weekDays] (ISO numbers, Monday = 1) from [startTime] to [endTime].
  * On habits, [weekDays] holds optional preferred days.
+ *
+ * [paceSince] is the day the pace or weight last changed, by hand or by an accepted pace offer
+ * (yyyy-MM-dd, null until then). Pace offers judge only the weeks from that day on.
  */
 @Entity(tableName = "mission")
 data class Mission(
@@ -38,4 +41,5 @@ data class Mission(
     @ColumnInfo(name = "mission_paused_until") val pausedUntil: MyDate? = null,
     @ColumnInfo(name = "mission_motivation") val motivation: String? = null,
     @ColumnInfo(name = "mission_active") val active: Boolean = true,
+    @ColumnInfo(name = "mission_pace_since") val paceSince: String? = null,
 )

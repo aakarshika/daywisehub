@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 6,
-    "identityHash": "912cb1183037244fa7d4b13b4959fb56",
+    "identityHash": "b9b1d9a31de7e79cab75843c598556dc",
     "entities": [
       {
         "tableName": "mission",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`mission_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mission_title` TEXT NOT NULL, `mission_pillar` TEXT NOT NULL, `mission_kind` TEXT NOT NULL, `mission_weight` INTEGER NOT NULL, `mission_minutes` INTEGER NOT NULL, `mission_effort` TEXT NOT NULL, `mission_if_missed` TEXT NOT NULL, `mission_count` INTEGER NOT NULL, `mission_period` TEXT NOT NULL, `mission_goal_count` INTEGER, `mission_interval_count` INTEGER NOT NULL, `mission_interval_unit` TEXT NOT NULL, `mission_week_days` TEXT NOT NULL, `mission_start_time` TEXT, `mission_end_time` TEXT, `mission_start_date` TEXT NOT NULL, `mission_end_date` TEXT, `mission_paused_until` TEXT, `mission_motivation` TEXT, `mission_active` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`mission_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mission_title` TEXT NOT NULL, `mission_pillar` TEXT NOT NULL, `mission_kind` TEXT NOT NULL, `mission_weight` INTEGER NOT NULL, `mission_minutes` INTEGER NOT NULL, `mission_effort` TEXT NOT NULL, `mission_if_missed` TEXT NOT NULL, `mission_count` INTEGER NOT NULL, `mission_period` TEXT NOT NULL, `mission_goal_count` INTEGER, `mission_interval_count` INTEGER NOT NULL, `mission_interval_unit` TEXT NOT NULL, `mission_week_days` TEXT NOT NULL, `mission_start_time` TEXT, `mission_end_time` TEXT, `mission_start_date` TEXT NOT NULL, `mission_end_date` TEXT, `mission_paused_until` TEXT, `mission_motivation` TEXT, `mission_active` INTEGER NOT NULL, `mission_pace_since` TEXT)",
         "fields": [
           {
             "fieldPath": "missionId",
@@ -127,6 +127,11 @@
             "columnName": "mission_active",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "paceSince",
+            "columnName": "mission_pace_since",
+            "affinity": "TEXT"
           }
         ],
         "primaryKey": {
@@ -250,7 +255,7 @@
       },
       {
         "tableName": "today_task",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`today_task_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `task_mission_id` INTEGER NOT NULL, `task_date` TEXT NOT NULL, `task_state` TEXT NOT NULL, `task_points` INTEGER NOT NULL, `task_fixed_block` INTEGER NOT NULL, `task_crowned` INTEGER NOT NULL, `task_moved_from` TEXT, `task_reason_code` TEXT NOT NULL, `task_reason_args` TEXT NOT NULL, `task_order` INTEGER NOT NULL, FOREIGN KEY(`task_mission_id`) REFERENCES `mission`(`mission_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`today_task_id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `task_mission_id` INTEGER NOT NULL, `task_date` TEXT NOT NULL, `task_state` TEXT NOT NULL, `task_points` INTEGER NOT NULL, `task_fixed_block` INTEGER NOT NULL, `task_crowned` INTEGER NOT NULL, `task_moved_from` TEXT, `task_reason_code` TEXT NOT NULL, `task_reason_args` TEXT NOT NULL, `task_order` INTEGER NOT NULL, `task_auto_ticked` INTEGER NOT NULL DEFAULT 0, FOREIGN KEY(`task_mission_id`) REFERENCES `mission`(`mission_id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "todayTaskId",
@@ -316,6 +321,13 @@
             "columnName": "task_order",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "autoTicked",
+            "columnName": "task_auto_ticked",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
           }
         ],
         "primaryKey": {
@@ -704,13 +716,14 @@
             "createSql": "CREATE INDEX IF NOT EXISTS `index_pace_offer_offer_mission_id` ON `${TABLE_NAME}` (`offer_mission_id`)"
           },
           {
-            "name": "index_pace_offer_offer_week",
-            "unique": false,
+            "name": "index_pace_offer_offer_week_offer_mission_id",
+            "unique": true,
             "columnNames": [
-              "offer_week"
+              "offer_week",
+              "offer_mission_id"
             ],
             "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_pace_offer_offer_week` ON `${TABLE_NAME}` (`offer_week`)"
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_pace_offer_offer_week_offer_mission_id` ON `${TABLE_NAME}` (`offer_week`, `offer_mission_id`)"
           }
         ],
         "foreignKeys": [
@@ -730,7 +743,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '912cb1183037244fa7d4b13b4959fb56')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'b9b1d9a31de7e79cab75843c598556dc')"
     ]
   }
 }
