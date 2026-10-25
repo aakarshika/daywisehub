@@ -54,9 +54,23 @@ data class MissionDraft(
 
     val gentleOn: Boolean get() = gentle && gentleEligible
 
+    /** Where a gentle start begins: the pace kept from editing, or about half the goal. */
+    val gentleStartCount: Int
+        get() = gentleCount?.takeIf { it in 1 until count } ?: MissionDrafts.gentleStart(count)
+
     /** The pace the planner uses now: lower while starting gently. */
     val currentCount: Int
-        get() = if (gentleOn) gentleCount?.takeIf { it in 1 until count } ?: MissionDrafts.gentleStart(count) else count
+        get() = if (gentleOn) gentleStartCount else count
+
+    /** Why this draft can't be saved yet, or null when it can. */
+    val blocker: String?
+        get() = when {
+            title.isBlank() -> "Give it a name."
+            kind == null -> "Pick what kind of thing it is."
+            kind == MissionKind.BLOCK && weekDays.isEmpty() -> "Pick at least one day."
+            kind == MissionKind.BLOCK && endMinute <= startMinute -> "It has to end after it starts."
+            else -> null
+        }
 
     /** Weekly habits and finish lines may have preferred days; blocks must have days. */
     val usesDays: Boolean
@@ -95,7 +109,6 @@ data class MissionDraft(
     fun toMission(): Mission {
         val k = kind ?: MissionKind.HABIT
         val counted = k == MissionKind.HABIT || k == MissionKind.FINISH_LINE || k == MissionKind.RECHARGE
-        val periodic = k == MissionKind.HABIT || k == MissionKind.FINISH_LINE
         return Mission(
             missionId = missionId,
             title = title.trim(),
@@ -110,7 +123,8 @@ data class MissionDraft(
                 else -> ifMissed
             }.name,
             count = if (counted) currentCount else 1,
-            period = (if (periodic) period else Period.WEEK).name,
+            // Only habits count per day or month; finish lines are weekly (spec 3).
+            period = (if (k == MissionKind.HABIT) period else Period.WEEK).name,
             goalCount = if (gentleOn) count else null,
             intervalCount = if (k == MissionKind.RHYTHM) intervalCount else 0,
             intervalUnit = (if (k == MissionKind.RHYTHM) intervalUnit else Period.WEEK).name,
@@ -156,7 +170,11 @@ object MissionDrafts {
 
     /** A stored mission as a draft. Stored names that don't match an answer fall back to a default. */
     fun from(mission: Mission, milestones: List<Milestone>): MissionDraft {
-        val goal = mission.goalCount?.takeIf { it > mission.count }
+        val kind = enumOr(mission.kind, MissionKind.HABIT)
+        val period = enumOr(mission.period, Period.WEEK)
+        // Finish lines are weekly; one stored as every day is 7 times a week.
+        val dailyFinish = kind == MissionKind.FINISH_LINE && period == Period.DAY
+        val goal = mission.goalCount?.takeIf { it > mission.count && !dailyFinish }
         val unit = enumOr(mission.intervalUnit, Period.WEEK)
         val start = (MissionWords.parseClock(mission.startTime) ?: (9 * 60)).coerceIn(0, DAY_MINUTES - CLOCK_STEP)
         var end = MissionWords.parseClock(mission.endTime) ?: (start + mission.durationMinutes)
@@ -166,9 +184,9 @@ object MissionDrafts {
             missionId = mission.missionId,
             title = mission.title,
             pillarChoice = enumOr<PillarType>(mission.pillar, PillarType.LIFE).takeIf { it.scored },
-            kind = enumOr(mission.kind, MissionKind.HABIT),
-            count = goal ?: mission.count.coerceAtLeast(1),
-            period = enumOr(mission.period, Period.WEEK),
+            kind = kind,
+            count = if (dailyFinish) 7 else goal ?: mission.count.coerceAtLeast(1),
+            period = if (dailyFinish) Period.WEEK else period,
             gentle = goal != null,
             gentleCount = if (goal != null) mission.count else null,
             intervalCount = mission.intervalCount.coerceIn(intervalRange(unit)),

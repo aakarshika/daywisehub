@@ -8,8 +8,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,9 +17,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -39,17 +40,24 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -79,6 +87,10 @@ private const val STEP_TAG = "step"
 private const val BLANK_TAG = "blank"
 private const val SENTENCE_FONT = 22
 private const val SENTENCE_LINE = 44
+/** Spec 9.1: tap targets are at least 44dp. */
+private const val MIN_TARGET = 44
+/** How far the marker reaches past the letters on each side. */
+private const val MARKER_PAD = 3
 
 /** Tilts for stacked cards, as on the mockups. */
 internal val cardTilts = listOf(-0.7f, 0.6f, -0.4f, 0.7f, -0.5f)
@@ -89,8 +101,9 @@ fun sentenceHighlight(draft: MissionDraft): Color =
 
 /**
  * The mission sentence on ruled diary lines. Answers get a marker highlight; the blank being asked
- * gets a dashed line. With [onTap], tapping an answer reports its step. Lines are 44 tall, so each
- * highlighted answer is a 44dp target.
+ * gets a dashed line. With [onTap], tapping an answer reports its step, and screen readers get a
+ * "Change …" action for each. Every line, the first too, is 44 tall, and a tap hits the painted
+ * answer widened to at least 44 wide, so each highlighted answer is a 44dp target.
  */
 @Composable
 fun SentenceText(
@@ -121,18 +134,25 @@ fun SentenceText(
     }
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     val currentOnTap by rememberUpdatedState(onTap)
-    val tapModifier = if (onTap == null) Modifier else Modifier.pointerInput(text) {
-        detectTapGestures { position ->
-            val l = layout ?: return@detectTapGestures
-            val offset = l.getOffsetForPosition(position)
-            val name = text.getStringAnnotations(STEP_TAG, offset, offset).firstOrNull()?.item
-            EditorStep.entries.firstOrNull { it.name == name }?.let { currentOnTap?.invoke(it) }
+    val tappable = remember(parts) { parts.filter { !it.placeholder }.mapNotNull { it.step }.distinct() }
+    val tapModifier = if (onTap == null) Modifier else Modifier
+        .pointerInput(text) {
+            detectTapGestures { position ->
+                val l = layout ?: return@detectTapGestures
+                stepAt(text, l, position, minWidth = MIN_TARGET.dp.toPx(), pad = MARKER_PAD.dp.toPx())
+                    ?.let { currentOnTap?.invoke(it) }
+            }
         }
-    }
+        .semantics {
+            customActions = tappable.map { step ->
+                CustomAccessibilityAction("Change ${stepLabel(step)}") { currentOnTap?.invoke(step); true }
+            }
+        }
     Text(
         text,
         fontSize = SENTENCE_FONT.sp,
         lineHeight = SENTENCE_LINE.sp,
+        style = TextStyle(lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None)),
         fontStyle = FontStyle.Italic,
         fontWeight = FontWeight.Light,
         letterSpacing = 0.4.sp,
@@ -162,10 +182,50 @@ fun SentenceText(
     )
 }
 
+/** How screen readers name an answer: "Change pace". */
+private fun stepLabel(step: EditorStep): String = when (step) {
+    EditorStep.TITLE -> "name"
+    EditorStep.PILLAR -> "part of life"
+    EditorStep.KIND -> "kind"
+    EditorStep.PACE -> "pace"
+    EditorStep.DURATION -> "time each"
+    EditorStep.EFFORT -> "effort"
+    EditorStep.WEIGHT -> "size"
+    EditorStep.IF_MISSED -> "if a day goes sideways"
+    EditorStep.GENTLE -> "gentle start"
+}
+
+/** The painted box of [start, end) on each line it covers, the full line tall. */
+private fun TextLayoutResult.answerRects(start: Int, end: Int): List<Rect> {
+    if (end <= start) return emptyList()
+    return (getLineForOffset(start)..getLineForOffset(end - 1)).mapNotNull { line ->
+        val from = maxOf(start, getLineStart(line))
+        val to = minOf(end, getLineEnd(line, visibleEnd = true))
+        if (to <= from) return@mapNotNull null
+        val a = getBoundingBox(from).left
+        val b = getBoundingBox(to - 1).right
+        Rect(minOf(a, b), getLineTop(line), maxOf(a, b), getLineBottom(line))
+    }
+}
+
+/**
+ * The answer under [position]. Each painted line of an answer is widened to at least [minWidth],
+ * plus [pad] each side as the marker is; where two widened answers meet, the nearer painted one wins.
+ */
+private fun stepAt(text: AnnotatedString, l: TextLayoutResult, position: Offset, minWidth: Float, pad: Float): EditorStep? =
+    text.getStringAnnotations(STEP_TAG, 0, text.length)
+        .flatMap { answer -> l.answerRects(answer.start, answer.end).map { answer.item to it } }
+        .filter { (_, rect) ->
+            val grow = ((minWidth - rect.width) / 2).coerceAtLeast(0f) + pad
+            Rect(rect.left - grow, rect.top, rect.right + grow, rect.bottom).contains(position)
+        }
+        .minByOrNull { (_, rect) -> maxOf(rect.left - position.x, 0f, position.x - rect.right) }
+        ?.let { (name, _) -> EditorStep.entries.firstOrNull { it.name == name } }
+
 /** A marker swipe behind [start, end), line by line, around the letters rather than the whole line box. */
 private fun DrawScope.marker(l: TextLayoutResult, start: Int, end: Int, color: Color, fontPx: Float) {
     if (end <= start) return
-    val pad = 3.dp.toPx()
+    val pad = MARKER_PAD.dp.toPx()
     for (line in l.getLineForOffset(start)..l.getLineForOffset(end - 1)) {
         val from = maxOf(start, l.getLineStart(line))
         val to = minOf(end, l.getLineEnd(line, visibleEnd = true))
@@ -196,18 +256,22 @@ private fun DrawScope.blank(l: TextLayoutResult, start: Int, end: Int) {
     )
 }
 
-/** Close, "New mission", "3 of 9". */
+/** Close, "New mission", "3 of 9". With [onBack], a back arrow takes the place of Close. */
 @Composable
-fun EditorHeader(title: String, progress: String, onClose: () -> Unit) {
+fun EditorHeader(title: String, progress: String, onClose: () -> Unit, onBack: (() -> Unit)? = null) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 16.dp, top = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier.size(44.dp).clickable(role = Role.Button) { onClose() },
+            modifier = Modifier.size(44.dp).clickable(role = Role.Button) { if (onBack != null) onBack() else onClose() },
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.Close, contentDescription = "Close", tint = InkGray)
+            if (onBack != null) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = InkGray)
+            } else {
+                Icon(Icons.Default.Close, contentDescription = "Close", tint = InkGray)
+            }
         }
         Text(
             title,
@@ -254,7 +318,7 @@ fun ChoiceCard(
             .clip(shape)
             .background(Color.White)
             .border(if (selected) 2.dp else 1.dp, if (selected) Orange180 else CardBorder, shape)
-            .clickable(role = Role.Button, onClick = onClick)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
             .heightIn(min = 56.dp)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -286,25 +350,28 @@ fun FieldLabel(text: String) {
     )
 }
 
-/** Monday-to-Sunday toggles, 44dp each. */
-@OptIn(ExperimentalLayoutApi::class)
+/**
+ * Monday-to-Sunday toggles in one row: seven equal cells at least 44dp tall, each with a 40dp circle,
+ * so the row fits a 320dp screen.
+ */
 @Composable
 fun DayToggles(selected: Set<Int>, onToggle: (Int) -> Unit) {
-    FlowRow(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
+    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
         (1..7).forEach { day ->
             val on = day in selected
             Box(
-                modifier = Modifier.size(44.dp).clip(CircleShape)
-                    .border(1.dp, if (on) Orange180 else ChipBorder, CircleShape)
-                    .background(if (on) Orange80 else Color.Transparent)
-                    .clickable(role = Role.Checkbox) { onToggle(day) },
+                modifier = Modifier.weight(1f).heightIn(min = 44.dp)
+                    .toggleable(value = on, role = Role.Checkbox, onValueChange = { onToggle(day) }),
                 contentAlignment = Alignment.Center
             ) {
-                Text(MissionWords.shortDay(day), fontSize = 12.sp, color = if (on) PeachInk else Color(0xFF4A4A4A))
+                Box(
+                    modifier = Modifier.size(40.dp).clip(CircleShape)
+                        .border(1.dp, if (on) Orange180 else ChipBorder, CircleShape)
+                        .background(if (on) Orange80 else Color.Transparent),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(MissionWords.shortDay(day), fontSize = 12.sp, color = if (on) PeachInk else Color(0xFF4A4A4A))
+                }
             }
         }
     }
@@ -325,12 +392,12 @@ fun Stepper(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(label, fontSize = 14.sp, color = InkGray, modifier = Modifier.width(64.dp))
-        StepButton("−", "$label earlier or less", minusEnabled, onMinus)
+        StepButton("−", "Decrease $label", minusEnabled, onMinus)
         Text(
             value, fontSize = 18.sp, fontStyle = FontStyle.Italic, color = InkBlack, textAlign = TextAlign.Center,
             modifier = Modifier.weight(1f)
         )
-        StepButton("+", "$label later or more", plusEnabled, onPlus)
+        StepButton("+", "Increase $label", plusEnabled, onPlus)
     }
 }
 

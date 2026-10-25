@@ -36,6 +36,7 @@ import com.example.todoapp.domain.MissionKind
 import com.example.todoapp.domain.minutesLabel
 import com.example.todoapp.domain.missionKind
 import com.example.todoapp.domain.pillarType
+import com.example.todoapp.repo.PlanRepository
 import com.example.todoapp.screen.basicutils.InkGray
 import com.example.todoapp.screen.basicutils.Light_Yellowww
 import com.example.todoapp.screen.basicutils.PeachText
@@ -58,7 +59,7 @@ fun DayCapacityDialog(freeMinutes: Int, energy: Energy, onSave: (Int, Energy) ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TextButton(onClick = { minutes = (minutes - 30).coerceAtLeast(0) }, colors = buttonColors) { Text("−30 min") }
                     Text(minutesLabel(minutes), fontSize = 18.sp, modifier = Modifier.padding(horizontal = 8.dp))
-                    TextButton(onClick = { minutes = (minutes + 30).coerceAtMost(16 * 60) }, colors = buttonColors) { Text("+30 min") }
+                    TextButton(onClick = { minutes = (minutes + 30).coerceAtMost(PlanRepository.MAX_FREE_MINUTES) }, colors = buttonColors) { Text("+30 min") }
                 }
                 Spacer(Modifier.height(12.dp))
                 Text("Energy", fontSize = 14.sp, color = InkGray)

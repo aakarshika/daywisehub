@@ -42,7 +42,9 @@ fun MissionEditorScreen(viewModel: MissionEditorViewModel, onClose: () -> Unit) 
 
     LaunchedEffect(finished) { if (finished) onClose() }
 
+    // Nothing leaves while a save or an archive is under way.
     fun leave() {
+        if (viewModel.state.value?.saving == true) return
         if (viewModel.hasChanges()) confirmLeave = true else onClose()
     }
     BackHandler { if (!viewModel.back()) leave() }
@@ -54,7 +56,9 @@ fun MissionEditorScreen(viewModel: MissionEditorViewModel, onClose: () -> Unit) 
             EditorHeader(
                 title = if (s.isNew) "New mission" else "Edit mission",
                 progress = if (step == null) "Ready" else "${s.position} of ${s.steps.size}",
-                onClose = { leave() }
+                onClose = { leave() },
+                // A new mission's before-saving screen goes back to its last question.
+                onBack = if (step == null && s.isNew) ({ viewModel.back() }) else null
             )
             StepProgress(total = s.steps.size, done = s.position)
             // Each question starts at the top.

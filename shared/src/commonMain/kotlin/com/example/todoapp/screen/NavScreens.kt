@@ -3,6 +3,7 @@ package com.example.todoapp.screen
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -98,10 +99,12 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                     DisposableEffect(missionsViewModel) {
                         onDispose { missionsViewModel.viewModelScope.cancel() }
                     }
+                    // Held here, so the list keeps its place while the editor is open.
+                    val missionsList = rememberLazyListState()
                     val editor by missionsViewModel.editor.collectAsState()
                     val target = editor
                     if (target == null) {
-                        MissionsScreen(missionsViewModel)
+                        MissionsScreen(missionsViewModel, missionsList)
                     } else {
                         // A fresh editor for each opening; its saves can't be cancelled, so closing mid-save is safe.
                         val editorViewModel = remember(target) {

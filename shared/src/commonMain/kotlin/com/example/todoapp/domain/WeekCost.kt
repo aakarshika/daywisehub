@@ -78,16 +78,16 @@ object WeekCosts {
             }
             MissionKind.RECHARGE ->
                 "$verb about ${MissionWords.hoursPhrase(mission.count * minutes)} of free time a week. " +
-                    "No points, and it never counts as missed."
+                    "No points, and it never counts as missed." + weekNote(thisWeek, mission.count)
             MissionKind.RHYTHM ->
-                "$verb ${MissionWords.hoursPhrase(minutes)} and ${MissionWords.pointsPhrase(weight)} " +
+                "$verb ${MissionWords.hoursPhrase(minutes)} and ${MissionWords.pointsPhrase(weight)} each time, " +
                     "${MissionWords.intervalPhrase(draft.intervalCount, draft.intervalUnit)}." + dueNote(thisWeek)
             else -> when (draft.period) {
                 Period.DAY ->
                     "$verb ${MissionWords.hoursPhrase(7 * minutes)} and ${MissionWords.pointsPhrase(7 * weight)} a week, one each day." +
                         weekNote(thisWeek, 7)
                 Period.MONTH ->
-                    "$verb ${MissionWords.hoursPhrase(minutes)} and ${MissionWords.pointsPhrase(weight)}, " +
+                    "$verb ${MissionWords.hoursPhrase(minutes)} and ${MissionWords.pointsPhrase(weight)} each time, " +
                         "${MissionWords.times(mission.count)} a month." + dueNote(thisWeek)
                 Period.WEEK -> {
                     val now = mission.count

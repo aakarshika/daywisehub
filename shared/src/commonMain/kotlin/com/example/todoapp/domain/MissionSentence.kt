@@ -32,7 +32,7 @@ object MissionSentence {
         EditorStep.TITLE -> "I want to "
         EditorStep.PILLAR -> " for my "
         EditorStep.KIND -> ". It's "
-        EditorStep.PACE -> if (draft.kind == MissionKind.BLOCK) ", on " else ", "
+        EditorStep.PACE -> if (draft.kind == MissionKind.BLOCK && !MissionWords.isEveryDay(draft.weekDays)) ", on " else ", "
         EditorStep.DURATION -> ", "
         EditorStep.EFFORT -> ", and it feels "
         EditorStep.WEIGHT -> ". It's a "
@@ -71,7 +71,7 @@ object MissionSentence {
             else -> buildList {
                 add(SentencePart(MissionWords.countPhrase(draft.count, draft.period), step))
                 if (draft.usesDays && draft.weekDays.isNotEmpty()) {
-                    add(SentencePart(", usually on "))
+                    add(SentencePart(if (MissionWords.isEveryDay(draft.weekDays)) ", " else ", usually on "))
                     add(SentencePart(MissionWords.daysLabel(draft.weekDays), step))
                 }
                 if (draft.kind == MissionKind.FINISH_LINE) {

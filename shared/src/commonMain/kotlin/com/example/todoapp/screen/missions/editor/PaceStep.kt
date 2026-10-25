@@ -53,26 +53,32 @@ fun PaceStep(state: EditorUiState, viewModel: MissionEditorViewModel) {
         MissionKind.RHYTHM -> RhythmPace(draft, viewModel)
         MissionKind.RECHARGE -> RechargePace(draft, EditorStep.PACE in state.answered, viewModel)
         MissionKind.FINISH_LINE -> {
-            CountPace(draft, viewModel, monthly = false)
+            CountPace(draft, viewModel, finishLine = true)
             FinishPace(draft, viewModel)
         }
-        else -> CountPace(draft, viewModel, monthly = true)
+        else -> CountPace(draft, viewModel, finishLine = false)
     }
 }
 
-/** How often, for habits and finish lines, with optional preferred days on a weekly count. */
+/**
+ * How often, for habits and finish lines, with optional preferred days on a weekly count.
+ * A finish line is counted per week only (spec 3), up to 7 times.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun CountPace(draft: MissionDraft, viewModel: MissionEditorViewModel, monthly: Boolean) {
+private fun CountPace(draft: MissionDraft, viewModel: MissionEditorViewModel, finishLine: Boolean) {
     FieldLabel("How often")
     FlowRow(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
-        SmallChip("Every day", selected = draft.period == Period.DAY) { viewModel.setCount(1, Period.DAY) }
-        (1..6).forEach { n ->
+        if (!finishLine) {
+            SmallChip("Every day", selected = draft.period == Period.DAY) { viewModel.setCount(1, Period.DAY) }
+        }
+        val mostPerWeek = if (finishLine) 7 else 6
+        (1..mostPerWeek).forEach { n ->
             SmallChip(if (n == 1) "Once a week" else "$n× a week", selected = draft.period == Period.WEEK && draft.count == n) {
                 viewModel.setCount(n, Period.WEEK)
             }
         }
-        if (monthly) {
+        if (!finishLine) {
             (1..3).forEach { n ->
                 SmallChip(if (n == 1) "Once a month" else "$n× a month", selected = draft.period == Period.MONTH && draft.count == n) {
                     viewModel.setCount(n, Period.MONTH)
@@ -98,9 +104,11 @@ private fun FinishPace(draft: MissionDraft, viewModel: MissionEditorViewModel) {
             weeks == 1 -> "in 1 week"
             else -> "in $weeks weeks"
         }
+        val limits = viewModel.endDateLimits(draft)
         Stepper(
             "Ends", "${end.shortLabel()} · $away",
-            onMinus = { viewModel.shiftEndDate(-1) }, onPlus = { viewModel.shiftEndDate(1) }
+            onMinus = { viewModel.shiftEndDate(-1) }, onPlus = { viewModel.shiftEndDate(1) },
+            minusEnabled = end > limits.start, plusEnabled = end < limits.endInclusive
         )
     }
     FieldLabel("How will you know you're done? (optional)")
@@ -175,8 +183,8 @@ private fun BlockPace(draft: MissionDraft, viewModel: MissionEditorViewModel) {
         minusEnabled = draft.endMinute > draft.startMinute + step, plusEnabled = draft.endMinute < MissionDrafts.DAY_MINUTES
     )
     Text(
-        if (draft.weekDays.isEmpty()) "Pick at least one day."
-        else "${MissionWords.hoursPhrase(draft.endMinute - draft.startMinute)} each time. Fixed blocks don't use your free hours.",
+        draft.blocker
+            ?: "${MissionWords.hoursPhrase(draft.endMinute - draft.startMinute)} each time. Fixed blocks don't use your free hours.",
         fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 8.dp)
     )

@@ -26,6 +26,11 @@ class MissionRepository(private val database: AppDatabase) {
 
     suspend fun getActive(): List<Mission> = missionDao.getActive()
 
+    /** Active and archived missions. */
+    fun observeAll(): Flow<List<Mission>> = missionDao.observeAll()
+
+    suspend fun getAll(): List<Mission> = missionDao.getAll()
+
     suspend fun get(missionId: Long): Mission? = missionDao.get(missionId)
 
     /** Inserts or updates. Returns the mission's id either way (Room's upsert gives -1 on update). Doesn't lock. */
@@ -37,7 +42,8 @@ class MissionRepository(private val database: AppDatabase) {
     /**
      * Saves a mission from the editor with its milestones, their due dates spread evenly up to the
      * mission's end date. Saved milestones left out of [milestones] are deleted; a kept one keeps its
-     * done state. Pass an empty list for anything but a finish line. Returns the mission's id.
+     * done state and progress, and a done one keeps its due date. Pass an empty list for anything
+     * but a finish line. Returns the mission's id.
      */
     suspend fun saveWithMilestones(mission: Mission, milestones: List<MilestoneDraft>): Long = write {
         val id = save(mission)
@@ -50,7 +56,8 @@ class MissionRepository(private val database: AppDatabase) {
             val due = MyDate.fromLocalDate(dates[order])
             val old = existing.firstOrNull { draft.milestoneId != 0L && it.milestoneId == draft.milestoneId }
             if (old != null) {
-                milestoneDao.updateMilestone(old.copy(text = draft.text, milestoneOrder = order, expectedCompletionDate = due))
+                val keptDue = if (old.status == TaskStatus.COMPLETED.value) old.expectedCompletionDate else due
+                milestoneDao.updateDetails(old.milestoneId, draft.text, order, keptDue)
             } else {
                 milestoneDao.insert(
                     Milestone(
@@ -73,10 +80,8 @@ class MissionRepository(private val database: AppDatabase) {
         id
     }
 
-    /** Archives a mission. Doesn't lock: PlanRepository.archiveMission calls it inside its own write. */
-    suspend fun setInactive(missionId: Long) {
-        missionDao.get(missionId)?.let { missionDao.upsert(it.copy(active = false)) }
-    }
+    /** Archives a mission in one statement. Doesn't lock: PlanRepository.archiveMission calls it inside its own write. */
+    internal suspend fun setInactive(missionId: Long) = missionDao.setInactive(missionId)
 
     suspend fun count(): Int = missionDao.count()
 

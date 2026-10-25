@@ -71,14 +71,24 @@ data class DiaryUiState(
 
 object DiaryStateBuilder {
 
-    fun build(date: LocalDate, missions: List<Mission>, tasks: List<TodayTask>, plan: DayPlan?): DiaryUiState {
+    /**
+     * [missions] are the active ones; everything is built from them except points earned, which use
+     * [allMissions] (archived too) so a mission archived mid-week keeps the points it already earned.
+     */
+    fun build(
+        date: LocalDate,
+        missions: List<Mission>,
+        allMissions: List<Mission>,
+        tasks: List<TodayTask>,
+        plan: DayPlan?,
+    ): DiaryUiState {
         val byId = missions.associateBy { it.missionId }
         val history = History(tasks)
         val weekStart = WeekMath.weekStart(date)
         val pillars = PillarType.scoredPillars.map { pillar ->
             PillarProgress(
                 pillar = pillar,
-                earned = Points.earnedInWeek(missions, tasks, pillar, weekStart),
+                earned = Points.earnedInWeek(allMissions, tasks, pillar, weekStart),
                 target = Points.weeklyTarget(missions, pillar, weekStart, history),
             )
         }

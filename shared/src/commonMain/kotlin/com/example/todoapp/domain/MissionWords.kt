@@ -22,18 +22,21 @@ object MissionWords {
     /** ISO day number (Monday = 1) → "Mon". */
     fun shortDay(isoDay: Int): String = shortDays.getOrElse(isoDay - 1) { "" }
 
-    /** "Mon to Fri", "Sat and Sun", "Mon, Wed and Fri", "Tue", "Every day". */
+    /** "Mon to Fri", "Sat and Sun", "Mon, Wed and Fri", "Tue", "every day" (lowercase, for mid-sentence). */
     fun daysLabel(days: Set<Int>): String {
         val sorted = days.filter { it in 1..7 }.sorted()
         return when {
             sorted.isEmpty() -> ""
-            sorted.size == 7 -> "Every day"
+            sorted.size == 7 -> "every day"
             sorted.size == 1 -> shortDay(sorted.first())
             sorted.size >= 3 && sorted.last() - sorted.first() == sorted.size - 1 ->
                 "${shortDay(sorted.first())} to ${shortDay(sorted.last())}"
             else -> sorted.dropLast(1).joinToString(", ") { shortDay(it) } + " and " + shortDay(sorted.last())
         }
     }
+
+    /** All seven days: "every day" then needs no "on" in front. */
+    fun isEveryDay(days: Set<Int>): Boolean = (1..7).all { it in days }
 
     fun weightWord(weight: Int): String = when {
         weight <= 1 -> "small"
@@ -138,7 +141,7 @@ object MissionWords {
         val weight = weightWord(mission.weight)
         return when (mission.missionKind) {
             MissionKind.BLOCK -> {
-                val days = daysLabel(mission.daySet)
+                val days = daysLabel(mission.daySet).replaceFirstChar { it.uppercase() }
                 val start = mission.startTime.orEmpty()
                 val end = mission.endTime.orEmpty()
                 val window = if (start.isBlank() || end.isBlank()) "" else ", $start to $end"
@@ -155,7 +158,7 @@ object MissionWords {
                 }
                 val goal = mission.goalCount?.takeIf { it > mission.count }?.let { "up to ${it}×" }
                 val days = mission.daySet.takeIf { it.isNotEmpty() && mission.periodUnit == Period.WEEK }
-                    ?.let { "on ${daysLabel(it)}" }
+                    ?.let { if (isEveryDay(it)) daysLabel(it) else "on ${daysLabel(it)}" }
                 listOfNotNull(pace, goal, days).joinToString(", ") + " · $weight"
             }
         }
@@ -182,17 +185,17 @@ object MissionWords {
                 else -> "Next around ${due.shortLabel()}"
             }
         }
-        if (mission.periodUnit == Period.DAY) {
-            val doneToday = history.doneCount(mission.missionId, today, today) > 0
-            val streak = history.streakBefore(mission.missionId, today) + if (doneToday) 1 else 0
-            return if (streak > 0) "$streak-day streak" else "No streak yet"
-        }
         if (kind == MissionKind.FINISH_LINE) {
             val mine = milestones.filter { it.missionId == mission.missionId }.sortedBy { it.milestoneOrder }
             if (mine.isNotEmpty()) {
                 val next = mine.indexOfFirst { it.status != TaskStatus.COMPLETED.value }
                 return if (next < 0) "All ${mine.size} milestones done" else "Milestone ${next + 1} of ${mine.size}"
             }
+        }
+        if (mission.periodUnit == Period.DAY) {
+            val doneToday = history.doneCount(mission.missionId, today, today) > 0
+            val streak = history.streakBefore(mission.missionId, today) + if (doneToday) 1 else 0
+            return if (streak > 0) "$streak-day streak" else "No streak yet"
         }
         val weekStart = WeekMath.weekStart(today)
         val target = Points.occurrencesInWeek(mission, weekStart, history)

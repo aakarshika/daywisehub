@@ -12,6 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -19,7 +21,10 @@ import org.jetbrains.compose.resources.painterResource
 import todoapp.shared.generated.resources.Res
 import todoapp.shared.generated.resources.block_b
 
-/** A heading on the block_b marker swipe, sized to its text so long questions wrap instead of clipping. */
+/**
+ * A heading on the block_b marker swipe, sized to its text so long questions wrap instead of clipping.
+ * Screen readers treat it as a heading.
+ */
 @Composable
 fun MarkerHeading(text: String, color: Color, modifier: Modifier = Modifier) {
     Box(modifier = modifier.fillMaxWidth().padding(horizontal = 34.dp), contentAlignment = Alignment.Center) {
@@ -37,7 +42,7 @@ fun MarkerHeading(text: String, color: Color, modifier: Modifier = Modifier) {
                 letterSpacing = 1.sp,
                 color = Color(0xFF2A2A2A),
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 22.dp, vertical = 6.dp)
+                modifier = Modifier.semantics { heading() }.padding(horizontal = 22.dp, vertical = 6.dp)
             )
         }
     }

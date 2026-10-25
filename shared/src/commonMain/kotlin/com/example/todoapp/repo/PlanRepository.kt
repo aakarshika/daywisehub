@@ -66,7 +66,7 @@ class PlanRepository(
     /** New free time or energy for the day: keeps what's done, crowned, moved in or added by hand, and re-picks the rest. */
     suspend fun changeDay(date: LocalDate, freeMinutes: Int, energy: Energy) = write {
         if (date < today()) return@write
-        rebuild(date, currentPlan(date).copy(freeMinutes = freeMinutes, energy = energy.name))
+        rebuild(date, currentPlan(date).copy(freeMinutes = freeMinutes.coerceIn(0, MAX_FREE_MINUTES), energy = energy.name))
     }
 
     suspend fun lighterDay(date: LocalDate) = write {
@@ -195,11 +195,19 @@ class PlanRepository(
         planDao.upsertPlan(plan.copy(fixedTicked = true))
     }
 
-    /** Rebuilds today's open picks when today has a plan that isn't confirmed. Call only inside [write]. */
+    /**
+     * Rebuilds today's open picks when today has a plan that isn't confirmed. Today's still-planned
+     * fixed blocks go too, so fill() adds back every block due today with its current days and times;
+     * ticked ones stay. Call only inside [write].
+     */
     private suspend fun refreshTodayIfOpen() {
         val date = today()
         val plan = planDao.getPlan(key(date)) ?: return
-        if (!plan.confirmed) rebuild(date, plan)
+        if (plan.confirmed) return
+        todayTaskRepository.getBetween(date, date)
+            .filter { it.isFixedBlock && it.taskState == TaskState.PLANNED }
+            .forEach { todayTaskRepository.delete(it.todayTaskId) }
+        rebuild(date, plan)
     }
 
     private suspend fun currentPlan(date: LocalDate): DayPlan =
@@ -225,7 +233,7 @@ class PlanRepository(
     }
 
     private suspend fun fill(date: LocalDate, plan: DayPlan) {
-        val input = input(date, plan)
+        val input = withoutSwappedOut(input(date, plan))
         val result = Planner.plan(input)
         val firstOrder = (input.todayTasks.maxOfOrNull { it.sortOrder } ?: -1) + 1
         todayTaskRepository.insertAll(
@@ -254,6 +262,17 @@ class PlanRepository(
             energy = Energy.valueOf(plan.energy),
             roomOn = { day -> room[day] ?: 0 },
         )
+    }
+
+    /**
+     * Leaves out the missions "Swap one" took off [PlanInput.date], so a re-pick can't bring them back.
+     * One already on the day's list (added by hand) stays in, so its minutes still count against the day.
+     */
+    private fun withoutSwappedOut(input: PlanInput): PlanInput {
+        val out = swappedOut[input.date].orEmpty()
+        if (out.isEmpty()) return input
+        val onList = input.todayTasks.map { it.missionId }.toSet()
+        return input.copy(missions = input.missions.filter { it.missionId !in out || it.missionId in onList })
     }
 
     /** Free minutes left on each of the 7 days after [from], in date order. */

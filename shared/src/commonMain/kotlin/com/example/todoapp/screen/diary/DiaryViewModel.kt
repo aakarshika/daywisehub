@@ -53,16 +53,18 @@ class DiaryViewModel(
     /** False until today's plan is built, so the list doesn't flicker through half-built states. */
     private val planReady = MutableStateFlow(!isToday)
 
+    /** Archived missions come in too, only so their points earned this week still count in the bars. */
     val state: StateFlow<DiaryUiState?> = combine(
         missionRepository.observeActive(),
+        missionRepository.observeAll(),
         todayTaskRepository.observeBetween(
             currentDate.minus(PlanRepository.HISTORY_DAYS, DateTimeUnit.DAY),
             currentDate.plus(7, DateTimeUnit.DAY),
         ),
         planRepository.observePlan(currentDate),
         planReady,
-    ) { missions, tasks, plan, ready ->
-        if (ready) DiaryStateBuilder.build(currentDate, missions, tasks, plan) else null
+    ) { missions, allMissions, tasks, plan, ready ->
+        if (ready) DiaryStateBuilder.build(currentDate, missions, allMissions, tasks, plan) else null
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val missions: StateFlow<List<Mission>> = missionRepository.observeActive()

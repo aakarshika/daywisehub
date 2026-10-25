@@ -19,6 +19,7 @@ import com.example.todoapp.repo.MilestoneRepository
 import com.example.todoapp.repo.MissionRepository
 import com.example.todoapp.repo.PlanRepository
 import com.example.todoapp.repo.TodayTaskRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,15 +43,20 @@ data class EditorUiState(
     val step: EditorStep?,
     /** The question was opened from the before-saving screen, so Back returns there. */
     val fromSummary: Boolean = false,
+    /** A save or an archive is under way; the draft can't change. */
     val saving: Boolean = false,
+    /** The write under way is an archive, so Save doesn't read "Saving…". */
+    val archiving: Boolean = false,
+    /** The last save or archive didn't go through. */
+    val saveFailed: Boolean = false,
 ) {
     val steps: List<EditorStep> get() = draft.steps
 
     /** 1-based place of [step] for "3 of 9"; the step count on the before-saving screen. */
     val position: Int get() = step?.let { steps.indexOf(it) + 1 } ?: steps.size
 
-    /** Every question that applies has an answer. */
-    val complete: Boolean get() = draft.title.isNotBlank() && steps.all { it in answered }
+    /** Every question that applies has an answer, and the draft can be saved. */
+    val complete: Boolean get() = draft.blocker == null && steps.all { it in answered }
 }
 
 /**
@@ -76,18 +82,28 @@ class MissionEditorViewModel(
     /** True once saved or archived, or when the mission to edit is gone. The screen then closes. */
     val finished: StateFlow<Boolean> = _finished
 
-    /** What the mission costs this week; worked out only on the before-saving screen. */
-    val cost: StateFlow<WeekCost?> = combine(
-        _state,
-        missionRepository.observeActive(),
-        todayTaskRepository.observeBetween(
-            today.minus(PlanRepository.HISTORY_DAYS, DateTimeUnit.DAY),
-            today.plus(7, DateTimeUnit.DAY),
-        ),
-        planRepository.observeSettings(),
-    ) { s, missions, tasks, settings ->
-        if (s == null || s.step != null) null else WeekCosts.compute(s.draft, missions, History(tasks), settings, today)
-    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    /**
+     * What the mission costs this week; worked out only on the before-saving screen.
+     * While saving it keeps its last value, so the summary doesn't jump as the saved row arrives.
+     */
+    val cost: StateFlow<WeekCost?> = run {
+        var lastCost: WeekCost? = null
+        combine(
+            _state,
+            missionRepository.observeActive(),
+            todayTaskRepository.observeBetween(
+                today.minus(PlanRepository.HISTORY_DAYS, DateTimeUnit.DAY),
+                today.plus(7, DateTimeUnit.DAY),
+            ),
+            planRepository.observeSettings(),
+        ) { s, missions, tasks, settings ->
+            when {
+                s == null || s.step != null -> null
+                s.saving -> lastCost
+                else -> WeekCosts.compute(s.draft, missions, History(tasks), settings, today)
+            }.also { lastCost = it }
+        }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    }
 
     init {
         viewModelScope.launch {
@@ -118,9 +134,8 @@ class MissionEditorViewModel(
     }
 
     // Step 1. A blank title isn't an answer, so Back can't return to a sentence without one.
-    fun setTitle(text: String) {
-        change { it.copy(title = text.take(MissionDrafts.MAX_TITLE_LENGTH)) }
-        if (text.isBlank()) _state.value?.let { _state.value = it.copy(answered = it.answered - EditorStep.TITLE) }
+    fun setTitle(text: String) = change(unanswer = { if (it.title.isBlank()) setOf(EditorStep.TITLE) else emptySet() }) {
+        it.copy(title = text.take(MissionDrafts.MAX_TITLE_LENGTH))
     }
 
     fun confirmTitle() {
@@ -138,17 +153,24 @@ class MissionEditorViewModel(
         answer(EditorStep.KIND) { it.withKind(kind, today) }
     }
 
-    // Step 4. Changes show at once; "Next" confirms them.
-    fun setCount(count: Int, period: Period) = change {
-        it.copy(
-            count = count,
-            period = period,
-            gentleCount = null,
-            weekDays = if (period == Period.WEEK) it.weekDays else emptySet(),
-        )
+    // Step 4. Changes show at once; "Next" confirms them. Tapping the pace already picked keeps a gentle start's pace.
+    fun setCount(count: Int, period: Period) {
+        val d = _state.value?.draft ?: return
+        if (d.count == count && d.period == period) return
+        change {
+            it.copy(
+                count = count,
+                period = period,
+                gentleCount = null,
+                weekDays = if (period == Period.WEEK) it.weekDays else emptySet(),
+            )
+        }
     }
 
-    fun toggleDay(day: Int) = change { d ->
+    /** A block left with no days loses its pace answer, so Back can't return to the before-saving screen. */
+    fun toggleDay(day: Int) = change(
+        unanswer = { if (it.kind == MissionKind.BLOCK && it.weekDays.isEmpty()) setOf(EditorStep.PACE) else emptySet() }
+    ) { d ->
         d.copy(weekDays = if (day in d.weekDays) d.weekDays - day else d.weekDays + day)
     }
 
@@ -161,10 +183,15 @@ class MissionEditorViewModel(
         d.copy(endMinute = (d.endMinute + minutes).coerceIn(d.startMinute + MissionDrafts.CLOCK_STEP, MissionDrafts.DAY_MINUTES))
     }
 
+    /** The earliest and latest end a finish line can move to. */
+    fun endDateLimits(d: MissionDraft): ClosedRange<LocalDate> =
+        maxOf(today, d.startDate).plus(7, DateTimeUnit.DAY)..today.plus(MissionDrafts.MAX_FINISH_WEEKS * 7, DateTimeUnit.DAY)
+
     /** A finish line ends at least a week out and at most a year out; one already past can only move later. */
     fun shiftEndDate(weeks: Int) = change { d ->
-        val earliest = maxOf(today, d.startDate).plus(7, DateTimeUnit.DAY)
-        val latest = today.plus(MissionDrafts.MAX_FINISH_WEEKS * 7, DateTimeUnit.DAY)
+        val limits = endDateLimits(d)
+        val earliest = limits.start
+        val latest = limits.endInclusive
         val current = d.endDate ?: earliest
         val moved = current.plus(weeks * 7, DateTimeUnit.DAY)
         d.copy(endDate = moved.coerceIn(minOf(earliest, current), maxOf(latest, current)))
@@ -243,48 +270,72 @@ class MissionEditorViewModel(
         return true
     }
 
-    /** Saves once, then re-picks today if it isn't confirmed yet. Both finish even if the screen goes away. */
+    /**
+     * Saves once, then re-picks today if it isn't confirmed yet. Both finish even if the screen goes away.
+     * A failed save stays on screen to try again, keeping any id already saved so a retry updates, not copies.
+     */
     fun save() {
         val s = _state.value ?: return
         if (s.saving || s.step != null || !s.complete) return
-        _state.value = s.copy(saving = true)
+        _state.value = s.copy(saving = true, saveFailed = false)
         viewModelScope.launch {
-            val savedId = withContext(NonCancellable) {
-                val mission = s.draft.toMission()
-                val milestones = if (s.draft.kind == MissionKind.FINISH_LINE) s.draft.milestones else emptyList()
-                val id = missionRepository.saveWithMilestones(mission, milestones)
-                planRepository.refreshToday()
-                id
+            var savedId = s.draft.missionId
+            try {
+                withContext(NonCancellable) {
+                    val mission = s.draft.toMission()
+                    val milestones = if (s.draft.kind == MissionKind.FINISH_LINE) s.draft.milestones else emptyList()
+                    savedId = missionRepository.saveWithMilestones(mission, milestones)
+                    // The mission is saved by now; a failed re-pick of today mustn't make it look unsaved.
+                    runCatching { planRepository.refreshToday() }
+                }
+                _state.value = _state.value?.let { it.copy(draft = it.draft.copy(missionId = savedId)) }
+                _finished.value = true
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                val id = savedId
+                _state.value = _state.value?.let {
+                    it.copy(saving = false, saveFailed = true, draft = it.draft.copy(missionId = id))
+                }
             }
-            // The saved row now counts in the week, so the cost mustn't add the draft on top before the screen closes.
-            _state.value = _state.value?.let { it.copy(draft = it.draft.copy(missionId = savedId)) }
-            _finished.value = true
         }
     }
 
     fun archive() {
         val s = _state.value ?: return
         if (s.isNew || s.saving) return
-        _state.value = s.copy(saving = true)
+        _state.value = s.copy(saving = true, archiving = true, saveFailed = false)
         viewModelScope.launch {
-            planRepository.archiveMission(s.draft.missionId)
-            _finished.value = true
+            try {
+                planRepository.archiveMission(s.draft.missionId)
+                _finished.value = true
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _state.value = _state.value?.copy(saving = false, archiving = false, saveFailed = true)
+            }
         }
     }
 
-    /** Applies a change to the draft. A question that only now applies is asked again. */
-    private fun change(transform: (MissionDraft) -> MissionDraft) {
+    /**
+     * Applies a change to the draft. A question that only now applies is asked again, and so is any
+     * question [unanswer] names for the changed draft, all in one update.
+     */
+    private fun change(
+        unanswer: (MissionDraft) -> Set<EditorStep> = { emptySet() },
+        transform: (MissionDraft) -> MissionDraft,
+    ) {
         val s = _state.value ?: return
         if (s.saving) return
         val draft = transform(s.draft)
         val newlyAsked = EditorStep.entries.filter { draft.applies(it) && !s.draft.applies(it) }.toSet()
-        _state.value = s.copy(draft = draft, answered = s.answered - newlyAsked)
+        _state.value = s.copy(draft = draft, answered = s.answered - newlyAsked - unanswer(draft))
     }
 
     /** Records the answer to [step] (ignored if [step] isn't on screen) and moves to the first open question, or the before-saving screen. */
     private fun answer(step: EditorStep, transform: (MissionDraft) -> MissionDraft = { it }) {
         if (_state.value?.step != step) return
-        change(transform)
+        change(transform = transform)
         val s = _state.value ?: return
         if (s.saving) return
         val answered = s.answered + step

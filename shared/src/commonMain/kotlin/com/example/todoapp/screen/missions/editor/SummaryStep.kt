@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -73,7 +74,14 @@ fun SummaryStep(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         PlanButton("Make it lighter", filled = false, onClick = onLighter)
-        PlanButton(if (state.saving) "Saving…" else "Save mission", filled = true, onClick = onSave)
+        PlanButton(if (state.saving && !state.archiving) "Saving…" else "Save mission", filled = true, onClick = onSave)
+    }
+    if (state.saveFailed) {
+        Text(
+            "Couldn't save. Try again.",
+            fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray, textAlign = TextAlign.End,
+            modifier = Modifier.fillMaxWidth().padding(start = 22.dp, end = 22.dp, bottom = 16.dp)
+        )
     }
     if (!state.isNew) {
         Box(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp), contentAlignment = Alignment.Center) {

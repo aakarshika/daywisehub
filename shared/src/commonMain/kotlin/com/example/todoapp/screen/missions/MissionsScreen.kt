@@ -6,8 +6,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -51,15 +54,18 @@ import todoapp.shared.generated.resources.Res
 import todoapp.shared.generated.resources.flag_open
 import todoapp.shared.generated.resources.plus_sign
 
-/** Spec 9: missions per pillar under marker headings, as tilted sticky notes. + opens the sentence flow. */
+/**
+ * Spec 9: missions per pillar under marker headings, as tilted sticky notes. + opens the sentence flow.
+ * [listState] comes from the caller, so the scroll position survives the editor.
+ */
 @Composable
-fun MissionsScreen(viewModel: MissionsViewModel) {
+fun MissionsScreen(viewModel: MissionsViewModel, listState: LazyListState) {
     val state by viewModel.state.collectAsState()
     var showFreeTime by remember { mutableStateOf(false) }
     val s = state
 
     Box(modifier = Modifier.fillMaxSize().background(Light_Yellowww)) {
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
             item(key = "title") {
                 Column(modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 30.dp)) {
                     Text("Missions", fontSize = 30.sp, fontStyle = FontStyle.Italic, letterSpacing = 0.5.sp, color = InkGray)
@@ -96,12 +102,14 @@ fun MissionsScreen(viewModel: MissionsViewModel) {
                     }
                     group.cards.chunked(2).forEach { row ->
                         item(key = "cards-${row.first().missionId}") {
+                            // Both cards in a row are as tall as the taller one.
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp),
+                                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max)
+                                    .padding(horizontal = 18.dp, vertical = 8.dp),
                                 horizontalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
                                 row.forEach { card ->
-                                    MissionCard(card, Modifier.weight(1f)) { viewModel.openEdit(card.missionId) }
+                                    MissionCard(card, Modifier.weight(1f).fillMaxHeight()) { viewModel.openEdit(card.missionId) }
                                 }
                                 if (row.size == 1) Spacer(Modifier.weight(1f))
                             }

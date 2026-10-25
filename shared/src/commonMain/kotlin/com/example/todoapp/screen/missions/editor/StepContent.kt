@@ -123,7 +123,8 @@ fun StepQuestion(step: EditorStep, state: EditorUiState, viewModel: MissionEdito
             ChoiceCard(title, example, answered && draft.ifMissed == rule, cardTilts[i % cardTilts.size], onClick = { viewModel.pickIfMissed(rule) })
         }
         EditorStep.GENTLE -> {
-            val start = MissionDrafts.gentleStart(draft.count)
+            // The pace a gentle start would save, so the card and the saved mission agree.
+            val start = draft.gentleStartCount
             ChoiceCard(
                 "Start at $start× a week", "and step up to ${draft.count}× after 3 good weeks",
                 answered && draft.gentle, cardTilts[0], onClick = { viewModel.pickGentle(true) }
