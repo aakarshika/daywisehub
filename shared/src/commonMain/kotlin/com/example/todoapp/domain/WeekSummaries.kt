@@ -35,14 +35,21 @@ object WeekSummaries {
 
     /**
      * The finished week starting [weekStart]. Targets come from the active [missions] as they stand at
-     * close-out; points from the week's tasks of [allMissions], archived too, as in the diary's bars.
+     * close-out, with [history] for what was due; points from [weekTasks], the week's own tasks of
+     * [allMissions], archived too, as in the diary's bars.
      */
-    fun summarize(weekStart: LocalDate, missions: List<Mission>, allMissions: List<Mission>, history: History): WeekSummary {
-        val earned = PillarType.scoredPillars.associateWith { Points.earnedInWeek(allMissions, history.all, it, weekStart) }
+    fun summarize(
+        weekStart: LocalDate,
+        missions: List<Mission>,
+        allMissions: List<Mission>,
+        history: History,
+        weekTasks: List<TodayTask>,
+    ): WeekSummary {
+        val earned = PillarType.scoredPillars.associateWith { Points.earnedInWeek(allMissions, weekTasks, it, weekStart) }
         val target = PillarType.scoredPillars.associateWith { Points.weeklyTarget(missions, it, weekStart, history) }
         fun e(pillar: PillarType) = earned.getValue(pillar)
         fun t(pillar: PillarType) = target.getValue(pillar)
-        return WeekSummary(
+        val summary = WeekSummary(
             weekStart = MyDate.fromLocalDate(weekStart).dateString,
             healthEarned = e(PillarType.HEALTH),
             healthTarget = t(PillarType.HEALTH),
@@ -52,8 +59,9 @@ object WeekSummaries {
             loveTarget = t(PillarType.LOVE),
             lifeEarned = e(PillarType.LIFE),
             lifeTarget = t(PillarType.LIFE),
-            balanced = PillarType.scoredPillars.all { Points.isFull(e(it), t(it)) },
+            balanced = false,
         )
+        return summary.copy(balanced = balanced(summary))
     }
 
     /**
@@ -69,6 +77,11 @@ object WeekSummaries {
             loveEarned = e(PillarType.LOVE),
             lifeEarned = e(PillarType.LIFE),
         )
-        return updated.copy(balanced = PillarType.scoredPillars.all { Points.isFull(updated.earned(it), updated.target(it)) })
+        return updated.copy(balanced = balanced(updated))
     }
+
+    /** Every pillar full, with something due: a week with no target at all earns no crown. */
+    private fun balanced(summary: WeekSummary): Boolean =
+        PillarType.scoredPillars.sumOf { summary.target(it) } > 0 &&
+            PillarType.scoredPillars.all { Points.isFull(summary.earned(it), summary.target(it)) }
 }

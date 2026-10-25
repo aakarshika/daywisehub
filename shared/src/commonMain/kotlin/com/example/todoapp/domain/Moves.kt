@@ -38,12 +38,30 @@ object Moves {
     }
 
     /**
-     * The first day in [room] with time for [mission] that doesn't already have it open;
-     * the first day after [after] when none has.
+     * The first day in [room] the mission is live on, with time for it, that doesn't already have it
+     * open; the first live day when none has. Null when the mission isn't live on any of those days
+     * (it ends or is paused), so the item is skipped instead.
      */
-    fun target(mission: Mission, after: LocalDate, tasks: List<TodayTask>, room: Map<LocalDate, Int>): LocalDate =
-        room.entries.firstOrNull { (day, left) ->
-            left >= mission.durationMinutes &&
+    fun target(mission: Mission, tasks: List<TodayTask>, room: Map<LocalDate, Int>): LocalDate? {
+        val live = room.keys.filter { mission.isLiveOn(it) }
+        return live.firstOrNull { day ->
+            room.getValue(day) >= mission.durationMinutes &&
                 tasks.none { it.date == day && it.missionId == mission.missionId && it.taskState.isOpen }
-        }?.key ?: after.plus(1, DateTimeUnit.DAY)
+        } ?: live.firstOrNull()
+    }
+
+    /**
+     * The item a move made from [task]: same mission, moved from [task]'s day, on a later day.
+     * A move lands at most 7 days past [task]'s day or today, whichever is later, so [tasks] should reach that far.
+     */
+    fun copyOf(task: TodayTask, tasks: List<TodayTask>): TodayTask? =
+        tasks.filter { it.missionId == task.missionId && it.movedFromDate == task.taskDate && it.date > task.date }
+            .maxByOrNull { it.todayTaskId }
+
+    /**
+     * Ticking moved [task] takes the move back while its copy is still planned (PlanRepository.toggleDone).
+     * Once the copy is ticked, skipped or moved on, the moved item stays as it is.
+     */
+    fun canTakeBack(task: TodayTask, tasks: List<TodayTask>): Boolean =
+        task.taskState == TaskState.MOVED && copyOf(task, tasks)?.taskState == TaskState.PLANNED
 }

@@ -132,7 +132,7 @@ object DiaryStateBuilder {
         val rows = todayTasks.mapNotNull { task ->
             val mission = byId[task.missionId] ?: return@mapNotNull null
             val moveTo = if (task.taskState == TaskState.PLANNED && !task.isFixedBlock) {
-                Moves.target(mission, after, tasks, room).let { if (it == today) "today" else it.weekdayName() }
+                Moves.target(mission, tasks, room)?.let { if (it == today) "today" else it.weekdayName() }
             } else null
             val ticked = task.isFixedBlock && task.taskState == TaskState.DONE && plan?.fixedTicked == true
             toRow(task, mission, tasks, moveTo, ticked)

@@ -29,6 +29,8 @@ class WeekRepository(private val database: AppDatabase) {
 
     suspend fun saveSummary(summary: WeekSummary) = weekDao.upsertSummary(summary)
 
+    suspend fun saveSummaries(summaries: List<WeekSummary>) = weekDao.upsertSummaries(summaries)
+
     fun observeOffers(week: LocalDate): Flow<List<PaceOffer>> = weekDao.observeOffers(key(week))
 
     suspend fun getOffers(week: LocalDate): List<PaceOffer> = weekDao.getOffers(key(week))

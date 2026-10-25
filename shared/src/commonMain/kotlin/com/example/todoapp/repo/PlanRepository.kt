@@ -70,7 +70,8 @@ class PlanRepository(
      * Safe on every open: closing only touches what's still open, and a built day isn't rebuilt.
      */
     suspend fun ensurePlanned(date: LocalDate) = write {
-        closePastDays(date)
+        // Closes against today at the latest, never a day still to come.
+        closePastDays(minOf(date, today()))
         if (planDao.getPlan(key(date)) != null) return@write
         // fill() writes the plan row last, so a build cut short is simply redone next time.
         fill(date, DayPlan(date = key(date), freeMinutes = defaultFreeMinutes(date)))
@@ -98,8 +99,21 @@ class PlanRepository(
         todayTaskRepository.get(taskId)?.let { updateState(it, state) }
     }
 
+    /**
+     * Ticks or unticks an item. Ticking a moved item takes the move back while its copy is still planned:
+     * the copy goes, and the item is done on its own day. Otherwise a moved item stays as it is.
+     */
     suspend fun toggleDone(taskId: Long) = write {
         val task = todayTaskRepository.get(taskId) ?: return@write
+        if (task.taskState == TaskState.MOVED) {
+            val ahead = todayTaskRepository.getBetween(task.date.plus(1, DateTimeUnit.DAY), maxOf(task.date, today()).plus(7, DateTimeUnit.DAY))
+            // The same rule as Moves.canTakeBack, which the diary uses to enable the box.
+            val copy = Moves.copyOf(task, ahead)?.takeIf { it.taskState == TaskState.PLANNED } ?: return@write
+            // Done first: cut short, the copy is still there to tick or skip, not a moved item with nothing ahead.
+            updateState(task, TaskState.DONE)
+            todayTaskRepository.delete(copy.todayTaskId)
+            return@write
+        }
         // An earlier day is closed: unticking there skips the item, so the next open doesn't carry it forward again.
         val unticked = if (task.date < today()) TaskState.SKIPPED else TaskState.PLANNED
         updateState(task, if (task.taskState.countsAsDone) unticked else TaskState.DONE)
@@ -120,12 +134,15 @@ class PlanRepository(
         Planner.options(input(date, currentPlan(date)))
     }
 
-    /** Moves a planned pick to the next day with room, from today on (the first of those days if none in the week). */
+    /**
+     * Moves a planned pick to the next day with room, from today on (the first of those days if none in
+     * the week). When the mission isn't live on any of them, the pick is skipped instead.
+     */
     suspend fun moveToNextRoom(taskId: Long) = write {
         val task = todayTaskRepository.get(taskId) ?: return@write
         if (task.taskState != TaskState.PLANNED || task.isFixedBlock) return@write
         val mission = missionRepository.get(task.missionId) ?: return@write
-        moveTask(task, mission, today())
+        if (!moveTask(task, mission, today())) updateState(task, TaskState.SKIPPED)
     }
 
     /** True when the item was replaced; false when it stays (nothing fits, crowned, moved in, or not a plain pick). */
@@ -149,13 +166,20 @@ class PlanRepository(
         true
     }
 
+    /** The pencil. An earlier day is closed, so a mission added there goes in as done, with its points. */
     suspend fun addMission(date: LocalDate, missionId: Long) = write {
         val mission = missionRepository.get(missionId) ?: return@write
         if (mission.missionKind == MissionKind.BLOCK) return@write
         val dayTasks = todayTaskRepository.getBetween(date, date)
         if (dayTasks.any { it.missionId == missionId }) return@write
         val order = (dayTasks.maxOfOrNull { it.sortOrder } ?: -1) + 1
-        todayTaskRepository.insert(newTask(mission, date, Reason(ReasonCode.ADDED), fixed = false, order = order))
+        val task = newTask(mission, date, Reason(ReasonCode.ADDED), fixed = false, order = order)
+        if (date < today()) {
+            todayTaskRepository.insert(task.copy(state = TaskState.DONE.name, pointsEarned = Points.forTask(mission, TaskState.DONE)))
+            refreshClosedWeek(date)
+        } else {
+            todayTaskRepository.insert(task)
+        }
     }
 
     suspend fun removeTask(taskId: Long) = write { todayTaskRepository.delete(taskId) }
@@ -224,7 +248,7 @@ class PlanRepository(
         if (plan.fixedTicked) return
         todayTaskRepository.getBetween(date, date)
             .filter { it.isFixedBlock && it.taskState == TaskState.PLANNED }
-            .forEach { updateState(it, TaskState.DONE) }
+            .forEach { updateState(it, TaskState.DONE, byApp = true) }
         planDao.upsertPlan(plan.copy(fixedTicked = true))
     }
 
@@ -245,13 +269,15 @@ class PlanRepository(
 
     /**
      * Spec 6.4, at the first open of a new day: fixed blocks on earlier days start ticked, then items
-     * still planned there follow their "if a day goes sideways" answer. A day that was never opened
-     * has no plan and no items, so there's nothing to close. Call only inside [write].
+     * still planned there follow their "if a day goes sideways" answer. A day that was never opened has
+     * no plan, so nothing is ticked there, but it can still hold items moved into it; those are resolved
+     * like any other. Week summaries and offers come last. They're worked out from what's stored, so a
+     * failure there doesn't stop today's list: the next open makes them again. Call only inside [write].
      */
     private suspend fun closePastDays(today: LocalDate) {
         planDao.getUntickedBefore(key(today)).forEach { tickBlocks(MyDate(it.date).toLocalDate()) }
         resolveUnfinished(today)
-        closeWeeks(today)
+        runCatching { closeWeeks(today) }
     }
 
     /** Items still planned on earlier days follow "if a day goes sideways". Call only inside [write]. */
@@ -259,30 +285,39 @@ class PlanRepository(
         val unfinished = todayTaskRepository.getPlannedBefore(today)
         if (unfinished.isEmpty()) return
         val missions = missionRepository.getActive().associateBy { it.missionId }
+        // Missions with an open item from today on. Each one carried forward joins them.
+        val coming = todayTaskRepository.getBetween(today, today.plus(7, DateTimeUnit.DAY))
+            .filter { it.taskState.isOpen }
+            .mapTo(mutableSetOf()) { it.missionId }
         // Newest first, so when one mission has several, the latest is the one carried forward.
         for (task in unfinished) {
             val mission = missions[task.missionId]
-            val coming = todayTaskRepository.getBetween(today, today.plus(7, DateTimeUnit.DAY))
-                .any { it.missionId == task.missionId && it.taskState.isOpen }
-            if (mission != null && DayClose.outcome(task, mission, today, alreadyComing = coming) == DayClose.Outcome.MOVE) {
-                moveTask(task, mission, today)
+            val outcome = DayClose.outcome(task, mission, today, alreadyComing = task.missionId in coming)
+            if (mission != null && outcome == DayClose.Outcome.MOVE && moveTask(task, mission, today)) {
+                coming += mission.missionId
             } else {
-                todayTaskRepository.update(task.copy(state = TaskState.SKIPPED.name, pointsEarned = 0, crowned = false))
+                // A skipped item keeps its crown, as in updateState, so ticking it later brings the crown back.
+                todayTaskRepository.update(task.copy(state = TaskState.SKIPPED.name, pointsEarned = 0))
             }
         }
     }
 
-    /** Moves [task] to the next day with room after [Moves.anchor]. Call only inside [write]. */
-    private suspend fun moveTask(task: TodayTask, mission: Mission, today: LocalDate) {
+    /**
+     * Moves [task] to the next day with room after [Moves.anchor]; false, with nothing changed, when the
+     * mission isn't live on any of those days. The copy is written first: cut short before the item is
+     * marked moved, the next open finds the copy coming and skips the item. Call only inside [write].
+     */
+    private suspend fun moveTask(task: TodayTask, mission: Mission, today: LocalDate): Boolean {
         val from = task.date
         val after = Moves.anchor(from, today)
         val upcoming = todayTaskRepository.getBetween(after.plus(1, DateTimeUnit.DAY), after.plus(7, DateTimeUnit.DAY))
-        val target = Moves.target(mission, after, upcoming, roomByDay(after, tasks = upcoming))
+        val target = Moves.target(mission, upcoming, roomByDay(after, tasks = upcoming)) ?: return false
         val order = (upcoming.filter { it.date == target }.maxOfOrNull { it.sortOrder } ?: -1) + 1
-        todayTaskRepository.update(task.copy(state = TaskState.MOVED.name, pointsEarned = 0, crowned = false))
         todayTaskRepository.insert(
             newTask(mission, target, Reason(ReasonCode.MOVED, listOf(from.weekdayName())), fixed = false, order = order, movedFrom = from)
         )
+        todayTaskRepository.update(task.copy(state = TaskState.MOVED.name, pointsEarned = 0, crowned = false))
+        return true
     }
 
     /**
@@ -307,7 +342,9 @@ class PlanRepository(
         val from = minOf(missing.first().minus(HISTORY_DAYS, DateTimeUnit.DAY), thisWeek.minus(PaceOffers.HISTORY_DAYS, DateTimeUnit.DAY))
         val history = History(todayTaskRepository.getBetween(from, today.plus(7, DateTimeUnit.DAY)))
         if (lastWeek in missing) makeOffers(thisWeek, today, missions, history)
-        missing.forEach { weekRepository.saveSummary(WeekSummaries.summarize(it, missions, allMissions, history)) }
+        // Each week's own items, sliced once, so a long gap doesn't scan the whole history for every week.
+        val byWeek = history.all.groupBy { WeekMath.weekStart(it.date) }
+        weekRepository.saveSummaries(missing.map { WeekSummaries.summarize(it, missions, allMissions, history, byWeek[it].orEmpty()) })
     }
 
     /** This week's pace offers, unless it already has some. Call only inside [write]. */
@@ -325,10 +362,20 @@ class PlanRepository(
 
     private fun today(): LocalDate = MyDate.now().toLocalDate()
 
-    private suspend fun updateState(task: TodayTask, state: TaskState) {
+    /**
+     * Sets [task]'s state and points. Only a move takes its crown: a skipped item keeps it, so ticking
+     * it again brings it back. [byApp] is true only for the evening check's ticks ("Ticked for you");
+     * any change by hand clears it.
+     */
+    private suspend fun updateState(task: TodayTask, state: TaskState, byApp: Boolean = false) {
         val mission = missionRepository.get(task.missionId) ?: return
         todayTaskRepository.update(
-            task.copy(state = state.name, pointsEarned = Points.forTask(mission, state), crowned = task.crowned && state.isOpen)
+            task.copy(
+                state = state.name,
+                pointsEarned = Points.forTask(mission, state),
+                crowned = task.crowned && state != TaskState.MOVED,
+                autoTicked = byApp,
+            )
         )
         refreshClosedWeek(task.date)
     }

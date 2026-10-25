@@ -2,6 +2,7 @@ package com.example.todoapp.db.data.week
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import androidx.room.Upsert
@@ -12,6 +13,9 @@ interface WeekDao {
 
     @Upsert
     suspend fun upsertSummary(summary: WeekSummary)
+
+    @Upsert
+    suspend fun upsertSummaries(summaries: List<WeekSummary>)
 
     @Query("SELECT * FROM week_summary WHERE summary_week_start = :weekStart")
     suspend fun getSummary(weekStart: String): WeekSummary?
@@ -27,7 +31,8 @@ interface WeekDao {
     @Query("SELECT summary_week_start FROM week_summary WHERE summary_week_start >= :from")
     suspend fun getSummaryWeeksFrom(from: String): List<String>
 
-    @Insert
+    /** A second offer for the same mission and week is dropped (the unique index), not an error. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertOffers(offers: List<PaceOffer>)
 
     @Update

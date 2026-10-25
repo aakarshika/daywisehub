@@ -8,7 +8,7 @@ import androidx.room.PrimaryKey
  * One finished week (spec 5.1), stored the first time the diary opens in a later week.
  * [weekStart] is its Monday, yyyy-MM-dd. Earned points add up the week's tasks; targets are
  * computed at close-out, so a pace change accepted later doesn't rewrite an old week.
- * Read the pillar columns through domain/WeekClose.kt.
+ * Read the pillar columns through domain/WeekSummaries.kt.
  */
 @Entity(tableName = "week_summary")
 data class WeekSummary(
@@ -21,6 +21,6 @@ data class WeekSummary(
     @ColumnInfo(name = "summary_love_target") val loveTarget: Int,
     @ColumnInfo(name = "summary_life_earned") val lifeEarned: Int,
     @ColumnInfo(name = "summary_life_target") val lifeTarget: Int,
-    /** Every pillar full (spec 5): the week gets a crown. */
+    /** Every pillar full, with something due (spec 5): the week gets a crown. */
     @ColumnInfo(name = "summary_balanced") val balanced: Boolean,
 )
