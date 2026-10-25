@@ -9,12 +9,14 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewModelScope
 import com.example.todoapp.app.MyScreen
 import com.example.todoapp.di.KoinF
 import com.example.todoapp.screen.diary.DiaryScreen
@@ -23,6 +25,7 @@ import com.example.todoapp.screen.diary.diaryitem.components.diarymood.MoodViewM
 import com.example.todoapp.screen.diary.diaryitem.components.waterintake.WaterIntakeViewModel
 import com.example.todoapp.screen.metrics.CalDiaryViewModel
 import com.example.todoapp.screen.placeholder.ComingNextScreen
+import kotlinx.coroutines.cancel
 import moe.tlaster.precompose.navigation.NavHost
 import moe.tlaster.precompose.navigation.NavOptions
 import moe.tlaster.precompose.navigation.PopUpTo
@@ -98,6 +101,14 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                     }
                     val waterIntakeViewModel = remember(currentDate) {
                         KoinF.di!!.get<WaterIntakeViewModel> { parametersOf(currentDate) }
+                    }
+                    // Nothing owns these view models, so stop their work when the date changes or the diary leaves the screen.
+                    DisposableEffect(diaryViewModel, moodViewModel, waterIntakeViewModel) {
+                        onDispose {
+                            diaryViewModel.viewModelScope.cancel()
+                            moodViewModel.viewModelScope.cancel()
+                            waterIntakeViewModel.viewModelScope.cancel()
+                        }
                     }
                     DiaryScreen(
                         diaryViewModel,

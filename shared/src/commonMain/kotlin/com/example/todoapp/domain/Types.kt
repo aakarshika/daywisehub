@@ -24,6 +24,7 @@ enum class TaskState {
     PLANNED, DONE, PARTIAL, MOVED, SKIPPED;
 
     val countsAsDone: Boolean get() = this == DONE || this == PARTIAL
+    /** Still on that day's list: true for planned, done and did-some; false once moved away or skipped. */
     val isOpen: Boolean get() = this != MOVED && this != SKIPPED
 }
 

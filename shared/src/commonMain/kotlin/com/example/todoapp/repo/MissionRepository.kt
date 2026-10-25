@@ -15,7 +15,11 @@ class MissionRepository(private val database: AppDatabase) {
 
     suspend fun get(missionId: Long): Mission? = missionDao.get(missionId)
 
-    suspend fun save(mission: Mission): Long = missionDao.upsert(mission)
+    /** Inserts or updates. Returns the mission's id either way (Room's upsert gives -1 on update). */
+    suspend fun save(mission: Mission): Long {
+        val id = missionDao.upsert(mission)
+        return if (id == -1L) mission.missionId else id
+    }
 
     suspend fun count(): Int = missionDao.count()
 }

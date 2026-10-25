@@ -51,13 +51,6 @@ val LightGray = Color(0xEEEEEEEE)
 val CalendarGradientA = Color(0xFFF0FFFB)
 val CalendarGradientB = Color(0xFFF2E7FC)
 
-fun Color.darken(amount: Float = 0.2f): Color {
-    val red = (this.red * (1 - amount)).coerceIn(0f, 1f)
-    val green = (this.green * (1 - amount)).coerceIn(0f, 1f)
-    val blue = (this.blue * (1 - amount)).coerceIn(0f, 1f)
-    return Color(red, green, blue, this.alpha)
-}
-
 // Diary ink and surfaces used by the redesigned screens
 val InkBlack = Color(0xFF1F1F1F)
 val InkGray = Color(0xFF6E6E6E)
