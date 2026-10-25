@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -24,6 +25,10 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,11 +52,12 @@ import todoapp.shared.generated.resources.flag_open
 import todoapp.shared.generated.resources.heart_filled
 import todoapp.shared.generated.resources.star_filled
 
-/** Slightly tilted sticky note, like the mission cards. */
+/** Slightly tilted sticky note, like the mission cards. A screen reader reads it as one group. */
 @Composable
-fun StickyNote(rotation: Float, color: Color = StickyYellow, content: @Composable () -> Unit) {
+fun StickyNote(rotation: Float, color: Color = StickyYellow, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Box(
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
+            .semantics { isTraversalGroup = true }
             .padding(horizontal = 30.dp, vertical = 12.dp)
             .rotate(rotation)
             .shadow(6.dp, RoundedCornerShape(4.dp))
@@ -70,7 +76,11 @@ fun DidntFitNote(row: DidntFitRow) {
             )
             Spacer(Modifier.width(12.dp))
             Column {
-                Text("DIDN'T FIT TODAY", fontSize = 11.sp, letterSpacing = 1.2.sp, color = Color(0xFF6A5A2A))
+                Text(
+                    "DIDN'T FIT TODAY",
+                    fontSize = 11.sp, letterSpacing = 1.2.sp, color = Color(0xFF6A5A2A),
+                    modifier = Modifier.semantics { heading() }
+                )
                 Text(row.title, fontSize = 19.sp, fontStyle = FontStyle.Italic, fontWeight = FontWeight.Light, color = InkBlack)
                 Text(row.text, fontSize = 13.sp, fontStyle = FontStyle.Italic, color = Color(0xFF5F5A48))
             }
@@ -91,14 +101,14 @@ fun PlanActions(editMode: Boolean, showLooksGood: Boolean, onEdit: () -> Unit, o
     }
 }
 
-/** The peach button: filled with dark text, or outlined. Also used by the mission editor. */
+/** The peach button: filled with dark text, or outlined; at least 44dp tall. Also used by the mission editor. */
 @Composable
 internal fun PlanButton(text: String, filled: Boolean, onClick: () -> Unit) {
     Box(
-        modifier = Modifier.height(44.dp)
+        modifier = Modifier.heightIn(min = 44.dp)
             .clip(RoundedCornerShape(10.dp))
             .then(if (filled) Modifier.background(Orange180) else Modifier.border(1.5.dp, Orange180, RoundedCornerShape(10.dp)))
-            .clickable { onClick() }
+            .clickable(role = Role.Button) { onClick() }
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center
     ) {

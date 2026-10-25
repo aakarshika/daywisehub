@@ -23,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
@@ -30,11 +31,16 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -49,6 +55,7 @@ import com.example.todoapp.screen.basicutils.StickyBlue
 import com.example.todoapp.screen.basicutils.StickyYellow
 import com.example.todoapp.screen.basicutils.pillarInk
 import com.example.todoapp.screen.basicutils.pillarLight
+import com.example.todoapp.screen.basicutils.pillarStrong
 import com.example.todoapp.screen.diary.LastWeekState
 import com.example.todoapp.screen.diary.OfferNote
 import org.jetbrains.compose.resources.painterResource
@@ -64,7 +71,9 @@ private const val CHIP_TAG = "chip"
 
 /**
  * A sentence whose mission titles sit on chips in their pillar's light color (spec 7.1), so any title
- * reads fine whatever the words around it. No-break spaces pad the chip inside.
+ * reads fine whatever the words around it. No-break spaces pad the chip inside. A hairline in the
+ * pillar's strong color keeps a chip visible on a sticky of a similar color. Every line box is the same
+ * height, so a chip on a one-line sentence isn't cramped.
  */
 @Composable
 fun ChipText(parts: List<LinePart>, fontSize: TextUnit, color: Color, italic: Boolean = false, modifier: Modifier = Modifier) {
@@ -87,6 +96,7 @@ fun ChipText(parts: List<LinePart>, fontSize: TextUnit, color: Color, italic: Bo
         text,
         fontSize = fontSize,
         lineHeight = fontSize * 1.6f,
+        style = TextStyle(lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None)),
         fontStyle = if (italic) FontStyle.Italic else FontStyle.Normal,
         color = color,
         onTextLayout = { layout = it },
@@ -101,12 +111,10 @@ fun ChipText(parts: List<LinePart>, fontSize: TextUnit, color: Color, italic: Bo
                     if (to <= from) continue
                     val left = l.getBoundingBox(from).left
                     val right = l.getBoundingBox(to - 1).right
-                    drawRoundRect(
-                        pillarLight(pillar),
-                        topLeft = Offset(minOf(left, right), l.getLineTop(line) + inset),
-                        size = Size(abs(right - left), l.getLineBottom(line) - l.getLineTop(line) - 2 * inset),
-                        cornerRadius = CornerRadius(6.dp.toPx()),
-                    )
+                    val topLeft = Offset(minOf(left, right), l.getLineTop(line) + inset)
+                    val size = Size(abs(right - left), l.getLineBottom(line) - l.getLineTop(line) - 2 * inset)
+                    drawRoundRect(pillarLight(pillar), topLeft, size, CornerRadius(6.dp.toPx()))
+                    drawRoundRect(pillarStrong(pillar), topLeft, size, CornerRadius(6.dp.toPx()), style = Stroke(1.dp.toPx()))
                 }
             }
         }
@@ -127,7 +135,7 @@ fun LastWeekCard(state: LastWeekState) {
             Text(
                 "LAST WEEK",
                 fontSize = 20.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.3.sp, color = Color(0xFF3A3A3A),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f).semantics { heading() }
             )
             Text(state.range, fontSize = 13.sp, color = InkGray)
         }
@@ -144,9 +152,9 @@ fun LastWeekCard(state: LastWeekState) {
 /** A pace offer as a tilted sticky (spec 5.2): easing off on yellow with the wand, stepping up on blue with the flag. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun PaceOfferNote(note: OfferNote, rotation: Float, onAnswer: (Long, OfferResponse) -> Unit) {
+fun PaceOfferNote(note: OfferNote, rotation: Float, onAnswer: (Long, OfferResponse) -> Unit, modifier: Modifier = Modifier) {
     val words = note.words
-    // One answer per offer: a second tap before the note goes away does nothing.
+    // One answer per offer: a second tap before the note goes away does nothing, and the note dims meanwhile.
     var answered by remember(note.offerId) { mutableStateOf(false) }
     val answer = { response: OfferResponse ->
         if (!answered) {
@@ -155,7 +163,11 @@ fun PaceOfferNote(note: OfferNote, rotation: Float, onAnswer: (Long, OfferRespon
         }
     }
     val ink = if (words.goingWell) pillarInk(PillarType.LIFE) else Color(0xFF6A5A2A)
-    StickyNote(rotation = rotation, color = if (words.goingWell) StickyBlue else StickyYellow) {
+    StickyNote(
+        rotation = rotation,
+        color = if (words.goingWell) StickyBlue else StickyYellow,
+        modifier = modifier.alpha(if (answered) 0.6f else 1f)
+    ) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(
@@ -163,7 +175,7 @@ fun PaceOfferNote(note: OfferNote, rotation: Float, onAnswer: (Long, OfferRespon
                     colorFilter = ColorFilter.tint(ink), modifier = Modifier.size(18.dp)
                 )
                 Spacer(Modifier.width(10.dp))
-                Text(words.header, fontSize = 11.sp, letterSpacing = 1.2.sp, color = ink)
+                Text(words.header, fontSize = 11.sp, letterSpacing = 1.2.sp, color = ink, modifier = Modifier.semantics { heading() })
             }
             ChipText(words.line, fontSize = 16.sp, color = InkBlack, italic = true, modifier = Modifier.padding(top = 6.dp))
             FlowRow(

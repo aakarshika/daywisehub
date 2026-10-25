@@ -3,7 +3,6 @@ package com.example.todoapp.screen.diary
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.plan.DayPlan
 import com.example.todoapp.db.data.plan.DaySettings
-import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.week.PaceOffer
 import com.example.todoapp.db.data.week.WeekSummary
 import com.example.todoapp.db.models.MyDate
@@ -39,7 +38,10 @@ data class LastWeekState(
     /** "3 of 4 pillars full", or "All 4 pillars full · a balanced week". */
     val pillars: String,
     val balanced: Boolean,
-    /** What the app adjusted, each line naming its mission on a chip. Never empty. */
+    /**
+     * What the app adjusted, each line naming its mission on a chip. Never empty on today's page. Empty on
+     * an earlier day's, which can't say what was adjusted: that reads today's missions.
+     */
     val adjusted: List<List<LinePart>>,
 )
 
@@ -48,13 +50,13 @@ data class OfferNote(val offerId: Long, val words: OfferWords)
 
 /** What the diary reads besides missions and tasks. */
 data class DiaryExtras(
-    /** Plans from the start of this day's week to a week after today, for "opens the week" and room ahead. */
+    /** Plans from the start of this day's week to a week after today (after this day, on a page older than yesterday), for "opens the week" and room ahead. */
     val plans: List<DayPlan>,
     /** Free minutes per weekday, for days ahead that have no plan yet. */
     val settings: List<DaySettings>,
     /** The summary of the week before this day's week. */
     val lastWeek: WeekSummary?,
-    /** Offers made for the week that has today in it. */
+    /** Offers made for the week that has today in it; empty on any page but today's. */
     val offers: List<PaceOffer>,
 )
 
@@ -63,16 +65,22 @@ object WeekStateBuilder {
     const val MAX_ADJUSTED = 3
 
     /**
-     * True when [date] opens its week in the diary: no earlier day of that week has a plan, because the
-     * diary wasn't opened on it. Monday always opens its week. The "Last week" card shows on such days.
+     * True when [date] opens its week in the diary: Monday, or the first day of its week that has a plan
+     * (the diary was opened on it) when no earlier day of that week has one. A day that was never opened
+     * and isn't Monday doesn't open the week, so the "Last week" card isn't repeated there. [plans] start
+     * at the week's Monday. The card shows on such days.
      */
     fun opensWeek(date: LocalDate, plans: List<DayPlan>): Boolean {
-        val weekStart = WeekMath.weekStart(date)
-        return plans.none { MyDate(it.date).toLocalDate().let { day -> day >= weekStart && day < date } }
+        val key = MyDate.fromLocalDate(date).dateString
+        if (plans.any { it.date < key }) return false
+        return date == WeekMath.weekStart(date) || plans.any { it.date == key }
     }
 
-    /** Null without a summary, or when last week had nothing due and nothing done. */
-    fun lastWeek(summary: WeekSummary?, missions: List<Mission>, tasks: List<TodayTask>): LastWeekState? {
+    /**
+     * Null without a summary, or when last week had nothing due and nothing done. [withAdjusted] is false
+     * on an earlier day's page: what the app adjusted reads today's missions, so that page leaves it out.
+     */
+    fun lastWeek(summary: WeekSummary?, missions: List<Mission>, history: History, withAdjusted: Boolean): LastWeekState? {
         summary ?: return null
         val pillars = PillarType.scoredPillars
         val target = pillars.sumOf { summary.target(it) }
@@ -84,14 +92,18 @@ object WeekStateBuilder {
         val start = summary.weekStartDate
         return LastWeekState(
             range = "${start.shortLabel()} to ${start.plus(6, DateTimeUnit.DAY).shortLabel()}",
-            points = "$counted of ${MissionWords.pointsPhrase(target)}" + if (extra > 0) " · +$extra extra" else "",
+            points = if (target == 0) {
+                "+$extra extra"
+            } else {
+                "$counted of ${MissionWords.pointsPhrase(target)}" + if (extra > 0) " · +$extra extra" else ""
+            },
             pillars = if (summary.balanced) {
                 "All ${pillars.size} pillars full · a balanced week"
             } else {
                 "${summary.pillarsFull()} of ${pillars.size} pillars full"
             },
             balanced = summary.balanced,
-            adjusted = adjusted(start, missions, tasks),
+            adjusted = if (withAdjusted) adjusted(start, missions, history) else emptyList(),
         )
     }
 
@@ -107,19 +119,20 @@ object WeekStateBuilder {
 
     /**
      * What the app adjusted, from stored data only: items "move it" carried from last week into this
-     * week, and every-so-often missions that were due last week and stay due (spec 5.1).
+     * week, and every-so-often missions that were due last week and stay due (spec 5.1). A move that
+     * landed after this week isn't this week's.
      */
-    private fun adjusted(lastStart: LocalDate, missions: List<Mission>, tasks: List<TodayTask>): List<List<LinePart>> {
+    private fun adjusted(lastStart: LocalDate, missions: List<Mission>, history: History): List<List<LinePart>> {
         val lastEnd = lastStart.plus(6, DateTimeUnit.DAY)
         val thisStart = lastStart.plus(7, DateTimeUnit.DAY)
+        val thisEnd = lastStart.plus(13, DateTimeUnit.DAY)
         val byId = missions.associateBy { it.missionId }
-        val history = History(tasks)
         val named = mutableSetOf<Long>()
         val lines = mutableListOf<List<LinePart>>()
-        tasks
+        history.all
             .filter { task ->
                 val from = task.movedFromDate?.toLocalDate()
-                from != null && from >= lastStart && from <= lastEnd && task.date >= thisStart
+                from != null && from >= lastStart && from <= lastEnd && task.date >= thisStart && task.date <= thisEnd
             }
             .sortedBy { it.date }
             .forEach { task ->

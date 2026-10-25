@@ -15,6 +15,7 @@ import com.example.todoapp.repo.MissionRepository
 import com.example.todoapp.repo.PlanRepository
 import com.example.todoapp.repo.TodayTaskRepository
 import com.example.todoapp.repo.WeekRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -45,10 +47,10 @@ class DiaryViewModel(
     private val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
     private val today: LocalDate = now.date
     val isToday: Boolean = currentDate == today
-    /** Past days, and today from 18:00. Fixed for this view model's life. */
-    val isEvening: Boolean = currentDate < now.date || (currentDate == now.date && now.hour >= EVENING_HOUR)
+    /** Past days, and today from 18:00, when this view model was made. */
+    private val startedInEvening: Boolean = currentDate < now.date || (currentDate == now.date && now.hour >= EVENING_HOUR)
 
-    private val _eveningOpen = MutableStateFlow(isEvening)
+    private val _eveningOpen = MutableStateFlow(startedInEvening)
     /** Today's list switches to the evening check at 18:00, or anytime by hand; past days always show it. */
     val eveningOpen: StateFlow<Boolean> = _eveningOpen
 
@@ -64,15 +66,22 @@ class DiaryViewModel(
     /** False until today's plan is built, so the list doesn't flicker through half-built states. */
     private val planReady = MutableStateFlow(!isToday)
 
-    /** The last day the diary looks at: a week past this day or today, whichever is later, for room to move into. */
-    private val lookAhead = maxOf(currentDate, today).plus(7, DateTimeUnit.DAY)
+    /**
+     * The last day the diary reads: a week past this day or today, whichever is later, for room to move
+     * into. A page older than yesterday names no move (DiaryStateBuilder.namesMoves), so it reads only a
+     * week past itself.
+     */
+    private val lookAhead =
+        if (DiaryStateBuilder.namesMoves(currentDate, today)) maxOf(currentDate, today).plus(7, DateTimeUnit.DAY)
+        else currentDate.plus(7, DateTimeUnit.DAY)
 
-    private val extras = combine(
+    private val diaryExtras = combine(
         // The week's earlier plans decide whether this day opens the week; later ones give the room ahead.
         planRepository.observePlans(WeekMath.weekStart(currentDate), lookAhead),
         planRepository.observeSettings(),
         weekRepository.observeSummary(WeekMath.weekStart(currentDate).minus(7, DateTimeUnit.DAY)),
-        weekRepository.observeOffers(WeekMath.weekStart(today)),
+        // Offers show only on today's page.
+        if (isToday) weekRepository.observeOffers(WeekMath.weekStart(today)) else flowOf(emptyList()),
     ) { plans, settings, summary, offers -> DiaryExtras(plans, settings, summary, offers) }
 
     /** Archived missions come in too, only so their points earned this week still count in the bars. */
@@ -80,10 +89,16 @@ class DiaryViewModel(
         missionRepository.observeActive(),
         missionRepository.observeAll(),
         todayTaskRepository.observeBetween(currentDate.minus(PlanRepository.HISTORY_DAYS, DateTimeUnit.DAY), lookAhead),
-        extras,
+        diaryExtras,
         planReady,
     ) { missions, allMissions, tasks, extras, ready ->
-        if (ready) DiaryStateBuilder.build(currentDate, today, missions, allMissions, tasks, extras) else null
+        if (ready) {
+            DiaryStateBuilder.build(
+                date = currentDate, today = today,
+                missions = missions, allMissions = allMissions,
+                tasks = tasks, extras = extras,
+            )
+        } else null
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val milestones: StateFlow<List<MilestoneWithDetails>> = milestoneRepository
@@ -94,32 +109,36 @@ class DiaryViewModel(
         viewModelScope.launch {
             try {
                 if (isToday) planRepository.ensurePlanned(currentDate)
-                if (isEvening) planRepository.tickFixedBlocks(currentDate)   // past days too; it does nothing without a plan
+                if (startedInEvening) planRepository.tickFixedBlocks(currentDate)   // past days too; it does nothing without a plan
             } finally {
                 planReady.value = true
             }
         }
-        if (isToday && !isEvening) viewModelScope.launch { openEveningAtSix() }
+        if (isToday && !startedInEvening) viewModelScope.launch { openEveningAtSix() }
     }
 
     /**
-     * Opens the evening check at 18:00 while today's diary stays on screen. It checks the clock every
-     * half minute rather than sleeping until 18:00, because a sleeping phone pauses timers.
+     * Opens the evening check at 18:00 while today's diary stays on screen. It looks at the clock at
+     * least every half minute rather than sleeping until 18:00, because a sleeping phone pauses timers.
      */
     private suspend fun openEveningAtSix() {
         while (true) {
-            delay(EVENING_CHECK_MILLIS)
             val clock = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
             // After midnight CalDiaryViewModel moves the diary to the new day, with a new view model.
             if (clock.date != currentDate) return
             if (clock.hour >= EVENING_HOUR) {
-                if (!_eveningOpen.value) {
-                    _eveningOpen.value = true
-                    act { planRepository.tickFixedBlocks(currentDate) }
-                }
+                if (!_eveningOpen.value) openEvening()
                 return
             }
+            val untilSix = ((EVENING_HOUR - clock.hour) * 3600L - clock.minute * 60L - clock.second) * 1000
+            delay(minOf(EVENING_CHECK_MILLIS, untilSix))
         }
+    }
+
+    /** Shows the evening check and ticks the day's fixed blocks (once per day, so an untick sticks). */
+    private fun openEvening() {
+        _eveningOpen.value = true
+        act { planRepository.tickFixedBlocks(currentDate) }
     }
 
     fun toggleDone(taskId: Long) = act { planRepository.toggleDone(taskId) }
@@ -138,12 +157,18 @@ class DiaryViewModel(
     /** The write can't be cancelled (PlanRepository.write), and a second answer to the same offer does nothing. */
     fun answerOffer(offerId: Long, response: OfferResponse) = act { planRepository.answerOffer(offerId, response) }
 
-    /** Opens the pencil's list. A second tap while it loads or shows does nothing. */
+    /** Opens the pencil's list. A tap before the diary is built, or a second tap while it loads or shows, does nothing. */
     fun openAdd() {
-        if (_addOptions.value != null || addLoading?.isActive == true) return
+        if (state.value == null || _addOptions.value != null || addLoading?.isActive == true) return
         _notice.value = null
         addLoading = viewModelScope.launch {
-            _addOptions.value = planRepository.addOptions(currentDate).map { AddOption.from(it) }
+            try {
+                _addOptions.value = planRepository.addOptions(currentDate).map { AddOption.from(it) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _notice.value = "The list didn't load. Tap the pencil to try again."
+            }
         }
     }
 
@@ -154,10 +179,12 @@ class DiaryViewModel(
 
     fun toggleEveningCheck() {
         if (!isToday) return
-        _notice.value = null
-        val open = !_eveningOpen.value
-        _eveningOpen.value = open
-        if (open) act { planRepository.tickFixedBlocks(currentDate) }
+        if (_eveningOpen.value) {
+            _notice.value = null
+            _eveningOpen.value = false
+        } else {
+            openEvening()
+        }
     }
 
     fun updateMilestoneStatus(milestone: Milestone, achieved: Boolean, completionDate: LocalDate) = act {

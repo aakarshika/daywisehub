@@ -20,11 +20,14 @@ import com.example.todoapp.domain.scored
 import com.example.todoapp.domain.shortLabel
 import com.example.todoapp.domain.taskState
 import com.example.todoapp.domain.weekdayName
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.isoDayNumber
+import kotlinx.datetime.plus
 
 data class PillarProgress(val pillar: PillarType, val earned: Int, val target: Int) {
-    val share: Float get() = if (target == 0) 0f else (earned.toFloat() / target).coerceAtMost(1f)
+    /** Bar fill. A pillar with nothing due this week reads full, not empty. */
+    val share: Float get() = if (target == 0) 1f else (earned.toFloat() / target).coerceAtMost(1f)
     /** Points past the target, shown as "+N extra" on this pillar only (spec 5). */
     val extra: Int get() = (earned - target).coerceAtLeast(0)
 }
@@ -42,14 +45,20 @@ data class PlanRow(
     val state: TaskState,
     val crowned: Boolean,
     val isFixedBlock: Boolean,
-    /** Weekday it was moved to, when [state] is MOVED. */
+    /** Weekday it was moved to, when [state] is MOVED. "next Tuesday" when that is the same weekday a week on. */
     val movedTo: String?,
     /** Moved in from another day; it can't be swapped. */
     val movedIn: Boolean,
-    /** Where "Move it" would send it: a weekday, or "today" from an earlier day. Set on planned flexible rows. */
+    /**
+     * Where "Move it" would send it: a weekday, or "today" from an earlier day. Set on planned flexible rows.
+     * Null when it would send it nowhere (the mission is live on none of the next 7 days, so it would be
+     * skipped) or the page is too old to say; the Move chip is then left out.
+     */
     val moveTo: String?,
     /** A fixed block the evening check ticked (spec 6.4: "Ticked for you"). */
     val tickedForYou: Boolean,
+    /** MOVED and its copy is still planned: ticking takes the move back (PlanRepository.toggleDone). */
+    val canTakeBack: Boolean,
 )
 
 data class DidntFitRow(val title: String, val text: String)
@@ -112,11 +121,13 @@ object DiaryStateBuilder {
         tasks: List<TodayTask>,
         extras: DiaryExtras,
     ): DiaryUiState {
-        val plan = extras.plans.firstOrNull { it.date == MyDate.fromLocalDate(date).dateString }
-        val opensWeek = WeekStateBuilder.opensWeek(date, extras.plans)
-        val lastWeek = if (opensWeek) WeekStateBuilder.lastWeek(extras.lastWeek, missions, tasks) else null
-        val byId = missions.associateBy { it.missionId }
+        val dateKey = MyDate.fromLocalDate(date).dateString
+        val plan = extras.plans.firstOrNull { it.date == dateKey }
         val history = History(tasks)
+        val opensWeek = WeekStateBuilder.opensWeek(date, extras.plans)
+        // The adjusted lines and the fresh start read today's missions, so only today's page says them.
+        val lastWeek = if (opensWeek) WeekStateBuilder.lastWeek(extras.lastWeek, missions, history, withAdjusted = date == today) else null
+        val byId = missions.associateBy { it.missionId }
         val weekStart = WeekMath.weekStart(date)
         val pillars = PillarType.scoredPillars.map { pillar ->
             PillarProgress(
@@ -126,16 +137,20 @@ object DiaryStateBuilder {
             )
         }
         val todayTasks = tasks.filter { it.date == date }.sortedWith(compareBy({ it.sortOrder }, { it.todayTaskId }))
-        // "Move it" names its day, found the way PlanRepository.moveToNextRoom finds it.
-        val after = Moves.anchor(date, today)
-        val room = Moves.roomByDay(after, missions.associate { it.missionId to it.durationMinutes }, tasks) { day -> freeOn(day, extras) }
+        // "Move it" names its day, found the way PlanRepository.moveToNextRoom finds it. The 7 days it looks at
+        // are sliced out once, and only when a planned flexible row needs them.
+        val anchor = Moves.anchor(date, today)
+        val naming = namesMoves(date, today) && todayTasks.any { it.taskState == TaskState.PLANNED && !it.isFixedBlock }
+        val ahead = if (naming) tasks.filter { it.date > anchor && it.date <= anchor.plus(7, DateTimeUnit.DAY) } else emptyList()
+        val room = if (naming) {
+            Moves.roomByDay(anchor, missions.associate { it.missionId to it.durationMinutes }, ahead) { day -> freeOn(day, extras) }
+        } else emptyMap()
         val rows = todayTasks.mapNotNull { task ->
             val mission = byId[task.missionId] ?: return@mapNotNull null
-            val moveTo = if (task.taskState == TaskState.PLANNED && !task.isFixedBlock) {
-                Moves.target(mission, tasks, room)?.let { if (it == today) "today" else it.weekdayName() }
+            val moveTo = if (naming && task.taskState == TaskState.PLANNED && !task.isFixedBlock) {
+                Moves.target(mission, ahead, room)?.let { if (it == today) "today" else it.dayWord(date) }
             } else null
-            val ticked = task.isFixedBlock && task.taskState == TaskState.DONE && plan?.fixedTicked == true
-            toRow(task, mission, tasks, moveTo, ticked)
+            toRow(task, mission, history, moveTo)
         }
         val open = rows.filter { it.state.isOpen }
         val crowned = rows.filter { it.crowned && it.state.isOpen }
@@ -159,9 +174,15 @@ object DiaryStateBuilder {
             hasMissions = missions.isNotEmpty(),
             lastWeek = lastWeek,
             offers = if (date == today && opensWeek) WeekStateBuilder.offers(extras.offers, missions, today) else emptyList(),
-            freshStart = lastWeek != null && pillars.all { it.earned == 0 },
+            freshStart = date == today && lastWeek != null && pillars.all { it.earned == 0 },
         )
     }
+
+    /**
+     * Can [date]'s page name where "Move it" goes? From yesterday on, yes. An older page's days to move
+     * to are past what the diary reads (DiaryViewModel), and its planned items were settled long ago.
+     */
+    fun namesMoves(date: LocalDate, today: LocalDate): Boolean = Moves.anchor(date, today) == date
 
     /** Free minutes on [day]: its plan's if it has one, else its weekday's setting, as in PlanRepository. */
     private fun freeOn(day: LocalDate, extras: DiaryExtras): Int {
@@ -171,10 +192,9 @@ object DiaryStateBuilder {
         return extras.settings.firstOrNull { it.weekday == weekday }?.freeMinutes ?: DaySettings.defaultFor(weekday)
     }
 
-    private fun toRow(task: TodayTask, mission: Mission, tasks: List<TodayTask>, moveTo: String?, tickedForYou: Boolean): PlanRow {
-        val movedTo = if (task.taskState == TaskState.MOVED) {
-            tasks.firstOrNull { it.missionId == task.missionId && it.movedFromDate == task.taskDate }?.date?.weekdayName()
-        } else null
+    private fun toRow(task: TodayTask, mission: Mission, history: History, moveTo: String?): PlanRow {
+        val mine = history.tasksFor(task.missionId)
+        val moved = task.taskState == TaskState.MOVED
         return PlanRow(
             taskId = task.todayTaskId,
             title = mission.title,
@@ -186,12 +206,17 @@ object DiaryStateBuilder {
             state = task.taskState,
             crowned = task.crowned,
             isFixedBlock = task.isFixedBlock,
-            movedTo = movedTo,
+            movedTo = if (moved) Moves.copyOf(task, mine)?.date?.dayWord(task.date) else null,
             movedIn = task.movedFromDate != null,
             moveTo = moveTo,
-            tickedForYou = tickedForYou,
+            tickedForYou = task.isFixedBlock && task.taskState == TaskState.DONE && task.autoTicked,
+            canTakeBack = moved && Moves.canTakeBack(task, mine),
         )
     }
+
+    /** "Thursday", or "next Thursday" when it is the same weekday as [from], so a week on isn't read as [from] itself. */
+    private fun LocalDate.dayWord(from: LocalDate): String =
+        if (dayOfWeek == from.dayOfWeek) "next ${weekdayName()}" else weekdayName()
 
     private fun didntFit(date: LocalDate, plan: DayPlan?, byId: Map<Long, Mission>, todayTasks: List<TodayTask>): DidntFitRow? {
         val missionId = plan?.didntFitMissionId ?: return null
