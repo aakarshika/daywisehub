@@ -63,6 +63,12 @@ data class DiaryUiState(
     val donePicks: Int,
     /** False on an empty install: the list then points to the Missions tab. */
     val hasMissions: Boolean,
+    /** Shown on the day that opens the week (WeekStateBuilder.opensWeek). */
+    val lastWeek: LastWeekState?,
+    /** Pace offers, on today's page when it opens the week. */
+    val offers: List<OfferNote>,
+    /** The week has just begun: the strip reads "THIS WEEK · A FRESH START". */
+    val freshStart: Boolean,
 ) {
     /** Every open scored pick resolved as done or did-some; drives the confetti. */
     val allPicksDone: Boolean
@@ -77,11 +83,15 @@ object DiaryStateBuilder {
      */
     fun build(
         date: LocalDate,
+        today: LocalDate,
         missions: List<Mission>,
         allMissions: List<Mission>,
         tasks: List<TodayTask>,
-        plan: DayPlan?,
+        extras: DiaryExtras,
     ): DiaryUiState {
+        val plan = extras.plans.firstOrNull { it.date == MyDate.fromLocalDate(date).dateString }
+        val opensWeek = WeekStateBuilder.opensWeek(date, extras.plans)
+        val lastWeek = if (opensWeek) WeekStateBuilder.lastWeek(extras.lastWeek, missions, tasks) else null
         val byId = missions.associateBy { it.missionId }
         val history = History(tasks)
         val weekStart = WeekMath.weekStart(date)
@@ -114,6 +124,9 @@ object DiaryStateBuilder {
             todayMissionIds = todayTasks.map { it.missionId }.toSet(),
             donePicks = picks.count { it.state.countsAsDone },
             hasMissions = missions.isNotEmpty(),
+            lastWeek = lastWeek,
+            offers = if (date == today && opensWeek) WeekStateBuilder.offers(extras.offers, missions) else emptyList(),
+            freshStart = lastWeek != null && pillars.all { it.earned == 0 },
         )
     }
 

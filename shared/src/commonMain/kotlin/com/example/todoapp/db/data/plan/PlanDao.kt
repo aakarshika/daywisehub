@@ -14,6 +14,9 @@ interface PlanDao {
     @Query("SELECT * FROM day_plan WHERE plan_date = :date")
     fun observePlan(date: String): Flow<DayPlan?>
 
+    @Query("SELECT * FROM day_plan WHERE plan_date BETWEEN :from AND :to ORDER BY plan_date")
+    fun observePlansBetween(from: String, to: String): Flow<List<DayPlan>>
+
     @Upsert
     suspend fun upsertPlan(plan: DayPlan)
 

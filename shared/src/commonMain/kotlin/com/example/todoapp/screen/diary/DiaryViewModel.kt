@@ -8,11 +8,14 @@ import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.db.models.TaskStatus
 import com.example.todoapp.domain.Energy
+import com.example.todoapp.domain.OfferResponse
 import com.example.todoapp.domain.TaskState
+import com.example.todoapp.domain.WeekMath
 import com.example.todoapp.repo.MilestoneRepository
 import com.example.todoapp.repo.MissionRepository
 import com.example.todoapp.repo.PlanRepository
 import com.example.todoapp.repo.TodayTaskRepository
+import com.example.todoapp.repo.WeekRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -34,11 +37,13 @@ class DiaryViewModel(
     todayTaskRepository: TodayTaskRepository,
     private val planRepository: PlanRepository,
     private val milestoneRepository: MilestoneRepository,
+    weekRepository: WeekRepository,
     private val currentDate: LocalDate,
 ) : ViewModel() {
 
     private val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
-    val isToday: Boolean = currentDate == now.date
+    private val today: LocalDate = now.date
+    val isToday: Boolean = currentDate == today
     /** Past days, and today from 18:00. Fixed for this view model's life. */
     val isEvening: Boolean = currentDate < now.date || (currentDate == now.date && now.hour >= EVENING_HOUR)
 
@@ -53,6 +58,13 @@ class DiaryViewModel(
     /** False until today's plan is built, so the list doesn't flicker through half-built states. */
     private val planReady = MutableStateFlow(!isToday)
 
+    private val extras = combine(
+        // This day's plan and the week's earlier ones, which decide whether this day opens the week.
+        planRepository.observePlans(WeekMath.weekStart(currentDate), currentDate),
+        weekRepository.observeSummary(WeekMath.weekStart(currentDate).minus(7, DateTimeUnit.DAY)),
+        weekRepository.observeOffers(WeekMath.weekStart(today)),
+    ) { plans, summary, offers -> DiaryExtras(plans, summary, offers) }
+
     /** Archived missions come in too, only so their points earned this week still count in the bars. */
     val state: StateFlow<DiaryUiState?> = combine(
         missionRepository.observeActive(),
@@ -61,10 +73,10 @@ class DiaryViewModel(
             currentDate.minus(PlanRepository.HISTORY_DAYS, DateTimeUnit.DAY),
             currentDate.plus(7, DateTimeUnit.DAY),
         ),
-        planRepository.observePlan(currentDate),
+        extras,
         planReady,
-    ) { missions, allMissions, tasks, plan, ready ->
-        if (ready) DiaryStateBuilder.build(currentDate, missions = missions, allMissions = allMissions, tasks, plan) else null
+    ) { missions, allMissions, tasks, extras, ready ->
+        if (ready) DiaryStateBuilder.build(currentDate, today, missions, allMissions, tasks, extras) else null
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val missions: StateFlow<List<Mission>> = missionRepository.observeActive()
@@ -98,6 +110,8 @@ class DiaryViewModel(
     fun lighterDay() = act { planRepository.lighterDay(currentDate) }
     fun changeDay(freeMinutes: Int, energy: Energy) = act { planRepository.changeDay(currentDate, freeMinutes, energy) }
     fun confirm() = act { planRepository.confirm(currentDate) }
+    /** The write can't be cancelled (PlanRepository.write), and a second answer to the same offer does nothing. */
+    fun answerOffer(offerId: Long, response: OfferResponse) = act { planRepository.answerOffer(offerId, response) }
 
     fun toggleEveningCheck() {
         if (!isToday) return

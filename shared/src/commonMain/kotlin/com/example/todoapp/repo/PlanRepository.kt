@@ -56,6 +56,8 @@ class PlanRepository(
 
     fun observePlan(date: LocalDate): Flow<DayPlan?> = planDao.observePlan(key(date))
 
+    fun observePlans(from: LocalDate, to: LocalDate): Flow<List<DayPlan>> = planDao.observePlansBetween(key(from), key(to))
+
     fun observeSettings(): Flow<List<DaySettings>> = planDao.observeSettings()
 
     suspend fun ensureDefaults() {
