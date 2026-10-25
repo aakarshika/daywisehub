@@ -167,12 +167,13 @@ class PlanRepository(
 
     /**
      * Archives a mission: it leaves the Missions screen and the planner, and its still-planned
-     * items from today on are removed. Then today is re-picked as in [refreshToday].
+     * items from today on are removed. Then today is re-picked as in [refreshToday]; a failed re-pick
+     * doesn't undo the archive, so it doesn't report failure.
      */
     suspend fun archiveMission(missionId: Long) = write {
         missionRepository.setInactive(missionId)
         todayTaskRepository.deletePlannedFrom(missionId, today())
-        refreshTodayIfOpen()
+        runCatching { refreshTodayIfOpen() }
     }
 
     /** All writes: one at a time, finished even if the caller's screen goes away, and off the main thread. */
@@ -233,8 +234,9 @@ class PlanRepository(
     }
 
     private suspend fun fill(date: LocalDate, plan: DayPlan) {
-        val input = withoutSwappedOut(input(date, plan))
-        val result = Planner.plan(input)
+        val input = input(date, plan)
+        // A mission swapped out today stays out of the new picks, but still counts for budget and pillar gaps.
+        val result = Planner.plan(input, exclude = swappedOut[date].orEmpty())
         val firstOrder = (input.todayTasks.maxOfOrNull { it.sortOrder } ?: -1) + 1
         todayTaskRepository.insertAll(
             result.picks.mapIndexed { i, pick -> newTask(pick.mission, date, pick.reason, pick.isFixedBlock, firstOrder + i) }
@@ -255,6 +257,7 @@ class PlanRepository(
         return PlanInput(
             date = date,
             missions = missions,
+            earnedMissions = missionRepository.getAll(),
             milestones = milestoneRepository.getAll(),
             history = History(tasks),
             todayTasks = tasks.filter { it.date == date },
@@ -262,17 +265,6 @@ class PlanRepository(
             energy = Energy.valueOf(plan.energy),
             roomOn = { day -> room[day] ?: 0 },
         )
-    }
-
-    /**
-     * Leaves out the missions "Swap one" took off [PlanInput.date], so a re-pick can't bring them back.
-     * One already on the day's list (added by hand) stays in, so its minutes still count against the day.
-     */
-    private fun withoutSwappedOut(input: PlanInput): PlanInput {
-        val out = swappedOut[input.date].orEmpty()
-        if (out.isEmpty()) return input
-        val onList = input.todayTasks.map { it.missionId }.toSet()
-        return input.copy(missions = input.missions.filter { it.missionId !in out || it.missionId in onList })
     }
 
     /** Free minutes left on each of the 7 days after [from], in date order. */

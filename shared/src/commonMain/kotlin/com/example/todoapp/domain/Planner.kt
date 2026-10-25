@@ -13,6 +13,8 @@ import kotlinx.datetime.plus
 data class PlanInput(
     val date: LocalDate,
     val missions: List<Mission>,
+    /** Archived missions too, so points they earned this week still count toward a pillar's gap. */
+    val earnedMissions: List<Mission> = missions,
     val milestones: List<Milestone>,
     /** Tasks from about 120 days back through a week ahead, including today's. */
     val history: History,
@@ -49,12 +51,13 @@ object Planner {
         val due: LocalDate?,
     )
 
-    fun plan(input: PlanInput): PlanResult {
+    /** [exclude] holds missions that may not be picked, such as ones swapped out today; they still count for budget and gaps. */
+    fun plan(input: PlanInput, exclude: Set<Long> = emptySet()): PlanResult {
         val fixed = fixedBlocks(input)
         val picks = mutableListOf<Pick>()
         val skipped = mutableListOf<Candidate>()
         var left = budget(input)
-        for (candidate in candidates(input, fixed)) {
+        for (candidate in candidates(input, fixed).filter { it.mission.missionId !in exclude }) {
             val mission = candidate.mission
             if (fits(mission, input.energy, left)) {
                 picks += Pick(mission, candidate.reason, isFixedBlock = false)
@@ -203,7 +206,7 @@ object Planner {
     private fun pillarGap(input: PlanInput, pillar: PillarType, weekStart: LocalDate): Double {
         val target = Points.weeklyTarget(input.missions, pillar, weekStart, input.history)
         if (target == 0) return 0.0
-        val earned = Points.earnedInWeek(input.missions, input.history.all, pillar, weekStart)
+        val earned = Points.earnedInWeek(input.earnedMissions, input.history.all, pillar, weekStart)
         return (1.0 - earned.toDouble() / target).coerceAtLeast(0.0)
     }
 

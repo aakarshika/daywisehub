@@ -351,12 +351,12 @@ fun FieldLabel(text: String) {
 }
 
 /**
- * Monday-to-Sunday toggles in one row: seven equal cells at least 44dp tall, each with a 40dp circle,
- * so the row fits a 320dp screen.
+ * Monday-to-Sunday toggles in one row: seven equal cells at least 44dp tall, each with a 40dp circle.
+ * The 6dp side padding keeps each cell 44dp wide on a 320dp-wide content area.
  */
 @Composable
 fun DayToggles(selected: Set<Int>, onToggle: (Int) -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp)) {
         (1..7).forEach { day ->
             val on = day in selected
             Box(

@@ -47,8 +47,8 @@ data class EditorUiState(
     val saving: Boolean = false,
     /** The write under way is an archive, so Save doesn't read "Saving…". */
     val archiving: Boolean = false,
-    /** The last save or archive didn't go through. */
-    val saveFailed: Boolean = false,
+    /** Why the last save or archive didn't go through; cleared by the next change or step. */
+    val failure: String? = null,
 ) {
     val steps: List<EditorStep> get() = draft.steps
 
@@ -239,7 +239,7 @@ class MissionEditorViewModel(
     /** Tapping a highlighted answer asks that question again. */
     fun goTo(step: EditorStep) {
         val s = _state.value ?: return
-        if (!s.saving && s.draft.applies(step)) _state.value = s.copy(step = step, fromSummary = true)
+        if (!s.saving && s.draft.applies(step)) _state.value = s.copy(step = step, fromSummary = true, failure = null)
     }
 
     /** "Make it lighter" returns to the pace question. */
@@ -277,7 +277,7 @@ class MissionEditorViewModel(
     fun save() {
         val s = _state.value ?: return
         if (s.saving || s.step != null || !s.complete) return
-        _state.value = s.copy(saving = true, saveFailed = false)
+        _state.value = s.copy(saving = true, failure = null)
         viewModelScope.launch {
             var savedId = s.draft.missionId
             try {
@@ -295,7 +295,7 @@ class MissionEditorViewModel(
             } catch (e: Exception) {
                 val id = savedId
                 _state.value = _state.value?.let {
-                    it.copy(saving = false, saveFailed = true, draft = it.draft.copy(missionId = id))
+                    it.copy(saving = false, failure = "Couldn't save. Try again.", draft = it.draft.copy(missionId = id))
                 }
             }
         }
@@ -304,7 +304,7 @@ class MissionEditorViewModel(
     fun archive() {
         val s = _state.value ?: return
         if (s.isNew || s.saving) return
-        _state.value = s.copy(saving = true, archiving = true, saveFailed = false)
+        _state.value = s.copy(saving = true, archiving = true, failure = null)
         viewModelScope.launch {
             try {
                 planRepository.archiveMission(s.draft.missionId)
@@ -312,7 +312,7 @@ class MissionEditorViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _state.value = _state.value?.copy(saving = false, archiving = false, saveFailed = true)
+                _state.value = _state.value?.copy(saving = false, archiving = false, failure = "Couldn't archive. Try again.")
             }
         }
     }
@@ -329,7 +329,7 @@ class MissionEditorViewModel(
         if (s.saving) return
         val draft = transform(s.draft)
         val newlyAsked = EditorStep.entries.filter { draft.applies(it) && !s.draft.applies(it) }.toSet()
-        _state.value = s.copy(draft = draft, answered = s.answered - newlyAsked - unanswer(draft))
+        _state.value = s.copy(draft = draft, answered = s.answered - newlyAsked - unanswer(draft), failure = null)
     }
 
     /** Records the answer to [step] (ignored if [step] isn't on screen) and moves to the first open question, or the before-saving screen. */

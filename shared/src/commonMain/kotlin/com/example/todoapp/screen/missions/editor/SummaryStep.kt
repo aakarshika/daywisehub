@@ -76,9 +76,18 @@ fun SummaryStep(
         PlanButton("Make it lighter", filled = false, onClick = onLighter)
         PlanButton(if (state.saving && !state.archiving) "Saving…" else "Save mission", filled = true, onClick = onSave)
     }
-    if (state.saveFailed) {
+    // Save does nothing while the draft can't be saved; say why.
+    val blocker = draft.blocker
+    if (!state.complete && blocker != null) {
         Text(
-            "Couldn't save. Try again.",
+            blocker,
+            fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray, textAlign = TextAlign.End,
+            modifier = Modifier.fillMaxWidth().padding(start = 22.dp, end = 22.dp, bottom = 16.dp)
+        )
+    }
+    if (state.failure != null) {
+        Text(
+            state.failure,
             fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray, textAlign = TextAlign.End,
             modifier = Modifier.fillMaxWidth().padding(start = 22.dp, end = 22.dp, bottom = 16.dp)
         )

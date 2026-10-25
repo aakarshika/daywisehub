@@ -64,7 +64,7 @@ class DiaryViewModel(
         planRepository.observePlan(currentDate),
         planReady,
     ) { missions, allMissions, tasks, plan, ready ->
-        if (ready) DiaryStateBuilder.build(currentDate, missions, allMissions, tasks, plan) else null
+        if (ready) DiaryStateBuilder.build(currentDate, missions = missions, allMissions = allMissions, tasks, plan) else null
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val missions: StateFlow<List<Mission>> = missionRepository.observeActive()

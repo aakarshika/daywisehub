@@ -35,6 +35,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -260,7 +262,8 @@ private fun subline(row: PlanRow): String = when (row.state) {
 fun SmallChip(text: String, selected: Boolean = false, onClick: () -> Unit) {
     val shape = RoundedCornerShape(16.dp)
     Box(
-        modifier = Modifier.heightIn(min = 44.dp).clickable(role = Role.Button, onClick = onClick).padding(end = 6.dp),
+        modifier = Modifier.heightIn(min = 44.dp).clickable(role = Role.Button, onClick = onClick)
+            .semantics { this.selected = selected }.padding(end = 6.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
