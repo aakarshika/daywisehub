@@ -24,7 +24,7 @@
   `/Users/aakarshika/.gradle/wrapper/dists/gradle-8.9-bin/90cnw93cvbtalezasaz0blq0a/gradle-8.9/bin/gradle :androidApp:assembleDebug --console=plain 2>&1 | tail -60`
   and expect `BUILD SUCCESSFUL`. Tasks 1 and 9 also compile for iOS.
 - **Paths** are relative to `shared/src/commonMain/kotlin/com/example/todoapp/` unless they start with `shared/` or `docs/`.
-- **Commits** stage files by path, never `git add -A`. Task 1 commits the generated `shared/schemas/com.example.todoapp.db.AppDatabase/6.json`. After that, a build must not change anything under `shared/schemas`. If one rewrites `4.json` or `5.json` (it has rewritten `4.json` before), restore it with `git checkout`.
+- **Commits** stage files by path, never `git add -A`. Task 1 commits the generated `shared/schemas/com.example.todoapp.db.AppDatabase/6.json`, and the review fixes after Task 8 regenerate it once, while version 6 is still unreleased. After that, a build must not change anything under `shared/schemas`. If one rewrites `4.json` or `5.json` (it has rewritten `4.json` before), restore it with `git checkout`.
 - **Every task builds on its own, in order.** Each task was checked by applying Tasks 1..N, as written here, to a clean checkout of `b095601` and building.
 - **Find/replace edits** quote the current text exactly. Each "Replace" block appears once in its file at that point.
 - **Repository writes.** Every new write runs inside `PlanRepository`'s `write` helper: `NonCancellable` on `Dispatchers.Default`, behind a Mutex that isn't reentrant. Code inside a write calls only private helpers and lock-free repositories (`WeekRepository`, `TodayTaskRepository`, `MissionRepository.save`). It never calls another public `PlanRepository` function. Diary view models are cancelled when the screen goes away, so this also keeps answers and moves from being cut short.
@@ -33,6 +33,10 @@
 
 **What changes**
 - Two new tables: `week_summary` (one row per finished week) and `pace_offer`.
+- Two new columns, folded in by the review fixes after Task 8 while version 6 was still unreleased (no device had run it):
+  - `mission.mission_pace_since`: nullable text, the day the pace or weight last changed.
+  - `today_task.task_auto_ticked`: integer, `DEFAULT 0`, true for a block the evening check ticked.
+- A unique index on `pace_offer` (`offer_week`, `offer_mission_id`), also from the review fixes: one offer per mission a week. It replaces the plain `offer_week` index, since its first column serves the same lookups.
 - `@Database(version = 6, autoMigrations = [AutoMigration(from = 5, to = 6)])`.
 - `5.json` is already exported and committed (since `f98520e`). `room { schemaDirectory("$projectDir/schemas") }` is already set in `shared/build.gradle.kts`. So the migration has its starting schema and needs no extra setup.
 - Both platform `DB.kt` builders drop `fallbackToDestructiveMigration(true)`. In its place:
@@ -46,11 +50,12 @@
    - Both have `fallbackToDestructiveMigrationFrom(Boolean, vararg Int)` and `fallbackToDestructiveMigrationOnDowngrade(Boolean)`.
    - After migrating, Room checks the tables against the entities and fails loudly on a difference.
 2. **Compiler.** KSP generates `AppDatabase_AutoMigration_5_6_Impl` for Android (`ksp/android/androidDebug`) and for iOS (`ksp/iosSimulatorArm64`). Each `AppDatabase_Impl.createAutoMigrations` returns it, and the two files' SQL is identical.
-3. **SQL.** The generated statements were replayed on a real SQLite database:
-   - The database was built from `5.json`, with one mission row in it.
-   - After the statements, every version 6 table and index matched `6.json`.
-   - The eight version 5 tables were unchanged, the mission was kept, and the new foreign key worked.
-4. **Schema.** The exported `6.json` has `"identityHash": "912cb1183037244fa7d4b13b4959fb56"`. Task 1 checks this.
+3. **SQL.** The generated statements were replayed on a real SQLite database, again after the review fixes:
+   - The database was built from `5.json`, with one mission and one task row in it.
+   - The two `ALTER TABLE … ADD COLUMN` statements come first, then the two new tables and their indices.
+   - After the statements, every version 6 table and index matched `6.json`. The one difference is Room's own `DEFAULT NULL` on `mission_pace_since`, which Room's check ignores for a column whose entity has no default.
+   - The other six version 5 tables were unchanged, the rows were kept (`mission_pace_since` null, `task_auto_ticked` 0), the new foreign key worked, and a second offer for the same mission and week was refused.
+4. **Schema.** The exported `6.json` has `"identityHash": "b9b1d9a31de7e79cab75843c598556dc"`, the same in the Android and iOS `AppDatabase_Impl`. Task 1 as written here gave `912cb1183037244fa7d4b13b4959fb56`; the review fixes changed it.
 
 ## Spec 5.1, no debt: the targets already do it
 
@@ -72,31 +77,45 @@ The spec leaves these open. Each is easy to change later.
    2. Resolve still-planned items.
    3. Store missing week summaries, and make pace offers on the first open of a week.
    4. Build today's list.
+
+   It closes against today at the latest, never a day still to come. A failure in step 3 doesn't stop today's list: summaries and offers are worked out from what's stored, so the next open makes them (changed after review).
 2. **Unfinished items** follow `ifMissed`:
-   - "Move it" uses the same rule as the evening's Move: the next day with room, from today on.
+   - "Move it" uses the same rule as the evening's Move: the next day with room, from today on. Only days the mission is live on count. When it isn't live on any of the 7 days (it ends or is paused), the item is skipped (changed after review).
+   - The copy is written before the item is marked moved. A close-out cut short in between leaves the copy, and the next open skips the item, so nothing is doubled (after review).
    - "It has to be that day" and "skip it" become skipped. So does any item whose mission is archived, paused or ended, and a fixed block left unticked in the evening check.
    - Three refinements, so moves never pile up. Items are resolved newest first. An item whose mission already has an open item from today on is skipped, so one catch-up is enough. An item more than 6 days old is skipped, so "Moved from Friday" is never weeks old.
-   - A day that was never opened has no plan and no items, so nothing is closed for it.
-3. **Unticking on an earlier day marks the item skipped,** not planned. An earlier day is closed, so an untick there doesn't come back as unfinished and get moved into today. Ticking a skipped item still works.
+   - A day that was never opened has no plan, so its blocks aren't ticked. It can still hold items moved into it, and those are resolved like any other (corrected after review).
+3. **Unticking on an earlier day marks the item skipped,** not planned. An earlier day is closed, so an untick there doesn't come back as unfinished and get moved into today. Ticking a skipped item still works. After review:
+   - Ticking a moved item takes the move back while its copy is still planned: the copy goes, and the item is done on its own day. Once the copy is ticked, skipped or moved on, the moved item can't be ticked.
+   - A skipped item keeps its crown, so ticking it again brings the crown back. Only a move takes it.
+   - Adding a mission with the pencil on an earlier day adds it as done, with its points.
 4. **Week summaries.** Every finished week from the week of the first task gets one row, keyed by its Monday.
    - Targets come from the active missions at close-out and stay fixed, so a pace change accepted later doesn't rewrite an old week.
    - Points count archived missions too, matching the diary's bars since the Plan 3 review.
    - A tick or untick later on a day of a closed week updates that week's points; its targets stay.
    - A week the app was never opened in still gets a row: 0 points against its targets.
-5. **Offers are made once a week:** on the first open of a new week, when last week's summary is written. They show on that day's diary (today's page, when today opens the week). An offer ignored that day doesn't show again later in the week. If its trigger still holds, it can come back the next Monday.
-6. **Picking offers.** At most 2 a week, one per mission. Easing-off offers come first (lower, then lengthen), then stepping up (gentle start, then steady habit). Within a type, missions go in the order they were made. Any answer restarts that mission's run of weeks: only weeks from the answered offer's week on count. So "Keep 3×" asks again only after another 3 slipped weeks, and a step-up needs a fresh 3 or 4 full weeks. "Not yet" also holds that offer back 4 weeks.
+   - A week with no target at all earns no crown (changed after review).
+5. **Offers are made once a week:** on the first open of a new week, when last week's summary is written. They show on that day's diary (today's page, when today opens the week). An offer ignored that day doesn't show again later in the week. If its trigger still holds, it can come back the next Monday. After review:
+   - Saving a new pace or weight in the editor withdraws that mission's unanswered offers this week (`WITHDRAWN`): they were judged on the old pace.
+   - A finish line that ends before the end of this week gets no offer.
+6. **Picking offers.** At most 2 a week, one per mission. Easing-off offers come first (lower, then lengthen), then stepping up (gentle start, then steady habit). Within a type, missions go in the order they were made. Any answer restarts that mission's run of weeks: only weeks from the answered offer's week on count. So "Keep 3×" asks again only after another 3 slipped weeks, and a step-up needs a fresh 3 or 4 full weeks. "Not yet" also holds that offer back 4 weeks. After review, offers judge only the current pace:
+   - A change of kind, pace (count, period, goal, interval, days) or weight sets the mission's `paceSince` to that day, in the editor or by an accepted offer. Only weeks starting on or after it count, so a week changed partway through doesn't.
+   - A week with no items at all (the app wasn't opened) breaks a run, so a holiday doesn't read as three slipped weeks.
 7. **Trigger words.**
    - **Slipped:** done less than half as often as it was due that week. A week it wasn't due (not started yet, paused) breaks the run.
-   - **Full:** at least 80% of its own points that week, as for a pillar.
+   - **Full:** at least 80% of its own points that week, as for a pillar. The points are worked out from what was done, at today's weight, not read from the stored points (changed after review).
    - **Late:** done in a later week than the one it was due in. One still not done after its week has finished counts as late too.
-   - **Free hours left:** this week's free time minus what its flexible missions need, at least one more session of the habit.
+   - **Free hours left:** this week's free time minus what its flexible missions need, at least one more session of the habit. Two step-ups in one week share it: the second needs room for its session after the first's.
 8. **One step.**
-   - **Lower:** every day becomes 6× a week, and N× a week becomes N−1×. A once-a-week habit isn't offered.
+   - **Lower:** every day becomes 6× a week, and N× a week becomes N−1×. A once-a-week habit isn't offered. Going to 1×, the button reads "Make it once a week", as the sentence does.
    - **Lengthen:** one more day, week or month, within the editor's limits (30 days, 12 weeks, 3 months).
-   - **Gentle step-up:** straight to the goal, and the goal is cleared, so the card drops "up to".
+   - **Gentle step-up:** one more a week, up to the goal. The goal is cleared once it's reached, so the card drops "up to" (changed after review: it went straight to the goal).
    - **Steady step-up:** +1 a week, up to 6×, for weekly habits that aren't starting gently.
    - Monthly habits get no offers yet.
-9. **Pause a month** sets `pausedUntil` to the same date next month. Like archiving, it removes the mission's still-planned items from today on. Accepting or pausing then re-picks today's open items, as a mission save does, unless the day was confirmed with "Looks good". As with archiving, a failed re-pick doesn't undo the answer.
+9. **Pause a month** sets `pausedUntil` to the same date next month. Like archiving, it removes the mission's still-planned items from today on. Accepting or pausing then re-picks today's open items, as a mission save does, unless the day was confirmed with "Looks good". As with archiving, a failed re-pick doesn't undo the answer. After review:
+   - A finish line whose end comes before the month is up has no "Pause a month".
+   - An answer the sticky doesn't offer does nothing, and so does any answer once the mission is archived.
+   - A "yes" that no longer changes anything leaves the offer unanswered.
 10. **The "Last week" card** shows on the day that opens the week: Monday, or the first day the diary was opened that week. So a past Monday's page shows its own look back. It's hidden when last week had no target and no points.
     - The points line caps each pillar at its target and shows the rest as "+N extra", because extra never fills another pillar (spec 5).
     - "What the app adjusted" lists up to 3 things: items "move it" carried from last week into this week, and every-so-often missions due last week and not done. Otherwise it says "Nothing to catch up on."
@@ -111,7 +130,7 @@ The spec leaves these open. Each is easy to change later.
     - The rest say where they stand: "3 of 3 this week · 4 days left", "Last done 3 days ago · you aim for every 2 weeks", "Every day · 5-day streak", "You usually take 2 breaks a week."
     - Paused and not-yet-started missions are now left out.
 13. **"Move to Thursday"** is worked out with the same `Moves` functions the move itself uses, so the chip and the result agree. From an earlier day's page it can read "Move to today".
-14. **"Ticked for you"** shows on a done fixed block when that day's blocks were ticked by the evening check (`plan.fixedTicked`). A block unticked and ticked again by hand keeps the label.
+14. **"Ticked for you"** shows on a done fixed block the evening check ticked (`TodayTask.autoTicked`). Any change by hand clears it, so a block unticked and ticked again by hand loses the label (changed after review: it read `plan.fixedTicked`, which a hand tick kept).
 15. **The evening check at 18:00.** While today's diary stays open, the view model looks at the clock every 30 seconds and opens the evening check once, at 18:00. It looks every 30 seconds rather than waiting until 18:00 because timers pause while a phone sleeps. If you tap "Back to the plan" after that, it stays closed. Swap mode closes when the evening check opens.
 16. **A seed for trying offers.** `SampleData` stays off. Turned on, it now writes 3 gentle weeks of Guitar and a 21-day Gym streak. So the first open shows both kinds of offer, the same on any weekday.
 
@@ -133,7 +152,7 @@ The spec leaves these open. Each is easy to change later.
 | `screen/diary/WeekState.kt` | `LastWeekState`, `OfferNote`, `DiaryExtras` and their builder |
 | `screen/diary/plan/WeekNotes.kt` | Title chips in text, the Last week card, the offer sticky |
 
-**Edited:** `db/Database.kt`, `shared/src/androidMain/kotlin/com/example/todoapp/db/DB.kt`, `shared/src/iosMain/kotlin/com/example/todoapp/db/DB.kt`, `db/data/plan/PlanDao.kt`, `db/data/todotask/TodayTaskDao.kt`, `repo/TodayTaskRepository.kt`, `repo/PlanRepository.kt`, `di/DI.kt`, `db/SampleData.kt`, `domain/Planner.kt`, `screen/diary/DiaryState.kt`, `screen/diary/DiaryViewModel.kt`, `screen/diary/DiaryScreen.kt`, `screen/basicutils/AppColors.kt`, `screen/diary/plan/PlanNotes.kt`, `screen/diary/plan/PillarWeekStrip.kt`, `screen/diary/plan/PlanDialogs.kt`, `screen/diary/plan/PlanSection.kt`, `docs/superpowers/specs/2026-10-25-daywisehub-redesign-design.md`.
+**Edited:** `db/Database.kt`, `db/data/mission/Mission.kt` and `db/data/todotask/TodayTask.kt` (review fixes), `domain/MissionDraft.kt` and `screen/missions/editor/MissionEditorViewModel.kt` (review fixes), `shared/src/androidMain/kotlin/com/example/todoapp/db/DB.kt`, `shared/src/iosMain/kotlin/com/example/todoapp/db/DB.kt`, `db/data/plan/PlanDao.kt`, `db/data/todotask/TodayTaskDao.kt`, `repo/TodayTaskRepository.kt`, `repo/PlanRepository.kt`, `di/DI.kt`, `db/SampleData.kt`, `domain/Planner.kt`, `screen/diary/DiaryState.kt`, `screen/diary/DiaryViewModel.kt`, `screen/diary/DiaryScreen.kt`, `screen/basicutils/AppColors.kt`, `screen/diary/plan/PlanNotes.kt`, `screen/diary/plan/PillarWeekStrip.kt`, `screen/diary/plan/PlanDialogs.kt`, `screen/diary/plan/PlanSection.kt`, `docs/superpowers/specs/2026-10-25-daywisehub-redesign-design.md`.
 
 **Unchanged on purpose:**
 - `domain/Points.kt`: the no-debt rules already hold.
@@ -257,7 +276,7 @@ import androidx.room.PrimaryKey
  * One finished week (spec 5.1), stored the first time the diary opens in a later week.
  * [weekStart] is its Monday, yyyy-MM-dd. Earned points add up the week's tasks; targets are
  * computed at close-out, so a pace change accepted later doesn't rewrite an old week.
- * Read the pillar columns through domain/WeekClose.kt.
+ * Read the pillar columns through domain/WeekSummaries.kt.
  */
 @Entity(tableName = "week_summary")
 data class WeekSummary(
@@ -452,7 +471,7 @@ grep -c "AppDatabase_AutoMigration_5_6_Impl()" $GEN/iosSimulatorArm64/iosSimulat
 Expected, in order:
 - `2`: the migration creates the two tables.
 - `1`: Android's database registers it.
-- `"identityHash": "912cb1183037244fa7d4b13b4959fb56",`
+- `"identityHash": "912cb1183037244fa7d4b13b4959fb56",` for Task 1 as written here. The review fixes after Task 8 fold two columns and a unique index into version 6, which changes it to `"identityHash": "b9b1d9a31de7e79cab75843c598556dc",` (see "Database version 6").
 - `BUILD SUCCESSFUL`
 - `1`: iOS registers it too.
 
@@ -3626,11 +3645,12 @@ with:
 At most two offers appear per week, on Monday's diary, as sticky notes. "Not yet" suppresses the same offer for 4 weeks. Only an accepted offer changes the target.
 
 As built in plan 2:
-- Offers are made once, on the first open of a week, and show on that day's diary. Offers to ease off come first.
-- Any answer starts that mission's run of weeks again, so "Keep it" asks again only after another 3 slipped weeks.
-- "Slipped" means done less than half as often as it was due that week. "Full" means 80% of its own points, as for a pillar. "Late" means done in a later week than the one it was due in.
-- Lowering goes from every day to 6× a week, or from N× to N−1× (a once-a-week habit isn't offered). Lengthening adds one day, week or month, within the editor's limits. A gentle start steps straight up to its goal. Monthly habits get no offers yet.
-- "Pause a month" sets the mission's pause date a month out and takes it off today's list.
+- Offers are made once, on the first open of a week, and show on that day's diary. Offers to ease off come first. A finish line that ends before the end of that week gets none.
+- Offers judge only the current pace. Any answer starts that mission's run of weeks again, so "Keep it" asks again only after another 3 slipped weeks. So does a change of pace or weight, in the editor or by an accepted offer: only weeks from that day on count. A week the app wasn't opened in breaks a run.
+- "Slipped" means done less than half as often as it was due that week. "Full" means 80% of its own points at today's weight, as for a pillar. "Late" means done in a later week than the one it was due in. Two step-ups in one week share its free hours.
+- Lowering goes from every day to 6× a week, or from N× to N−1× (a once-a-week habit isn't offered). Lengthening adds one day, week or month, within the editor's limits. A gentle start steps up one a week, toward its goal. Monthly habits get no offers yet.
+- "Pause a month" sets the mission's pause date a month out and takes it off today's list. A finish line that ends within the month isn't offered a pause.
+- Saving a new pace or weight in the editor withdraws that mission's unanswered offers for the week.
 ```
 
 
@@ -3645,7 +3665,8 @@ Replace:
 with:
 
 ```markdown
-- Anything still unresolved at midnight follows its "if a day goes sideways" answer automatically. As built, this runs on the first open of a new day. "Move it" carries an item up to 6 days, and only when the mission has nothing else coming. Unticking an item on an earlier day marks it skipped.
+- Anything still unresolved at midnight follows its "if a day goes sideways" answer automatically. As built, this runs on the first open of a new day. "Move it" carries an item up to 6 days, only to a day the mission is live on, and only when the mission has nothing else coming; otherwise the item is skipped. Unticking an item on an earlier day marks it skipped. Ticking a moved item takes the move back while its copy is still planned. Adding an item on an earlier day adds it as done.
+- "Ticked for you" stays on a fixed block only until it's changed by hand.
 ```
 
 
@@ -3660,7 +3681,7 @@ The database is Room, currently version 4. **Existing data is not kept:** the ne
 with:
 
 ```markdown
-The database is Room, version 6. Version 5 replaced the old schema and wiped anything older (destructive migration), with no data migration. **From version 5 on, data is kept.** Version 6 (plan 2) adds the two week tables through `@AutoMigration(from = 5, to = 6)`, and each later version adds an auto migration from the one before.
+The database is Room, version 6. Version 5 replaced the old schema and wiped anything older (destructive migration), with no data migration. **From version 5 on, data is kept.** Version 6 (plan 2) adds the two week tables, `Mission.paceSince` and `TodayTask.autoTicked` through `@AutoMigration(from = 5, to = 6)`, and each later version adds an auto migration from the one before. Installing an older build over a newer database wipes it.
 ```
 
 
@@ -3676,12 +3697,29 @@ Replace:
 with:
 
 ```markdown
-| New `WeekSummary` | Added in plan 2 (week cycle): one row per finished week, keyed by its Monday, with earned and target points for each of the four pillars and a balanced flag. Targets are fixed at close-out. Points include archived missions and update if a day of that week is ticked later. |
-| New `PaceOffer` | Added in plan 2: mission, offer type (`LOWER`, `LENGTHEN`, `STEP_UP_GENTLE`, `STEP_UP`), week shown, response (`ACCEPTED`, `KEPT`, `PAUSED`, `NOT_YET`, or none yet), snooze-until date. |
+| New `WeekSummary` | Added in plan 2 (week cycle): one row per finished week, keyed by its Monday, with earned and target points for each of the four pillars and a balanced flag (every pillar full, with something due). Targets are fixed at close-out. Points include archived missions and update if a day of that week is ticked later. |
+| New `PaceOffer` | Added in plan 2: mission, offer type (`LOWER`, `LENGTHEN`, `STEP_UP_GENTLE`, `STEP_UP`), week shown, response (`ACCEPTED`, `KEPT`, `PAUSED`, `NOT_YET`, `WITHDRAWN` when the mission's pace was edited first, or none yet), snooze-until date. At most one per mission a week (a unique index). |
 ```
 
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 7: `docs/superpowers/specs/2026-10-25-daywisehub-redesign-design.md`: Section 10: the two new columns**
+
+Replace:
+
+```markdown
+| `Mission` | One table holds everything: title, `pillar` (enum name, including RECHARGE), `kind`, `weight` (0–3), `durationMinutes`, `effort`, `ifMissed`, pace fields (`count` + `period`, `goalCount`, `intervalCount` + `intervalUnit`, `weekDays`, `startTime`, `endTime`), `startDate`, `endDate`, `pausedUntil`, `motivation`, `active`. The old `mission_frequency`, `pillar` and `mission_pillar_mapping` tables are gone; pillars are a fixed enum in code. `ideaId` comes with the ideas library. |
+| `TodayTask` | `state` (PLANNED, DONE, PARTIAL, MOVED, SKIPPED), `pointsEarned`, `isFixedBlock`, `crowned` (replaces the TOP3 tag), `movedFromDate`, `reasonCode`, `reasonArgs`, `sortOrder`. The reminder and sub-task tables are dropped. |
+```
+
+with:
+
+```markdown
+| `Mission` | One table holds everything: title, `pillar` (enum name, including RECHARGE), `kind`, `weight` (0–3), `durationMinutes`, `effort`, `ifMissed`, pace fields (`count` + `period`, `goalCount`, `intervalCount` + `intervalUnit`, `weekDays`, `startTime`, `endTime`), `startDate`, `endDate`, `pausedUntil`, `motivation`, `active`, and `paceSince` (plan 2: the day the pace or weight last changed; pace offers judge only the weeks from then on). The old `mission_frequency`, `pillar` and `mission_pillar_mapping` tables are gone; pillars are a fixed enum in code. `ideaId` comes with the ideas library. |
+| `TodayTask` | `state` (PLANNED, DONE, PARTIAL, MOVED, SKIPPED), `pointsEarned`, `isFixedBlock`, `crowned` (replaces the TOP3 tag), `movedFromDate`, `reasonCode`, `reasonArgs`, `sortOrder`, and `autoTicked` (plan 2: a fixed block the evening check ticked, cleared by any change by hand). The reminder and sub-task tables are dropped. |
+```
+
+
+- [ ] **Step 8: Commit**
 
 Nothing under `shared/schemas` may change in this task. Check, restore if needed, then stage by path:
 
@@ -3693,7 +3731,7 @@ git commit -m "docs: sync the redesign spec with plan 2"
 ```
 
 
-- [ ] **Step 8: Hand over for manual testing**
+- [ ] **Step 9: Hand over for manual testing**
 
 Tell the owner the build is ready and point them to the checklist below.
 
@@ -3703,7 +3741,7 @@ Tell the owner the build is ready and point them to the checklist below.
 
 ### Before you start
 
-**Install over the Plan 3 build, without clearing storage.** Section A checks that your missions and history survive the move to version 6.
+**Install over the Plan 3 build, without clearing storage.** Section A checks that your missions and history survive the move to version 6. If a Plan 2 build from before the review fixes was ever installed, clear storage first: its version 6 isn't the final one, so Room would stop on launch.
 
 **Moving the date.** Most of these checks need a new day or a new week. Change the date on the device instead of waiting:
 - **Android:** Settings → System → Date & time → turn off "Set time automatically", then set the date (and the time for section H). Then swipe the app away and open it again. While it's open, the diary also moves to the new day within a minute, but reopening is quicker and certain.
@@ -3736,6 +3774,10 @@ Do this on a Tuesday to Saturday, so tomorrow is in the same week.
    - It's carried once more, from today's date.
    - The day you skipped over shows "Nothing was planned for this day." Nothing comes from it.
 8. Leave a "Move it" item unticked, then move the date 8 days ahead. On its own day it reads "Skipped today". The new day's list has no "Moved from …" for it (6 days at most).
+9. Taking a move back. Leave two short "Move it" items unticked (so both fit today), move the date to tomorrow and reopen. Both are on today's list as "Moved from …". Tick one of the two copies today. Then on yesterday's page:
+   - Tick the other moved item (its copy is still unticked). It ticks and earns its points, and its "Moved from …" copy leaves today's list.
+   - The moved item whose copy you ticked can't be ticked: its box is off, and it still reads "Moved to ‹today's weekday›".
+   - Untick the one you took back: it reads "Skipped today", and no copy comes back.
 
 ### C. Monday: the Last week card
 1. Earlier in a week (Tuesday to Sunday), set up:
@@ -3769,17 +3811,19 @@ Do this on a Tuesday to Saturday, so tomorrow is in the same week.
    - "Pause a month": New ideas isn't on today's list any more, and its card reads "Paused until ‹a month from today›".
    - "Step up" on Guitar: the card reads "3× a week · big".
    - "Keep 3×": nothing changes.
-8. Turn the seed back off when done.
+8. Clear storage once more. On Missions, edit New ideas from 3× to 4× a week and save. Back on the diary its sticky is gone (withdrawn); Guitar's is still there. Move the date to next Monday: no offer for New ideas, because its run of weeks starts again from the edit.
+9. Turn the seed back off when done.
 
 ### E. Pace offers by hand (slower, optional)
-- **Slipped.** Make a habit at 3× a week, going straight to 3× rather than starting gently, and never tick it. Move the date to the Monday three weeks after the week you made it. The yellow "has slipped 3 weeks in a row" sticky offers 2×.
+- **Slipped.** Make a habit at 3× a week, going straight to 3× rather than starting gently, and never tick it. Open the app at least once in each of the next two weeks too, moving the date a week at a time: a week the app isn't opened in breaks the run, so a holiday doesn't read as slipped. On the Monday three weeks after the week you made it, the yellow "has slipped 3 weeks in a row" sticky offers 2×. A habit at 2× a week offers "Make it once a week".
 - **Ran late (every so often).** Count weeks from the one you start in, week 0:
   1. Week 0, Monday: make one "every week" with "Move it". Don't tick it that week.
   2. Week 1, Tuesday: tick it (late once).
   3. Week 3, Wednesday: tick it (late twice).
   4. Week 5, Monday: a sticky says it "has slipped 3 times in a row" and offers "every 2 weeks". The buttons read "Every 2 weeks", "Keep every week", "Pause a month".
 - **Going well (steady).** Make a habit at once a week, without starting gently. Tick it in each of 4 weeks in a row, moving the date a week at a time. The next Monday: "has gone well 4 weeks running. Ready for 2× a week?" It's only offered if the week's free time has room for one more.
-- **Going well (gentle).** Make a habit at 2× a week and start gently (1× a week). Tick it once in each of 3 weeks. The next Monday: "Ready for 2× a week?" "Step up" makes it "2× a week".
+- **Going well (gentle).** Make a habit at 2× a week and start gently (1× a week). Tick it once in each of 3 weeks. The next Monday: "Ready for 2× a week?" "Step up" makes it "2× a week". A gentle start steps one a week at a time: one at 4× that started at 2× offers 3× first, and keeps "up to 4×".
+- **Finish lines.** One that ends before the end of this week gets no offer. One that ends within a month has no "Pause a month" on its sticky.
 
 ### F. The pencil
 1. Tap the pencil. "Add to today" lists missions under small pillar headings (HEALTH, WEALTH, LOVE, LIFE, RECHARGE), in that order. Each has its reason line and its length. Examples:
@@ -3791,6 +3835,7 @@ Do this on a Tuesday to Saturday, so tomorrow is in the same week.
 2. Fixed blocks, paused missions and anything already on today's list aren't listed.
 3. Tap a mission: it joins today's list as "Added by you" and leaves the dialog. Tapping twice fast adds it once. "Done" closes the dialog.
 4. On an empty install it says "No missions yet. Add some on the Missions tab."
+5. Go to an earlier day's page and add a mission with the pencil. It joins that day's list already ticked, as "Added by you", and earns its points. If that day was last week, Monday's Last week card counts the points too.
 
 ### G. +N extra
 Find a pillar whose bar reads 0/0 this week, for instance one whose only mission is every-so-often and not due. Add that mission with the pencil and tick it. The bar reads "2/0", with "+2 extra" under it in the pillar's ink. The other bars don't change.
@@ -3804,6 +3849,7 @@ Find a pillar whose bar reads 0/0 this week, for instance one whose only mission
 3. In Missions → Free time, set tomorrow's weekday to 0 min and save. Back on the diary, the chip names the day after tomorrow.
 4. "Back to the plan" still switches back by hand, and it stays there after 18:00.
 5. Untick a block in the evening check, then open the next day. That block's day shows it as "Skipped today".
+6. Untick another block and tick it again by hand: it's done, and it no longer reads "ticked for you".
 
 ### I. Look and feel
 - The stickies tilt and have a soft shadow. All their buttons are at least 44dp tall and peach (filled or outlined).
@@ -3822,9 +3868,12 @@ Find a pillar whose bar reads 0/0 this week, for instance one whose only mission
   - **Finished weeks:** `WeekRepository.observeSummaries()` gives every finished week, oldest first. Read a row with `WeekSummary.earned(pillar)`, `.target(pillar)`, `.pillarsFull()`, `.balanced` (the crown on the calendar's week) and `.weekStartDate`.
   - **This week:** the current week has no row until it ends. Build it live, as `DiaryStateBuilder` does (`Points.earnedInWeek` with all missions, `Points.weeklyTarget` with the active ones).
   - **Stored targets:** fixed at close-out. Stored points include archived missions and update when a closed week's day is ticked. Rows start at the week of the first task.
+  - **Gap weeks:** a week the app wasn't opened in still gets a row at the next open, with targets from the missions as they are then. It shows 0 earned, so it looks like a missed week. Tell it apart by having no `TodayTask` rows, if the metrics need to.
+  - **Read only:** read summaries and offers through `WeekRepository`. Only `PlanRepository`'s close-out writes them, inside its lock.
   - **"What next week adjusts":** the material is in `pace_offer` (type, week, response, snooze) and in `WeekStateBuilder.adjusted`, which finds carried items and still-due rhythms. Move that function into `domain` if the metrics screen needs it too.
+  - **Offer responses:** an offer from a past week whose response is still null was ignored. `WITHDRAWN` means the mission's pace or weight was edited before it was answered. `Mission.paceSince` is the day the pace last changed.
   - **Day rings:** add up `TodayTask.pointsEarned` per day and pillar. SKIPPED and MOVED items are "what didn't happen".
-- **Next pass, ideas library:** `ideaId` on `Mission` is version 7. Add `AutoMigration(from = 6, to = 7)`, and commit `7.json` beside `6.json`. Keep the destructive fallback limited to versions 1 to 4.
+- **Next pass, ideas library:** `ideaId` on `Mission` is version 7. Add `AutoMigration(from = 6, to = 7)`, and commit `7.json` beside `6.json`. Keep the destructive fallback limited to versions 1 to 4. Follow the version 7 rules in `db/Database.kt`'s KDoc: a nullable `ideaId` (or one with a default), and `6.json` left as it is.
 - **Small follow-ups, not scheduled:**
   - Monthly habits get no pace offers.
   - An offer ignored on its day isn't shown again that week.
