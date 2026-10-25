@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
@@ -26,6 +24,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.example.todoapp.db.data.mood.TodayMood
 import com.example.todoapp.db.data.mood.TodayMoodWithDetails
@@ -95,24 +94,26 @@ fun LazyListScope.Notes(waterIntake: WaterIntake?,
     }
 }
 
-fun LazyListScope.ToDoListHeader(headingtext: String, color: Color, editClicked: () -> Unit) {
+fun LazyListScope.ToDoListHeader(headingtext: String, color: Color, addLabel: String, editClicked: () -> Unit) {
     item {
-        Box(modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) {
-            HeadingBanner(color, headingtext)
-            Box(modifier = Modifier.fillMaxWidth().padding(end = 5.dp).wrapContentHeight()) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Box(modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) { HeadingBanner(color, headingtext) }
+            // A 44dp target around the 31dp pencil, lifted so the pencil sits about where it did.
+            Box(
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = 13.5.dp).size(44.dp)
+                    .clickable(role = Role.Button) { editClicked() },
+                contentAlignment = Alignment.Center
+            ) {
                 Box(
-                    modifier = Modifier.clickable { editClicked() }
-                        .wrapContentSize()
-                        .shadow(5.dp, CircleShape)
+                    modifier = Modifier.shadow(5.dp, CircleShape)
                         .clip(CircleShape)
                         .background(color)
-                        .padding( 8.dp)
-                        .align(Alignment.BottomEnd),
+                        .padding(8.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         painterResource(Res.drawable.pencil),
-                        contentDescription = "Add to today",
+                        contentDescription = addLabel,
                         tint = Color.White,
                         modifier = Modifier.size(15.dp).padding(start = 2.dp, top = 2.dp)
                     )

@@ -87,6 +87,8 @@ object Planner {
     /**
      * Spec 6.3, the pencil: every live mission that isn't a fixed block and isn't on the day's list yet,
      * each with its reason line. Today's candidates come first, in pick order; the rest say where they stand.
+     * It ignores the day's time budget, its energy and swapped-out missions on purpose: the list is for
+     * adding by hand, so the owner decides what fits. Paused and not-yet-started missions aren't live, so they're left out.
      */
     fun options(input: PlanInput): List<Pick> {
         val ranked = candidates(input, fixedBlocks(input)).map { Pick(it.mission, it.reason, isFixedBlock = false) }
@@ -107,11 +109,13 @@ object Planner {
             mission.repeatsByInterval -> {
                 val last = history.lastDoneBefore(mission.missionId, date)
                 if (last == null) {
+                    // Not reached from options() today: a live rhythm never done is due from its start date, so it's a candidate.
                     Reason(ReasonCode.RHYTHM_FIRST, listOf(mission.intervalLabel()))
                 } else {
                     Reason(ReasonCode.RHYTHM_DUE, listOf(last.daysUntil(date).toString(), mission.intervalLabel()))
                 }
             }
+            // Not reached from options() today: a daily habit is always a candidate. Kept so the reason stays right if that changes.
             mission.periodUnit == Period.DAY ->
                 Reason(ReasonCode.STREAK, listOf(history.streakBefore(mission.missionId, date).toString()))
             else -> {

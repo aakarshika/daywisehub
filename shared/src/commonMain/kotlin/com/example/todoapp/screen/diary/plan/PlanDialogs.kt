@@ -27,7 +27,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -74,12 +78,14 @@ fun DayCapacityDialog(freeMinutes: Int, energy: Energy, onSave: (Int, Energy) ->
 
 /**
  * The pencil on TO DO LIST (spec 6.3): every mission that isn't on the day's list yet, grouped by
- * pillar, each with its reason line. Today's candidates come first in each group.
+ * pillar, each with its reason line. Today's candidates come first in each group. [isToday] only
+ * changes the wording ("Add to this day" on any other day).
  */
 @Composable
 fun AddMissionDialog(
     options: List<AddOption>,
     hasMissions: Boolean,
+    isToday: Boolean,
     todayMissionIds: Set<Long>,
     onAdd: (Long) -> Unit,
     onDismiss: () -> Unit,
@@ -88,40 +94,61 @@ fun AddMissionDialog(
     val groups = PillarType.entries
         .map { pillar -> pillar to available.filter { it.pillar == pillar } }
         .filter { (_, rows) -> rows.isNotEmpty() }
+    // What was tapped while the dialog was open, so a screen reader hears "Added" (the row just disappears).
+    var tapped by remember { mutableStateOf(emptySet<Long>()) }
     val buttonColors = ButtonDefaults.textButtonColors(contentColor = PeachText)
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = { TextButton(onClick = onDismiss, colors = buttonColors) { Text("Done") } },
-        title = { Text("Add to today") },
+        title = { Text(if (isToday) "Add to today" else "Add to this day") },
         text = {
-            if (available.isEmpty()) {
-                Text(if (!hasMissions) "No missions yet. Add some on the Missions tab." else "Everything is already on today's list.")
-            } else {
-                LazyColumn(modifier = Modifier.heightIn(max = 420.dp)) {
-                    groups.forEach { (pillar, rows) ->
-                        item(key = "pillar-${pillar.name}") {
-                            Text(
-                                pillar.title.uppercase(),
-                                fontSize = 11.sp, letterSpacing = 1.2.sp, color = pillarInk(pillar),
-                                modifier = Modifier.padding(top = 10.dp, bottom = 2.dp)
-                            )
+            Column {
+                if (tapped.isNotEmpty()) {
+                    Text(
+                        if (tapped.size == 1) "Added" else "Added · ${tapped.size} so far",
+                        fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray,
+                        modifier = Modifier.padding(bottom = 4.dp).semantics { liveRegion = LiveRegionMode.Polite }
+                    )
+                }
+                if (available.isEmpty()) {
+                    Text(
+                        when {
+                            !hasMissions -> "No missions yet. Add some on the Missions tab."
+                            // Nothing came up at all: it could be paused or not started, or a fixed block, so say only what's true.
+                            options.isEmpty() -> "Nothing else to add. Fixed blocks, paused and not-yet-started missions aren't listed."
+                            else -> "Everything is already on ${if (isToday) "today's" else "this day's"} list."
                         }
-                        items(rows, key = { it.missionId }) { option ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
-                                    .clickable(role = Role.Button) { onAdd(option.missionId) }
-                                    .padding(vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(pillarStrong(option.pillar)))
-                                Spacer(Modifier.width(10.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(option.title, fontSize = 17.sp, fontStyle = FontStyle.Italic)
-                                    if (option.reason.isNotEmpty()) {
-                                        Text(option.reason, fontSize = 12.sp, fontStyle = FontStyle.Italic, color = InkGray)
+                    )
+                } else {
+                    LazyColumn(modifier = Modifier.heightIn(max = 420.dp)) {
+                        groups.forEach { (pillar, rows) ->
+                            item(key = "pillar-${pillar.name}") {
+                                Text(
+                                    pillar.title.uppercase(),
+                                    fontSize = 11.sp, letterSpacing = 1.2.sp, color = pillarInk(pillar),
+                                    modifier = Modifier.padding(top = 10.dp, bottom = 2.dp).semantics { heading() }
+                                )
+                            }
+                            items(rows, key = { it.missionId }) { option ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
+                                        .clickable(role = Role.Button) {
+                                            tapped = tapped + option.missionId
+                                            onAdd(option.missionId)
+                                        }
+                                        .padding(vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(pillarStrong(option.pillar)))
+                                    Spacer(Modifier.width(10.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(option.title, fontSize = 17.sp, fontStyle = FontStyle.Italic)
+                                        if (option.reason.isNotEmpty()) {
+                                            Text(option.reason, fontSize = 12.sp, fontStyle = FontStyle.Italic, color = InkGray)
+                                        }
                                     }
+                                    Text(minutesLabel(option.minutes), fontSize = 12.sp, color = InkGray, modifier = Modifier.padding(start = 8.dp))
                                 }
-                                Text(minutesLabel(option.minutes), fontSize = 12.sp, color = InkGray, modifier = Modifier.padding(start = 8.dp))
                             }
                         }
                     }

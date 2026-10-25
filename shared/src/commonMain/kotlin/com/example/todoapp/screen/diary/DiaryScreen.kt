@@ -72,8 +72,15 @@ fun DiaryScreen(
     val evening by diaryViewModel.eveningOpen.collectAsState()
     val notice by diaryViewModel.notice.collectAsState()
     var editMode by remember(selection) { mutableStateOf(false) }
-    LaunchedEffect(evening) { if (evening) editMode = false }
     var showCapacity by remember { mutableStateOf(false) }
+    // Swap mode never shows over the evening check, not even for the frame before the effect clears it.
+    val swapping = editMode && !evening
+    LaunchedEffect(evening) {
+        if (evening) {
+            editMode = false
+            showCapacity = false
+        }
+    }
 
     var confettiJson by remember { mutableStateOf("") }
     var waterJson by remember { mutableStateOf("") }
@@ -123,22 +130,30 @@ fun DiaryScreen(
             state?.let { s ->
                 item(key = "week-strip") { PillarWeekStrip(s.pillars, freshStart = s.freshStart) }
                 s.lastWeek?.let { card -> item(key = "last-week") { LastWeekCard(card) } }
-                s.offers.forEachIndexed { i, note ->
+                s.offers.forEach { note ->
                     item(key = "offer-${note.offerId}") {
-                        PaceOfferNote(note, rotation = if (i % 2 == 0) -1.4f else 1.1f, onAnswer = diaryViewModel::answerOffer)
+                        // Tilt follows the offer, not its place in the list, so the one left doesn't jump after an answer.
+                        PaceOfferNote(
+                            note, rotation = if (note.offerId % 2 == 0L) -1.4f else 1.1f,
+                            onAnswer = diaryViewModel::answerOffer, modifier = Modifier.animateItem()
+                        )
                     }
                 }
             }
             HeadingText("MOOD", Red80)
             MoodHeaderItem(todayMoodList, selection, upsertMood = { moodViewModel.upsertTodayMood(it) })
-            ToDoListHeader("TO DO LIST", Orange80, editClicked = { diaryViewModel.openAdd() })
+            ToDoListHeader(
+                "TO DO LIST", Orange80,
+                addLabel = if (diaryViewModel.isToday) "Add to today" else "Add to this day",
+                editClicked = { diaryViewModel.openAdd() }
+            )
             state?.let { s ->
                 if (s.hasPlan && s.hasMissions && diaryViewModel.isToday && !evening) {
                     item(key = "plan-subline") { PlanSubline(s, onChange = { showCapacity = true }) }
                 }
                 item(key = "plan-section") {
                     PlanSection(
-                        s, isToday = diaryViewModel.isToday, evening = evening, editMode = editMode, actions = actions,
+                        s, isToday = diaryViewModel.isToday, evening = evening, editMode = swapping, actions = actions,
                         onToggleEvening = {
                             editMode = false
                             diaryViewModel.toggleEveningCheck()
@@ -159,9 +174,9 @@ fun DiaryScreen(
                 if (diaryViewModel.isToday && !evening && s.hasMissions) {
                     item(key = "plan-actions") {
                         PlanActions(
-                            editMode = editMode,
+                            editMode = swapping,
                             showLooksGood = !s.confirmed,
-                            onEdit = { editMode = !editMode },
+                            onEdit = { editMode = !swapping },
                             onLighter = { diaryViewModel.lighterDay() },
                             onLooksGood = {
                                 editMode = false
@@ -210,6 +225,7 @@ fun DiaryScreen(
             AddMissionDialog(
                 options = options,
                 hasMissions = s.hasMissions,
+                isToday = diaryViewModel.isToday,
                 todayMissionIds = s.todayMissionIds,
                 onAdd = { diaryViewModel.addMission(it) },
                 onDismiss = { diaryViewModel.closeAdd() }

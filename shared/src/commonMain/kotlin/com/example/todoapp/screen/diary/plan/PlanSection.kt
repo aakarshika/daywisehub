@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -121,14 +122,14 @@ fun PlanSection(
     ) {
         if (state.fixed.isNotEmpty()) {
             GroupLabel("ALREADY IN YOUR DAY")
-            state.fixed.forEach { PlanRowItem(it, evening, editMode, actions) }
+            state.fixed.forEach { key(it.taskId) { PlanRowItem(it, evening, editMode, actions) } }
         }
         GroupLabel(if (!isToday) "THIS DAY" else if (evening) "TODAY" else "PICKED FOR TODAY")
         if (state.picks.isEmpty()) {
             Text(
                 when {
                     !state.hasMissions -> "No missions yet. Add a few on the Missions tab, and each morning the diary picks from them."
-                    isToday -> "Nothing picked yet. Tap the pencil to add something."
+                    isToday -> "Nothing picked yet. Tap the pencil to see what can be added."
                     else -> "Nothing was planned for this day."
                 },
                 fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray,
@@ -136,7 +137,7 @@ fun PlanSection(
             )
             if (!state.hasMissions) SmallChip("Go to Missions") { onOpenMissions() }
         }
-        state.picks.forEach { PlanRowItem(it, evening, editMode, actions) }
+        state.picks.forEach { key(it.taskId) { PlanRowItem(it, evening, editMode, actions) } }
         if (isToday && !evening && state.picks.isNotEmpty()) {
             Text(
                 "Hold a title to crown it.",
@@ -168,14 +169,20 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
             .padding(vertical = 9.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.Top
     ) {
+        // A moved item can't be ticked, unless its copy is still planned: then ticking takes the move back.
+        val moved = row.state == TaskState.MOVED
         Box(
             modifier = Modifier.size(44.dp)
-                .clickable(enabled = row.state != TaskState.MOVED, role = Role.Checkbox) { actions.onToggle(row.taskId) },
+                .clickable(enabled = !moved || row.canTakeBack, role = Role.Checkbox) { actions.onToggle(row.taskId) },
             contentAlignment = Alignment.Center
         ) {
             Image(
                 painter = painterResource(if (done) Res.drawable.check_square else Res.drawable.square_b),
-                contentDescription = if (done) "Untick ${row.title}" else "Tick ${row.title}",
+                contentDescription = when {
+                    moved && row.canTakeBack -> "Take back the move of ${row.title}"
+                    done -> "Untick ${row.title}"
+                    else -> "Tick ${row.title}"
+                },
                 colorFilter = ColorFilter.tint(strong),
                 modifier = Modifier.size(24.dp).alpha(if (closed) 0.4f else 1f)
             )
@@ -221,7 +228,8 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
                 FlowRow(modifier = Modifier.padding(top = 4.dp)) {
                     val half = (row.points + 1) / 2
                     SmallChip(if (row.pillar.scored) "Did some · +$half" else "Did some") { actions.onDidSome(row.taskId) }
-                    SmallChip(row.moveTo?.let { "Move to $it" } ?: "Move it") { actions.onMove(row.taskId) }
+                    // No day to name means the mission can't go anywhere this week: leave Move out rather than skip it quietly.
+                    row.moveTo?.let { day -> SmallChip("Move to $day") { actions.onMove(row.taskId) } }
                     SmallChip("Skip today") { actions.onSkip(row.taskId) }
                 }
             }
@@ -254,7 +262,10 @@ private fun subline(row: PlanRow): String = when (row.state) {
     TaskState.MOVED -> "Moved to ${row.movedTo ?: "another day"}"
     TaskState.SKIPPED -> "Skipped today"
     TaskState.PARTIAL -> "Did some · half points"
-    else -> if (row.tickedForYou) "${row.reason} · ticked for you" else row.reason
+    else -> {
+        val ticked = if (!row.tickedForYou) null else if (row.reason.isEmpty()) "Ticked for you" else "ticked for you"
+        listOfNotNull(row.reason.takeIf { it.isNotEmpty() }, ticked).joinToString(" · ")
+    }
 }
 
 /** Small rounded choice used for evening options, swap mode and the energy picker. */
