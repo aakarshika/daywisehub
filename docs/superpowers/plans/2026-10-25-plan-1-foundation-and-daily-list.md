@@ -1819,9 +1819,8 @@ class PlanRepository(
     suspend fun ensurePlanned(date: LocalDate) {
         mutex.withLock {
             if (planDao.getPlan(key(date)) != null) return@withLock
-            val plan = DayPlan(date = key(date), freeMinutes = defaultFreeMinutes(date))
-            planDao.upsertPlan(plan)
-            fill(date, plan)
+            // fill() writes the plan row last, so a build cut short (view model cancelled) is simply redone next time.
+            fill(date, DayPlan(date = key(date), freeMinutes = defaultFreeMinutes(date)))
         }
     }
 
@@ -3316,6 +3315,8 @@ git commit -m "docs: sync redesign spec with plan 1 schema"
   - Pace offers as sticky notes (slipping, gentle start, going well).
   - Resolving unresolved items at midnight by their "if a day goes sideways" answer.
   - Small catch-ups from the Plan 1 review: the pencil's list grouped by pillar with each candidate's reason line, and "+N extra" on a pillar's bar when you do more than planned.
+  - Adds `WeekSummary` and `PaceOffer` as database version 6 with `@AutoMigration(from = 5, to = 6)` (5.json is exported), so real data is kept from here on; `fallbackToDestructiveMigration` would otherwise wipe it silently.
+  - Re-check the evening check while the diary stays open across 18:00 (today it switches on the next open).
 - **Plan 3, creating missions:**
   - The nine-question sentence and the before-saving week cost.
   - The Missions screen grouped by pillar, with free-hours settings per weekday.
@@ -3324,4 +3325,4 @@ git commit -m "docs: sync redesign spec with plan 1 schema"
 - **Plan 4, metrics:**
   - Pillar rings, patterns and the Monday-first calendar with point-sized day rings.
   - One progress line per mission.
-- **Next pass:** the ideas library, write-your-own matching and the review screen.
+- **Next pass:** the ideas library, write-your-own matching and the review screen. `ideas.json` names kinds `FIXED_BLOCK` and `EVERY_SO_OFTEN`; the loader maps them to `MissionKind.BLOCK` and `MissionKind.RHYTHM`.
