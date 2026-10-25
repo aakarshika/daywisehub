@@ -58,7 +58,8 @@ fun DiaryScreen(
     moodViewModel: MoodViewModel,
     waterIntakeViewModel: WaterIntakeViewModel,
     selection: LocalDate,
-    changeDate: (LocalDate) -> Unit
+    changeDate: (LocalDate) -> Unit,
+    openMissions: () -> Unit,
 ) {
     val state by diaryViewModel.state.collectAsState()
     val missions by diaryViewModel.missions.collectAsState()
@@ -122,7 +123,7 @@ fun DiaryScreen(
             MoodHeaderItem(todayMoodList, selection, upsertMood = { moodViewModel.upsertTodayMood(it) })
             ToDoListHeader("TO DO LIST", Orange80, editClicked = { showAdd = true })
             state?.let { s ->
-                if (s.hasPlan && diaryViewModel.isToday && !evening) {
+                if (s.hasPlan && s.hasMissions && diaryViewModel.isToday && !evening) {
                     item(key = "plan-subline") { PlanSubline(s, onChange = { showCapacity = true }) }
                 }
                 item(key = "plan-section") {
@@ -131,7 +132,8 @@ fun DiaryScreen(
                         onToggleEvening = {
                             editMode = false
                             diaryViewModel.toggleEveningCheck()
-                        }
+                        },
+                        onOpenMissions = openMissions
                     )
                 }
                 notice?.let { text ->
@@ -144,7 +146,7 @@ fun DiaryScreen(
                     }
                 }
                 s.didntFit?.let { row -> item(key = "didnt-fit") { DidntFitNote(row) } }
-                if (diaryViewModel.isToday && !evening) {
+                if (diaryViewModel.isToday && !evening && s.hasMissions) {
                     item(key = "plan-actions") {
                         PlanActions(
                             editMode = editMode,

@@ -136,7 +136,8 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                         moodViewModel,
                         waterIntakeViewModel,
                         currentDate,
-                        changeDate = { date -> calDateViewModel.selectDate(date) }
+                        changeDate = { date -> calDateViewModel.selectDate(date) },
+                        openMissions = { navigateTab(MyScreen.Missions) }
                     )
                 }
                 scene(route = MyScreen.Calendar.name) {

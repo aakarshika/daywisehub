@@ -109,6 +109,7 @@ fun PlanSection(
     editMode: Boolean,
     actions: PlanRowActions,
     onToggleEvening: () -> Unit,
+    onOpenMissions: () -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth()
@@ -123,13 +124,18 @@ fun PlanSection(
         GroupLabel(if (!isToday) "THIS DAY" else if (evening) "TODAY" else "PICKED FOR TODAY")
         if (state.picks.isEmpty()) {
             Text(
-                if (isToday) "Nothing picked yet. Tap the pencil to add something." else "Nothing was planned for this day.",
+                when {
+                    !state.hasMissions -> "No missions yet. Add a few on the Missions tab, and each morning the diary picks from them."
+                    isToday -> "Nothing picked yet. Tap the pencil to add something."
+                    else -> "Nothing was planned for this day."
+                },
                 fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray,
                 modifier = Modifier.padding(vertical = 10.dp)
             )
+            if (!state.hasMissions) SmallChip("Go to Missions") { onOpenMissions() }
         }
         state.picks.forEach { PlanRowItem(it, evening, editMode, actions) }
-        if (isToday && !evening) {
+        if (isToday && !evening && state.picks.isNotEmpty()) {
             Text(
                 "Hold a title to crown it.",
                 fontSize = 11.sp, color = InkGray, modifier = Modifier.padding(top = 8.dp)

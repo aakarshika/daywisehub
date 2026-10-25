@@ -61,6 +61,8 @@ data class DiaryUiState(
     val todayMissionIds: Set<Long>,
     /** Picks done or did-some. */
     val donePicks: Int,
+    /** False on an empty install: the list then points to the Missions tab. */
+    val hasMissions: Boolean,
 ) {
     /** Every open scored pick resolved as done or did-some; drives the confetti. */
     val allPicksDone: Boolean
@@ -101,6 +103,7 @@ object DiaryStateBuilder {
             crownedTotal = crowned.size,
             todayMissionIds = todayTasks.map { it.missionId }.toSet(),
             donePicks = picks.count { it.state.countsAsDone },
+            hasMissions = missions.isNotEmpty(),
         )
     }
 

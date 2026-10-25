@@ -84,7 +84,7 @@ fun AddMissionDialog(missions: List<Mission>, todayMissionIds: Set<Long>, onAdd:
         title = { Text("Add to today") },
         text = {
             if (available.isEmpty()) {
-                Text("Everything is already on today's list.")
+                Text(if (missions.isEmpty()) "No missions yet. Add some on the Missions tab." else "Everything is already on today's list.")
             } else {
                 LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
                     items(available, key = { it.missionId }) { mission ->

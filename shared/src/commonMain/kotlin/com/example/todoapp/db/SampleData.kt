@@ -18,8 +18,11 @@ import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.plus
 
-/** Seeds the mockups' example missions while missions can't be created in the app. Plan 3 turns this off. */
-const val SEED_SAMPLE_MISSIONS = true
+/**
+ * Seeds the mockups' example missions on an empty database. Off since missions can be created in the app;
+ * turn it on to try the diary with history without typing missions in.
+ */
+const val SEED_SAMPLE_MISSIONS = false
 
 object SampleData {
 
