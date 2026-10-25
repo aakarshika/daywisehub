@@ -35,7 +35,7 @@ The spec leaves these open. Each is easy to change later.
 6. **Fixed-block times** are set in half hours and stored as 24-hour `H:mm` (`"9:00"`, `"13:00"`). The diary shows them as stored ("9:00 to 13:00"). An old sample end time that is earlier than its start (`"9:00"` to `"1:00"`) is read as afternoon when edited.
 7. **Every so often** runs 2–30 days, 1–12 weeks or 1–3 months. That keeps every interval inside the planner's 120-day history (`PlanRepository.HISTORY_DAYS`).
 8. **Today re-picks after a change.** Saving or archiving a mission re-picks today's open items, as "change" on the diary does, unless the day was confirmed with "Looks good". Without this, missions made on a fresh install wouldn't show until tomorrow. On a confirmed day, use the pencil.
-9. **Archive** also deletes the mission's still-planned items from today on. The diary and the week bars read active missions only (Plan 1). So an archived mission's earlier ticks also leave past diary pages and this week's bars. The confirmation says so, and there's no restore yet.
+9. **Archive** also deletes the mission's still-planned items from today on. Points it already earned this week stay in the pillar bars (changed after review). Its rows leave the diary's lists, because those read active missions only. There's no restore yet.
 10. **Icons.** "Every so often" uses `star_border`, not the mockup's wand, because spec 9.1 keeps the wand for "the app adjusted something". The gentle-start sticky keeps the wand.
 11. **Titles.** The keyboard capitalizes the first word, so cards and the diary read "Learn guitar". The sentence shows the title as typed ("I want to Learn guitar").
 12. **Where the editor lives.** It's drawn inside the Missions tab, not as a new route, so the tab bar stays and the Android back button walks the questions. Switching tabs mid-flow drops an unsaved draft. Editing opens on the before-saving screen, and tapping an answer asks that question again.
@@ -3805,9 +3805,15 @@ Tell the owner the build is ready and point them to the checklist below.
 
 **About the numbers.** Counts assume Monday to Friday. Near the end of the week fewer days are left, so this week's numbers shrink. The plain-words line then adds "This week it's N×.", or "It doesn't come up this week." for a block on a weekend.
 
+**When to run it.**
+- **Best on a weekday morning, before 18:00.** Steps A.2, B.7–B.12, C.5–C.6, F and I assume a Monday.
+- **After 18:00 the Diary opens on the evening check.** The label reads TODAY, and there's no "Picked for you" line, no Swap one, no Lighter day and no Looks good. Tap "Back to the plan" to get the morning view. You'll need to tap it again each time you return to the Diary.
+- **On a Saturday or Sunday:** today's free time is 10 h, a Mon–Fri block doesn't come up, and weekly habits count only the days left (once, on a Sunday).
+- **Don't rotate the phone mid-edit.** Rotating recreates the screen and drops an unsaved draft.
+
 ### A. Empty install
 1. Diary → TO DO LIST says "No missions yet. Add a few on the Missions tab, and each morning the diary picks from them." with a "Go to Missions" chip.
-2. There's no "Picked for you · …" line, no Swap one / Lighter day / Looks good, and no "Hold a title to crown it." The pillar strip reads 0/0.
+2. There's no "Picked for you · …" line, no Swap one / Lighter day / Looks good, and no "Hold a title to crown it." The pillar strip reads 0/0. (After 18:00, tap "Back to the plan" first.)
 3. The pencil says "No missions yet. Add some on the Missions tab."
 4. "Go to Missions" switches to the Missions tab. It shows "Missions", "This week: 0 points planned · 0 of 35 free hours", a "Free time · 35 h a week" chip, and a sticky note starting "Nothing here yet. Tap +". No pillar sections yet. A peach + button sits bottom right.
 
