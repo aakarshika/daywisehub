@@ -27,20 +27,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.domain.Energy
-import com.example.todoapp.domain.MissionKind
+import com.example.todoapp.domain.PillarType
 import com.example.todoapp.domain.minutesLabel
-import com.example.todoapp.domain.missionKind
-import com.example.todoapp.domain.pillarType
 import com.example.todoapp.repo.PlanRepository
 import com.example.todoapp.screen.basicutils.InkGray
 import com.example.todoapp.screen.basicutils.Light_Yellowww
 import com.example.todoapp.screen.basicutils.PeachText
+import com.example.todoapp.screen.basicutils.pillarInk
 import com.example.todoapp.screen.basicutils.pillarStrong
+import com.example.todoapp.screen.diary.AddOption
 
 /** "change" on the diary: today's free time and energy. Saving re-picks the open items. */
 @Composable
@@ -72,12 +72,22 @@ fun DayCapacityDialog(freeMinutes: Int, energy: Energy, onSave: (Int, Energy) ->
     )
 }
 
-/** The pencil on TO DO LIST: add any mission that isn't on today's list yet. */
+/**
+ * The pencil on TO DO LIST (spec 6.3): every mission that isn't on the day's list yet, grouped by
+ * pillar, each with its reason line. Today's candidates come first in each group.
+ */
 @Composable
-fun AddMissionDialog(missions: List<Mission>, todayMissionIds: Set<Long>, onAdd: (Long) -> Unit, onDismiss: () -> Unit) {
-    val available = missions
-        .filter { it.missionKind != MissionKind.BLOCK && it.missionId !in todayMissionIds }
-        .sortedBy { it.pillarType.ordinal }
+fun AddMissionDialog(
+    options: List<AddOption>,
+    hasMissions: Boolean,
+    todayMissionIds: Set<Long>,
+    onAdd: (Long) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val available = options.filter { it.missionId !in todayMissionIds }
+    val groups = PillarType.entries
+        .map { pillar -> pillar to available.filter { it.pillar == pillar } }
+        .filter { (_, rows) -> rows.isNotEmpty() }
     val buttonColors = ButtonDefaults.textButtonColors(contentColor = PeachText)
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -85,18 +95,34 @@ fun AddMissionDialog(missions: List<Mission>, todayMissionIds: Set<Long>, onAdd:
         title = { Text("Add to today") },
         text = {
             if (available.isEmpty()) {
-                Text(if (missions.isEmpty()) "No missions yet. Add some on the Missions tab." else "Everything is already on today's list.")
+                Text(if (!hasMissions) "No missions yet. Add some on the Missions tab." else "Everything is already on today's list.")
             } else {
-                LazyColumn(modifier = Modifier.heightIn(max = 360.dp)) {
-                    items(available, key = { it.missionId }) { mission ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth().clickable { onAdd(mission.missionId) }.padding(vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(pillarStrong(mission.pillarType)))
-                            Spacer(Modifier.width(10.dp))
-                            Text(mission.title, fontSize = 17.sp, fontStyle = FontStyle.Italic, modifier = Modifier.weight(1f))
-                            Text(minutesLabel(mission.durationMinutes), fontSize = 12.sp, color = InkGray)
+                LazyColumn(modifier = Modifier.heightIn(max = 420.dp)) {
+                    groups.forEach { (pillar, rows) ->
+                        item(key = "pillar-${pillar.name}") {
+                            Text(
+                                pillar.title.uppercase(),
+                                fontSize = 11.sp, letterSpacing = 1.2.sp, color = pillarInk(pillar),
+                                modifier = Modifier.padding(top = 10.dp, bottom = 2.dp)
+                            )
+                        }
+                        items(rows, key = { it.missionId }) { option ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
+                                    .clickable(role = Role.Button) { onAdd(option.missionId) }
+                                    .padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(pillarStrong(option.pillar)))
+                                Spacer(Modifier.width(10.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(option.title, fontSize = 17.sp, fontStyle = FontStyle.Italic)
+                                    if (option.reason.isNotEmpty()) {
+                                        Text(option.reason, fontSize = 12.sp, fontStyle = FontStyle.Italic, color = InkGray)
+                                    }
+                                }
+                                Text(minutesLabel(option.minutes), fontSize = 12.sp, color = InkGray, modifier = Modifier.padding(start = 8.dp))
+                            }
                         }
                     }
                 }

@@ -6,6 +6,7 @@ import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.domain.Energy
 import com.example.todoapp.domain.History
+import com.example.todoapp.domain.Pick
 import com.example.todoapp.domain.PillarType
 import com.example.todoapp.domain.Points
 import com.example.todoapp.domain.ReasonLines
@@ -43,6 +44,19 @@ data class PlanRow(
 )
 
 data class DidntFitRow(val title: String, val text: String)
+
+/** One mission in the pencil's list, with its reason line. */
+data class AddOption(val missionId: Long, val title: String, val pillar: PillarType, val minutes: Int, val reason: String) {
+    companion object {
+        fun from(pick: Pick) = AddOption(
+            missionId = pick.mission.missionId,
+            title = pick.mission.title,
+            pillar = pick.mission.pillarType,
+            minutes = pick.mission.durationMinutes,
+            reason = ReasonLines.render(pick.reason),
+        )
+    }
+}
 
 data class DiaryUiState(
     val pillars: List<PillarProgress>,

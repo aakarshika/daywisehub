@@ -64,7 +64,7 @@ fun DiaryScreen(
     openMissions: () -> Unit,
 ) {
     val state by diaryViewModel.state.collectAsState()
-    val missions by diaryViewModel.missions.collectAsState()
+    val addOptions by diaryViewModel.addOptions.collectAsState()
     val milestones by diaryViewModel.milestones.collectAsState()
     val todayMoodList: List<TodayMoodWithDetails>? by moodViewModel.todayMoodStatuses.collectAsState(emptyList())
     val waterIntake: WaterIntake? by waterIntakeViewModel.waterIntake.collectAsState()
@@ -73,7 +73,6 @@ fun DiaryScreen(
     val notice by diaryViewModel.notice.collectAsState()
     var editMode by remember(selection) { mutableStateOf(false) }
     var showCapacity by remember { mutableStateOf(false) }
-    var showAdd by remember { mutableStateOf(false) }
 
     var confettiJson by remember { mutableStateOf("") }
     var waterJson by remember { mutableStateOf("") }
@@ -131,7 +130,7 @@ fun DiaryScreen(
             }
             HeadingText("MOOD", Red80)
             MoodHeaderItem(todayMoodList, selection, upsertMood = { moodViewModel.upsertTodayMood(it) })
-            ToDoListHeader("TO DO LIST", Orange80, editClicked = { showAdd = true })
+            ToDoListHeader("TO DO LIST", Orange80, editClicked = { diaryViewModel.openAdd() })
             state?.let { s ->
                 if (s.hasPlan && s.hasMissions && diaryViewModel.isToday && !evening) {
                     item(key = "plan-subline") { PlanSubline(s, onChange = { showCapacity = true }) }
@@ -206,12 +205,13 @@ fun DiaryScreen(
                 onDismiss = { showCapacity = false }
             )
         }
-        if (showAdd) {
+        addOptions?.let { options ->
             AddMissionDialog(
-                missions = missions,
+                options = options,
+                hasMissions = s.hasMissions,
                 todayMissionIds = s.todayMissionIds,
                 onAdd = { diaryViewModel.addMission(it) },
-                onDismiss = { showAdd = false }
+                onDismiss = { diaryViewModel.closeAdd() }
             )
         }
     }

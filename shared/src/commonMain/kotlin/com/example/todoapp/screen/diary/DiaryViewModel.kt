@@ -2,7 +2,6 @@ package com.example.todoapp.screen.diary
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.mission.milestone.Milestone
 import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
 import com.example.todoapp.db.models.MyDate
@@ -17,6 +16,7 @@ import com.example.todoapp.repo.PlanRepository
 import com.example.todoapp.repo.TodayTaskRepository
 import com.example.todoapp.repo.WeekRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -55,6 +55,11 @@ class DiaryViewModel(
     /** A short one-off message under the list, cleared by the next action. */
     val notice: StateFlow<String?> = _notice
 
+    private val _addOptions = MutableStateFlow<List<AddOption>?>(null)
+    /** The pencil's list while its dialog is open; null when it's closed. */
+    val addOptions: StateFlow<List<AddOption>?> = _addOptions
+    private var addLoading: Job? = null
+
     /** False until today's plan is built, so the list doesn't flicker through half-built states. */
     private val planReady = MutableStateFlow(!isToday)
 
@@ -78,9 +83,6 @@ class DiaryViewModel(
     ) { missions, allMissions, tasks, extras, ready ->
         if (ready) DiaryStateBuilder.build(currentDate, today, missions, allMissions, tasks, extras) else null
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, null)
-
-    val missions: StateFlow<List<Mission>> = missionRepository.observeActive()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val milestones: StateFlow<List<MilestoneWithDetails>> = milestoneRepository
         .observeInRange(MyDate.fromLocalDate(currentDate).subtractDays(7), MyDate.fromLocalDate(currentDate).addDays(7))
@@ -112,6 +114,20 @@ class DiaryViewModel(
     fun confirm() = act { planRepository.confirm(currentDate) }
     /** The write can't be cancelled (PlanRepository.write), and a second answer to the same offer does nothing. */
     fun answerOffer(offerId: Long, response: OfferResponse) = act { planRepository.answerOffer(offerId, response) }
+
+    /** Opens the pencil's list. A second tap while it loads or shows does nothing. */
+    fun openAdd() {
+        if (_addOptions.value != null || addLoading?.isActive == true) return
+        _notice.value = null
+        addLoading = viewModelScope.launch {
+            _addOptions.value = planRepository.addOptions(currentDate).map { AddOption.from(it) }
+        }
+    }
+
+    fun closeAdd() {
+        addLoading?.cancel()
+        _addOptions.value = null
+    }
 
     fun toggleEveningCheck() {
         if (!isToday) return

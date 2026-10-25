@@ -16,6 +16,7 @@ import com.example.todoapp.domain.Moves
 import com.example.todoapp.domain.OfferResponse
 import com.example.todoapp.domain.OfferType
 import com.example.todoapp.domain.PaceOffers
+import com.example.todoapp.domain.Pick
 import com.example.todoapp.domain.PlanInput
 import com.example.todoapp.domain.Planner
 import com.example.todoapp.domain.Points
@@ -112,6 +113,11 @@ class PlanRepository(
             if (crownedToday >= MAX_CROWNS) return@write
         }
         todayTaskRepository.update(task.copy(crowned = !task.crowned))
+    }
+
+    /** Spec 6.3, the pencil: every live mission not on the day's list, with its reason line. Only reads, so it doesn't lock. */
+    suspend fun addOptions(date: LocalDate): List<Pick> = withContext(Dispatchers.Default) {
+        Planner.options(input(date, currentPlan(date)))
     }
 
     /** Moves a planned pick to the next day with room, from today on (the first of those days if none in the week). */

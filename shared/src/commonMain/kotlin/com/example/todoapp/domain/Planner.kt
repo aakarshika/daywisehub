@@ -84,6 +84,47 @@ object Planner {
         return best?.let { Pick(it.mission, it.reason, isFixedBlock = false) }
     }
 
+    /**
+     * Spec 6.3, the pencil: every live mission that isn't a fixed block and isn't on the day's list yet,
+     * each with its reason line. Today's candidates come first, in pick order; the rest say where they stand.
+     */
+    fun options(input: PlanInput): List<Pick> {
+        val ranked = candidates(input, fixedBlocks(input)).map { Pick(it.mission, it.reason, isFixedBlock = false) }
+        val rankedIds = ranked.map { it.mission.missionId }.toSet()
+        val rest = input.missions
+            .filter { it.missionKind != MissionKind.BLOCK && it.isLiveOn(input.date) && it.missionId !in rankedIds }
+            .filter { mission -> input.todayTasks.none { it.missionId == mission.missionId } }
+            .map { Pick(it, standing(it, input), isFixedBlock = false) }
+        return ranked + rest
+    }
+
+    /** The reason line for a mission that isn't a candidate today: this week's count, or the last time it was done. */
+    private fun standing(mission: Mission, input: PlanInput): Reason {
+        val date = input.date
+        val history = input.history
+        return when {
+            mission.missionKind == MissionKind.RECHARGE -> Reason(ReasonCode.RECHARGE_USUAL, listOf(mission.count.toString()))
+            mission.repeatsByInterval -> {
+                val last = history.lastDoneBefore(mission.missionId, date)
+                if (last == null) {
+                    Reason(ReasonCode.RHYTHM_FIRST, listOf(mission.intervalLabel()))
+                } else {
+                    Reason(ReasonCode.RHYTHM_DUE, listOf(last.daysUntil(date).toString(), mission.intervalLabel()))
+                }
+            }
+            mission.periodUnit == Period.DAY ->
+                Reason(ReasonCode.STREAK, listOf(history.streakBefore(mission.missionId, date).toString()))
+            else -> {
+                val weekStart = WeekMath.weekStart(date)
+                val weekEnd = WeekMath.weekEnd(date)
+                val target = Points.occurrencesInWeek(mission, weekStart, history)
+                val done = history.doneCount(mission.missionId, weekStart, date.minus(1, DateTimeUnit.DAY))
+                val lastDay = mission.endDate?.toLocalDate()?.let { minOf(it, weekEnd) } ?: weekEnd
+                Reason(ReasonCode.QUOTA, listOf(done.toString(), target.toString(), (date.daysUntil(lastDay) + 1).toString()))
+            }
+        }
+    }
+
     /** Free minutes the flexible picks may use, after anything already on today's list. */
     fun budget(input: PlanInput): Int {
         val share = if (input.energy == Energy.LOW) LOW_ENERGY_SHARE else 1.0
