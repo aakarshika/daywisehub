@@ -24,6 +24,10 @@ import com.example.todoapp.screen.diary.DiaryViewModel
 import com.example.todoapp.screen.diary.diaryitem.components.diarymood.MoodViewModel
 import com.example.todoapp.screen.diary.diaryitem.components.waterintake.WaterIntakeViewModel
 import com.example.todoapp.screen.metrics.CalDiaryViewModel
+import com.example.todoapp.screen.missions.MissionsScreen
+import com.example.todoapp.screen.missions.MissionsViewModel
+import com.example.todoapp.screen.missions.editor.MissionEditorScreen
+import com.example.todoapp.screen.missions.editor.MissionEditorViewModel
 import com.example.todoapp.screen.placeholder.ComingNextScreen
 import kotlinx.coroutines.cancel
 import moe.tlaster.precompose.navigation.NavHost
@@ -90,7 +94,24 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                 initialRoute = MyScreen.Diary.name
             ) {
                 scene(route = MyScreen.Missions.name) {
-                    ComingNextScreen("Missions are being rebuilt around your pillars. They come back in the next step.")
+                    val missionsViewModel = remember { KoinF.di!!.get<MissionsViewModel>() }
+                    DisposableEffect(missionsViewModel) {
+                        onDispose { missionsViewModel.viewModelScope.cancel() }
+                    }
+                    val editor by missionsViewModel.editor.collectAsState()
+                    val target = editor
+                    if (target == null) {
+                        MissionsScreen(missionsViewModel)
+                    } else {
+                        // A fresh editor for each opening; its saves can't be cancelled, so closing mid-save is safe.
+                        val editorViewModel = remember(target) {
+                            KoinF.di!!.get<MissionEditorViewModel> { parametersOf(target.missionId) }
+                        }
+                        DisposableEffect(editorViewModel) {
+                            onDispose { editorViewModel.viewModelScope.cancel() }
+                        }
+                        MissionEditorScreen(editorViewModel, onClose = { missionsViewModel.closeEditor() })
+                    }
                 }
                 scene(route = MyScreen.Diary.name) {
                     val diaryViewModel = remember(currentDate) {

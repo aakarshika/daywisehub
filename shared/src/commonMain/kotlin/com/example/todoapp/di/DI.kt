@@ -11,6 +11,7 @@ import com.example.todoapp.screen.diary.diaryitem.components.diarymood.MoodViewM
 import com.example.todoapp.screen.diary.diaryitem.components.waterintake.WaterIntakeViewModel
 import com.example.todoapp.screen.init.InitViewModel
 import com.example.todoapp.screen.metrics.CalDiaryViewModel
+import com.example.todoapp.screen.missions.MissionsViewModel
 import com.example.todoapp.screen.missions.editor.MissionEditorViewModel
 import kotlinx.datetime.LocalDate
 import org.koin.core.Koin
@@ -37,6 +38,7 @@ fun vmModule(): Module {
         factory { (day: LocalDate) -> DiaryViewModel(get(), get(), get(), get(), day) }
         factory { (day: LocalDate) -> MoodViewModel(get()) }
         factory { (day: LocalDate) -> WaterIntakeViewModel(get()) }
+        factory { MissionsViewModel(get(), get(), get(), get()) }
         factory { (missionId: Long) -> MissionEditorViewModel(get(), get(), get(), get(), missionId) }
     }
 }
