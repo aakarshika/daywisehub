@@ -9,41 +9,24 @@ import kotlinx.coroutines.flow.Flow
 interface MilestoneDao {
 
     @Query("""
-        SELECT 
-        mls.*,
-        m.*,
-        p.*
-        FROM milestone mls 
-        
-        LEFT JOIN mission m ON m.mission_id = mls.mile_mission_id
-        LEFT JOIN mission_pillar_mapping pm ON pm.mission_mapping_id = m.mission_id
-        LEFT JOIN pillar p ON p.pillar_id = pm.pillar_mapping_id
-        WHERE 
-            m.mission_id = :missionId 
-            """
-    )
-    fun getAllMilestonesForMission (missionId:Long): Flow<List<MilestoneWithDetails>>
+        SELECT mls.*, m.* FROM milestone mls
+        JOIN mission m ON m.mission_id = mls.mile_mission_id
+        WHERE m.mission_id = :missionId
+        ORDER BY mls.milestone_order
+    """)
+    fun observeForMission(missionId: Long): Flow<List<MilestoneWithDetails>>
 
     @Query("""
-        SELECT 
-        mls.*,
-        m.*,
-        p.*
-        FROM milestone mls 
-        LEFT JOIN mission m ON m.mission_id = mls.mile_mission_id
-        LEFT JOIN mission_pillar_mapping pm ON pm.mission_mapping_id = m.mission_id
-        LEFT JOIN pillar p ON p.pillar_id = pm.pillar_mapping_id
-        WHERE 
-            m.user_id = :userId
-            AND mls.expected_completion_date >= :startDateString
-            AND mls.expected_completion_date <= :endDateString
+        SELECT mls.*, m.* FROM milestone mls
+        JOIN mission m ON m.mission_id = mls.mile_mission_id
+        WHERE mls.expected_completion_date >= :startDate
+          AND mls.expected_completion_date <= :endDate
         ORDER BY mls.expected_completion_date ASC
     """)
-    fun getMilestonesForUserInDateRange(
-        userId: Long,
-        startDateString: String,
-        endDateString: String
-    ): Flow<List<MilestoneWithDetails>>
+    fun observeInRange(startDate: String, endDate: String): Flow<List<MilestoneWithDetails>>
+
+    @Query("SELECT * FROM milestone")
+    suspend fun getAll(): List<Milestone>
 
     @Update
     suspend fun updateMilestone(milestone: Milestone)

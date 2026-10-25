@@ -1,17 +1,15 @@
 package com.example.todoapp.screen.metrics
 
 import androidx.lifecycle.ViewModel
-import com.example.todoapp.repo.MissionRepository
-import com.kizitonwose.calendar.core.now
+import com.example.todoapp.db.models.MyDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.datetime.LocalDate
 
-class CalDiaryViewModel(
-    private val missionRepository: MissionRepository
-) : ViewModel() {
+/** The date the diary is showing, shared across tabs. */
+class CalDiaryViewModel : ViewModel() {
 
-    private val _currentDate = MutableStateFlow(LocalDate.now())
+    private val _currentDate = MutableStateFlow(MyDate.now().toLocalDate())
     val currentDate: StateFlow<LocalDate> get() = _currentDate
 
     fun selectDate(selectedDate: LocalDate) {

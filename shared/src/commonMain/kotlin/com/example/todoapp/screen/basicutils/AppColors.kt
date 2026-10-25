@@ -1,6 +1,7 @@
 package com.example.todoapp.screen.basicutils
 
 import androidx.compose.ui.graphics.Color
+import com.example.todoapp.domain.PillarType
 
 // Orange shades
 val Orange20 = Color(0xFFFDF5F1)
@@ -57,18 +58,41 @@ fun Color.darken(amount: Float = 0.2f): Color {
     return Color(red, green, blue, this.alpha)
 }
 
-fun getPillarColor(pillarName: String?): Color {
-    return if (pillarName == "HEALTH") Pink80
-    else if (pillarName == "WEALTH") Orange80
-    else if (pillarName == "LOVE") Red80
-    else if (pillarName == "LIFE") Blue80
-    else Color(0xFFCCC2DC)
+// Diary ink and surfaces used by the redesigned screens
+val InkBlack = Color(0xFF1F1F1F)
+val InkGray = Color(0xFF6E6E6E)
+val PeachText = Color(0xFF7A4A2C)
+val PeachInk = Color(0xFF4A2A18)
+val TrackBeige = Color(0xFFEFE9DA)
+val StickyYellow = Color(0xFFFDF0C6)
+val CardCream = Color(0xFFFBF6E6)
+val CrownGold = Color(0xFFD9A93A)
+val LineBlueBorder = Color(0xFFCFE3F7)
+val ChipBorder = Color(0xFFD9CDB8)
+
+/** Headings, chips and highlights. */
+fun pillarLight(pillar: PillarType): Color = when (pillar) {
+    PillarType.HEALTH -> Color(0xFFF6D3FF)
+    PillarType.WEALTH -> Color(0xFFFFD4B8)
+    PillarType.LOVE -> Color(0xFFFFCBD2)
+    PillarType.LIFE -> Color(0xFFD4EBFF)
+    PillarType.RECHARGE -> Color(0xFFE2E2E2)
 }
 
-fun getDarkPillarColor(pillarName: String?): Color {
-    return if (pillarName == "HEALTH") Pink180
-    else if (pillarName == "WEALTH") Orange180
-    else if (pillarName == "LOVE") Red180
-    else if (pillarName == "LIFE") Blue180
-    else Color(0xFFCCC2DC)
+/** Checkboxes, rings, bars and strike-throughs. */
+fun pillarStrong(pillar: PillarType): Color = when (pillar) {
+    PillarType.HEALTH -> Color(0xFFE7B5F5)
+    PillarType.WEALTH -> Color(0xFFF9B98F)
+    PillarType.LOVE -> Color(0xFFF7A9B5)
+    PillarType.LIFE -> Color(0xFFA9D1F5)
+    PillarType.RECHARGE -> Color(0xFFC4C4C4)
+}
+
+/** Text on a pillar-light background. */
+fun pillarInk(pillar: PillarType): Color = when (pillar) {
+    PillarType.HEALTH -> Color(0xFF6B3D7A)
+    PillarType.WEALTH -> Color(0xFF7A4A2C)
+    PillarType.LOVE -> Color(0xFF7A3341)
+    PillarType.LIFE -> Color(0xFF2F5677)
+    PillarType.RECHARGE -> Color(0xFF555555)
 }

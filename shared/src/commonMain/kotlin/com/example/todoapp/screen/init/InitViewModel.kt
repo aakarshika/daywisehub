@@ -3,14 +3,12 @@ package com.example.todoapp.screen.init
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.todoapp.db.models.LOCAL_USER_ID
-import com.example.todoapp.repo.MissionRepository
 import com.example.todoapp.repo.TodayMoodRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class InitViewModel(
-    private val pillarRepository: MissionRepository,
     private val todayMoodRepository: TodayMoodRepository
 ) : ViewModel() {
 
@@ -19,7 +17,6 @@ class InitViewModel(
 
     fun insertDefaultData() {
         viewModelScope.launch {
-            pillarRepository.insertDefaultPillars(LOCAL_USER_ID)
             todayMoodRepository.insertDefaultMoods(LOCAL_USER_ID)
             _isReady.value = true
         }

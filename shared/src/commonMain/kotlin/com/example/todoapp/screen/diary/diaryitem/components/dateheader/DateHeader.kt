@@ -28,7 +28,7 @@ import com.example.todoapp.screen.basicutils.components.WriteText
 import com.example.todoapp.screen.diary.WeekCalendarScreen
 import com.example.todoapp.screen.basicutils.Orange80
 import com.example.todoapp.screen.basicutils.Red80
-import com.example.todoapp.screen.missions.editpopup.getOrdinal
+import com.example.todoapp.screen.basicutils.getOrdinal
 import kotlinx.datetime.LocalDate
 
 @Composable

@@ -24,7 +24,8 @@ import com.example.todoapp.db.models.TaskStatus
 import com.example.todoapp.screen.basicutils.Blue80
 import com.example.todoapp.screen.basicutils.components.CustomCheckbox
 import com.example.todoapp.screen.basicutils.components.DiaryLineText
-import com.example.todoapp.screen.basicutils.getDarkPillarColor
+import com.example.todoapp.domain.pillarType
+import com.example.todoapp.screen.basicutils.pillarStrong
 
 private const val MilestoneRowHeight = 36
 
@@ -125,7 +126,7 @@ private fun MilestoneRow(
                     checked = achieved,
                     onCheckedChange = onAchievedChange,
                     modifier = Modifier.size(20.dp),
-                    checkedColor = getDarkPillarColor(mwd.pillar?.pillarName),
+                    checkedColor = pillarStrong(mwd.mission.pillarType),
                     uncheckedColor = Color.Gray,
                     disabledColor = Color.Gray,
                     iconTag = "Milestone"

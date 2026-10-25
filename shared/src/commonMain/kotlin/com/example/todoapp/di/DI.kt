@@ -5,18 +5,11 @@ import com.example.todoapp.repo.MissionRepository
 import com.example.todoapp.repo.TodayMoodRepository
 import com.example.todoapp.repo.TodayTaskRepository
 import com.example.todoapp.repo.WaterIntakeRepository
-import com.example.todoapp.screen.init.InitViewModel
-import com.example.todoapp.screen.metrics.bottomhighlights.BottomHighlightsViewModel
-import com.example.todoapp.screen.metrics.CalDiaryViewModel
 import com.example.todoapp.screen.diary.DiaryViewModel
-import com.example.todoapp.screen.diary.diaryitem.HabitItemViewModel
 import com.example.todoapp.screen.diary.diaryitem.components.diarymood.MoodViewModel
 import com.example.todoapp.screen.diary.diaryitem.components.waterintake.WaterIntakeViewModel
-import com.example.todoapp.screen.diary.planning.PlanningViewModel
-import com.example.todoapp.screen.metrics.MetricsViewModel
-import com.example.todoapp.screen.missions.MissionItemViewModel
-import com.example.todoapp.screen.missions.MissionsControllerViewModel
-import com.example.todoapp.screen.missions.calendar.progress.DayMissionProgressViewModel
+import com.example.todoapp.screen.init.InitViewModel
+import com.example.todoapp.screen.metrics.CalDiaryViewModel
 import kotlinx.datetime.LocalDate
 import org.koin.core.Koin
 import org.koin.core.context.startKoin
@@ -35,28 +28,12 @@ fun vmModule(): Module {
         single { TodayMoodRepository(get()) }
         single { WaterIntakeRepository(get()) }
 
-
-
-        // ViewModels base
-        single { InitViewModel(get(), get()) }
-
-        // New ViewModels
-        factory { MissionsControllerViewModel(get()) }
-        factory { (missionId: Long) -> MissionItemViewModel(get(), missionId) } // for dynamic MissionItemViewModel
-
-        factory { (missionId: Long) -> DayMissionProgressViewModel(get(),get(),  missionId) }
-        factory { (day: LocalDate) -> DiaryViewModel(get(), get(), day) }
-        factory { (day: LocalDate, missionId: Long) -> HabitItemViewModel(get(), day, missionId) }
-        factory { (day: LocalDate) -> BottomHighlightsViewModel(get(), day) }
-        factory { MetricsViewModel(get(), get()) }
-
+        // ViewModels
+        single { InitViewModel(get()) }
+        single { CalDiaryViewModel() }
+        factory { (day: LocalDate) -> DiaryViewModel(get(), day) }
         factory { (day: LocalDate) -> MoodViewModel(get()) }
         factory { (day: LocalDate) -> WaterIntakeViewModel(get()) }
-        factory { PlanningViewModel(get(), get()) }
-
-
-        single { CalDiaryViewModel(get()) }
-
     }
 }
 
@@ -64,7 +41,6 @@ fun initKoin(appDeclaration: KoinAppDeclaration = {}) =
     startKoin {
         appDeclaration()
         modules(platformModule(), vmModule())
-
     }
 
 object KoinF {

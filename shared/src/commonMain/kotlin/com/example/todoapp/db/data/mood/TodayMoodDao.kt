@@ -4,9 +4,6 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.example.todoapp.db.data.todotask.SubTask
-import com.example.todoapp.db.data.todotask.TodayTask
-import com.example.todoapp.db.data.todotask.TodayTaskReminder
 import kotlinx.coroutines.flow.Flow
 
 @Dao
