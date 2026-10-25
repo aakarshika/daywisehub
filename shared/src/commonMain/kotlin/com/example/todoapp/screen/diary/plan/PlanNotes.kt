@@ -49,13 +49,13 @@ import todoapp.shared.generated.resources.star_filled
 
 /** Slightly tilted sticky note, like the mission cards. */
 @Composable
-fun StickyNote(rotation: Float, content: @Composable () -> Unit) {
+fun StickyNote(rotation: Float, color: Color = StickyYellow, content: @Composable () -> Unit) {
     Box(
         modifier = Modifier.fillMaxWidth()
             .padding(horizontal = 30.dp, vertical = 12.dp)
             .rotate(rotation)
             .shadow(6.dp, RoundedCornerShape(4.dp))
-            .background(StickyYellow, RoundedCornerShape(4.dp))
+            .background(color, RoundedCornerShape(4.dp))
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) { content() }
 }
@@ -142,6 +142,12 @@ fun DayHighlightsCard(state: DiaryUiState, date: LocalDate) {
 
 @Composable
 private fun HighlightLine(icon: DrawableResource, text: String) {
+    HighlightRow(icon) { Text(text, fontSize = 15.sp, color = InkBlack) }
+}
+
+/** One line of a highlights card: an icon, then [content]. */
+@Composable
+internal fun HighlightRow(icon: DrawableResource, content: @Composable () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
             .background(Color(0xFFFDFAF1), RoundedCornerShape(8.dp))
@@ -153,6 +159,6 @@ private fun HighlightLine(icon: DrawableResource, text: String) {
             colorFilter = ColorFilter.tint(Color(0xFF3A3A3A)), modifier = Modifier.size(22.dp)
         )
         Spacer(Modifier.width(14.dp))
-        Text(text, fontSize = 15.sp, color = InkBlack)
+        content()
     }
 }

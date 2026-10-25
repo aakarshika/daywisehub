@@ -38,6 +38,8 @@ import com.example.todoapp.screen.diary.plan.AddMissionDialog
 import com.example.todoapp.screen.diary.plan.DayCapacityDialog
 import com.example.todoapp.screen.diary.plan.DayHighlightsCard
 import com.example.todoapp.screen.diary.plan.DidntFitNote
+import com.example.todoapp.screen.diary.plan.LastWeekCard
+import com.example.todoapp.screen.diary.plan.PaceOfferNote
 import com.example.todoapp.screen.diary.plan.PillarWeekStrip
 import com.example.todoapp.screen.diary.plan.PlanActions
 import com.example.todoapp.screen.diary.plan.PlanRowActions
@@ -118,7 +120,15 @@ fun DiaryScreen(
     Box(modifier = Modifier.fillMaxSize().background(Light_Yellowww)) {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             DateHeaderItem(selection, changeDate = changeDate)
-            state?.let { s -> item(key = "week-strip") { PillarWeekStrip(s.pillars) } }
+            state?.let { s ->
+                item(key = "week-strip") { PillarWeekStrip(s.pillars, freshStart = s.freshStart) }
+                s.lastWeek?.let { card -> item(key = "last-week") { LastWeekCard(card) } }
+                s.offers.forEachIndexed { i, note ->
+                    item(key = "offer-${note.offerId}") {
+                        PaceOfferNote(note, rotation = if (i % 2 == 0) -1.4f else 1.1f, onAnswer = diaryViewModel::answerOffer)
+                    }
+                }
+            }
             HeadingText("MOOD", Red80)
             MoodHeaderItem(todayMoodList, selection, upsertMood = { moodViewModel.upsertTodayMood(it) })
             ToDoListHeader("TO DO LIST", Orange80, editClicked = { showAdd = true })
