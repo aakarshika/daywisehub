@@ -118,6 +118,14 @@ The app offers changes; it never makes them on its own.
 
 At most two offers appear per week, on Monday's diary, as sticky notes. "Not yet" suppresses the same offer for 4 weeks. Only an accepted offer changes the target.
 
+As built in plan 2:
+- Offers are made once, on the first open of a week, and show on that day's diary. Offers to ease off come first. A finish line that ends before the end of that week gets none.
+- Offers judge only the current pace. Any answer starts that mission's run of weeks again, so "Keep it" asks again only after another 3 slipped weeks. So does a change of pace or weight, in the editor or by an accepted offer: only weeks from that day on count. A week the app wasn't opened in breaks a run.
+- "Slipped" means done less than half as often as it was due that week. "Full" means 80% of its own points at today's weight, as for a pillar. "Late" means done in a later week than the one it was due in. Two step-ups in one week share its free hours.
+- Lowering goes from every day to 6× a week, or from N× to N−1× (a once-a-week habit isn't offered). Lengthening adds one day, week or month, within the editor's limits. A gentle start steps up one a week, toward its goal. Monthly habits get no offers yet.
+- "Pause a month" sets the mission's pause date a month out and takes it off today's list. A finish line that ends within the month isn't offered a pause.
+- Saving a new pace or weight in the editor withdraws that mission's unanswered offers for the week.
+
 ## 6. Planner rules
 
 The separate planner (the red, yellow and green "Critically lagging" list) is removed. The diary's to-do list arrives already picked each morning.
@@ -169,7 +177,9 @@ It opens when the diary is first opened after 6 pm, and can be reached anytime f
 
 - Fixed blocks start ticked ("Ticked for you").
 - An unticked flexible item offers: Did some (half points), Move to ⟨next day with room⟩, Skip today. A skipped item can be ticked again if the skip was a mistake.
-- Anything still unresolved at midnight follows its "if a day goes sideways" answer automatically.
+- Anything still unresolved at midnight follows its "if a day goes sideways" answer automatically. As built, this runs on the first open of a new day. "Move it" carries an item up to 6 days, only to a day the mission is live on, and only when the mission has nothing else coming; otherwise the item is skipped. Unticking an item on an earlier day marks it skipped. Ticking a moved item takes the move back while its copy is still planned. Adding an item on an earlier day adds it as done.
+- "Ticked for you" stays on a fixed block only until it's changed by hand.
+- The Move chip names the day it will use ("Move to Thursday", or "next Thursday" for the same weekday a week on). It is left out when the mission can't go anywhere in the coming week, and "Skip today" stays.
 - The day closes with the diary's highlights card: points today, how many pillars got something, and crowned items.
 
 ## 7. Reason lines and wording
@@ -347,17 +357,17 @@ These change from the current app:
 
 ## 10. Data model changes
 
-The database is Room, currently version 4. **Existing data is not kept:** the new schema replaces the old one and the database is wiped (destructive migration). There is no data migration.
+The database is Room, version 6. Version 5 replaced the old schema and wiped anything older (destructive migration), with no data migration. **From version 5 on, data is kept.** Version 6 (plan 2) adds the two week tables, `Mission.paceSince` and `TodayTask.autoTicked` through `@AutoMigration(from = 5, to = 6)`, and each later version adds an auto migration from the one before. Installing an older build over a newer database wipes it.
 
 | Entity | Change |
 |---|---|
-| `Mission` | One table holds everything: title, `pillar` (enum name, including RECHARGE), `kind`, `weight` (0–3), `durationMinutes`, `effort`, `ifMissed`, pace fields (`count` + `period`, `goalCount`, `intervalCount` + `intervalUnit`, `weekDays`, `startTime`, `endTime`), `startDate`, `endDate`, `pausedUntil`, `motivation`, `active`. The old `mission_frequency`, `pillar` and `mission_pillar_mapping` tables are gone; pillars are a fixed enum in code. `ideaId` comes with the ideas library. |
-| `TodayTask` | `state` (PLANNED, DONE, PARTIAL, MOVED, SKIPPED), `pointsEarned`, `isFixedBlock`, `crowned` (replaces the TOP3 tag), `movedFromDate`, `reasonCode`, `reasonArgs`, `sortOrder`. The reminder and sub-task tables are dropped. |
+| `Mission` | One table holds everything: title, `pillar` (enum name, including RECHARGE), `kind`, `weight` (0–3), `durationMinutes`, `effort`, `ifMissed`, pace fields (`count` + `period`, `goalCount`, `intervalCount` + `intervalUnit`, `weekDays`, `startTime`, `endTime`), `startDate`, `endDate`, `pausedUntil`, `motivation`, `active`, and `paceSince` (plan 2: the day the pace or weight last changed; pace offers judge only the weeks from then on). The old `mission_frequency`, `pillar` and `mission_pillar_mapping` tables are gone; pillars are a fixed enum in code. `ideaId` comes with the ideas library. |
+| `TodayTask` | `state` (PLANNED, DONE, PARTIAL, MOVED, SKIPPED), `pointsEarned`, `isFixedBlock`, `crowned` (replaces the TOP3 tag), `movedFromDate`, `reasonCode`, `reasonArgs`, `sortOrder`, and `autoTicked` (plan 2: a fixed block the evening check ticked, cleared by any change by hand). The reminder and sub-task tables are dropped. |
 | `Milestone` | Unchanged. |
 | New `DaySettings` | Free minutes per weekday. The evening check time is a constant (18:00) for now. |
 | New `DayPlan` | Date, free minutes, energy, confirmed, fixed-blocks-ticked, and the day's didn't-fit pick. The row is written last, so a day exists only once its list is built. |
-| New `WeekSummary` | Added in plan 2 (week cycle): week start, per-pillar earned and target points, balanced flag. |
-| New `PaceOffer` | Added in plan 2: mission, offer type, week shown, response, snooze-until date. |
+| New `WeekSummary` | Added in plan 2 (week cycle): one row per finished week, keyed by its Monday, with earned and target points for each of the four pillars and a balanced flag (every pillar full, with something due). Targets are fixed at close-out. Points include archived missions and update if a day of that week is ticked later. |
+| New `PaceOffer` | Added in plan 2: mission, offer type (`LOWER`, `LENGTHEN`, `STEP_UP_GENTLE`, `STEP_UP`), week shown, response (`ACCEPTED`, `KEPT`, `PAUSED`, `NOT_YET`, `WITHDRAWN` when the mission's pace was edited first, or none yet), snooze-until date. At most one per mission a week (a unique index). |
 
 ## 11. Build order
 
