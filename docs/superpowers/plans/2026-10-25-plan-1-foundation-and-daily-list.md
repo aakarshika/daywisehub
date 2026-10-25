@@ -3263,10 +3263,22 @@ git commit -m "feat: diary builds and shows today's list with reasons, points an
 
 - [ ] **Step 4: Hand over for manual testing**
 
-Tell the owner the build is ready, and that the first launch wipes the old database and seeds the sample missions. On a weekday before 18:00 the diary should show:
-- **Already in your day:** Job (9:00 to 1:00) and App (2:00 to 5:00).
-- **Picked for today:** about 3 h of picks, led by Gym ("Every day · 9-day streak"), then Call Grandma ("Last done 13 days ago · you aim for every 2 weeks"), Guitar, New ideas and New episode (recharge, because the blocks total 7 h).
-- **Didn't fit today:** Plan winter trip, with a weekend day named as having room.
+Tell the owner the build is ready, and that the first launch wipes the old database and seeds the sample missions relative to that day. These lists come from running the compiled planner on the seed (before 18:00, default free time, normal energy).
+
+**A Wednesday** (180 free minutes):
+- **Already in your day:** Job ("9:00 to 1:00") and App ("2:00 to 5:00").
+- **Picked for today, 165 min:**
+  1. Gym, "Every day · 9-day streak"
+  2. New episode, "7 hours of fixed blocks today. This counts too."
+  3. Call Grandma, "Last done 13 days ago · you aim for every 2 weeks"
+  4. Guitar, "0 of 2 this week · 5 days left"
+  5. Call Mom, "0 of 1 this week · 5 days left"
+  6. Call sister, "0 of 1 this week · 5 days left"
+- **Didn't fit today:** Plan winter trip, "Due by ⟨tomorrow⟩. ⟨Tomorrow⟩ has room."
+
+**A Monday:** Gym, Call Mom (its preferred day), New episode, Call Grandma, Guitar, New ideas. Call sister waits for Tuesday, its preferred day.
+
+**A Sunday** (600 free minutes, no blocks): Gym, Guitar, Dance class, Call Mom, Call sister and New ideas, each "… this week · last day", plus New episode. Nothing is listed as not fitting. Call Grandma and the trip fall due Monday, so they aren't on Sunday's list.
 
 The owner checks the rest: ticking, long-press crowns, Swap one, Lighter day, "change", the pencil, and the evening options (by opening a past day or after 18:00).
 

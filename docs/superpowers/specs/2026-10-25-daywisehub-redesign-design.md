@@ -86,6 +86,8 @@ The last screen shows the full sentence, then:
 | Pillar weekly target | Sum of points of every occurrence due in that pillar this week. |
 | Fixed blocks | Earn points like any mission. They start ticked; the evening check lets you untick. |
 | Slower than weekly | Counts only in the week it's due (Love can be 4 one week and 6 the next). |
+| Faster than weekly intervals | Count once per interval (every 2 days counts 4 times in a week). |
+| Short weeks | A weekly count is capped at the days the mission is live that week, so a mission starting Saturday can still be full. |
 | Gentle start | The target uses the current pace, not the goal pace. |
 | Pillar is "full" | At 80% of its target or more. A pillar with a target of 0 this week counts as full. |
 | Balanced week | Every pillar full. Shown as a crown on the week. |
@@ -134,27 +136,29 @@ The list is built the first time the diary opens on a new day.
 1. **Fixed blocks** for today go under "Already in your day." They don't use free hours.
 2. **Candidates** are every other active mission that is eligible today:
    - Habits with a daily pace: always.
-   - Habits with N per week or month: if this period's count is below N.
-   - Finish lines: like habits, plus any milestone due within 7 days.
-   - Every so often: if due this week or overdue (due date = last done + interval).
+   - Habits with N per week: if this week's count (capped at its live days) is below N. A habit is held back for a preferred day still ahead this week unless it's needed today.
+   - Finish lines: like habits, plus any milestone due within 7 days. Days left count to the finish line's end date when it ends this week.
+   - Every so often, and habits counted per month: if due this week or overdue (due date = last done + interval). Intervals shorter than a week are only picked once actually due.
    - Recharge: if under its usual count this week, or if today has 6 or more hours of fixed blocks.
-   - Anything moved to today.
+   - Anything moved to today is already on the list and uses its time first.
 3. **Each candidate gets an urgency score.** Highest first:
    1. Moved to today.
    2. Overdue every-so-often missions.
    3. A daily streak that would break today.
-   4. Weekly quotas where the remaining count divided by the remaining days is 1 or more, and habits on one of their preferred days.
+   4. Weekly quotas where the remaining count divided by the remaining days is 1 or more, habits on one of their preferred days, and recharge on a heavy day.
    5. Finish lines with a milestone due within 7 days.
-   6. Everything else, ordered by how far behind its pillar is this week (the lowest pillar percentage first).
-4. **Fill:** take candidates in score order while the total duration fits today's free hours.
+   6. Everything else.
+   
+   Within a score, the pillar furthest behind this week comes first, then the earliest due date, then the bigger weight.
+4. **Fill:** take candidates in score order; a candidate that doesn't fit what's left is skipped and the next one is tried.
    - On a low-energy day, skip "draining" missions and use only 60% of free hours.
-   - Don't pick the same weekly-quota mission two days in a row when another day this week still has room.
+   - Don't pick the same weekly-quota mission two days in a row within a week, unless it's needed or preferred today.
    - Recharge picks count toward the time.
 5. **Didn't fit:** the highest-scoring candidate with a due date this week that wasn't picked appears as a sticky note naming the next day with room ("Due by Dec 20. Saturday has room.").
 
 ### 6.3 Changing today's list
 
-- **Swap one:** replaces a picked item with the next-best candidate, preferring the same pillar.
+- **Swap one:** replaces a picked item with the next-best candidate that fits what's left of the day and today's energy, preferring the same pillar. If nothing fits, the item stays. Items moved in from another day can't be swapped, and something swapped out isn't offered again that day.
 - **Lighter day:** sets energy to low and rebuilds the list.
 - **Pencil button:** opens a manual list of all candidates grouped by pillar, each with its reason line.
 - **Crowns:** you can crown up to 3 picks as today's priorities. This replaces the existing TOP3 tag; the crown icon and the "priorities done" highlight stay.
@@ -164,7 +168,7 @@ The list is built the first time the diary opens on a new day.
 It opens when the diary is first opened after 6 pm, and can be reached anytime from the to-do list.
 
 - Fixed blocks start ticked ("Ticked for you").
-- An unticked flexible item offers: Did some (half points), Move to ⟨next day with room⟩, Skip this week.
+- An unticked flexible item offers: Did some (half points), Move to ⟨next day with room⟩, Skip today. A skipped item can be ticked again if the skip was a mistake.
 - Anything still unresolved at midnight follows its "if a day goes sideways" answer automatically.
 - The day closes with the diary's highlights card: points today, how many pillars got something, and crowned items.
 
@@ -189,8 +193,12 @@ When a title appears inside a sentence, it's shown as a chip in its pillar's col
 | RECHARGE_HEAVY | Recharge on a heavy day | {h} hours of fixed blocks today. This counts too. |
 | RECHARGE_USUAL | Recharge otherwise | You usually take {n} breaks a week. |
 | BLOCK | Fixed block | {start} to {end} |
-| NO_FIT | Didn't fit today | Due by {date}. {weekday} has room. |
+| NO_FIT | Didn't fit today | Due by {date}. {weekday} has room. (Overdue: Overdue since {date}.) |
 | PILLAR_LIGHT | Pillar well under target (fallback) | {pillar} is light this week |
+| RHYTHM_FIRST | Every so often, never done yet | First one · you aim for every {interval} |
+| ADDED | Added by hand from the pencil | Added by you |
+
+Singular and edge forms: "last day" instead of "1 days left", "Last done yesterday", "Due yesterday", "Every day" when there's no streak yet, "You usually take one break a week.", and "Fixed block" when a block has no times. An unreadable stored reason renders as an empty line rather than an error.
 
 `TodayTask` stores the code and its arguments, so the line can be redrawn in any language later.
 
@@ -218,7 +226,7 @@ Each idea has:
 | `theme` | One of the theme ids | `family` |
 | `pillar` | HEALTH, WEALTH, LOVE, LIFE, or RECHARGE | `LOVE` |
 | `kind` | HABIT, FINISH_LINE, FIXED_BLOCK, EVERY_SO_OFTEN, RECHARGE | `EVERY_SO_OFTEN` |
-| `pace` | Shaped by kind, using the same names as `MissionFrequency` (section 10): `count` + `period` (+ `goalCount` for a gentle start), `intervalCount` + `intervalUnit`, or `weekDays` + `startTime` + `endTime` | `{ "intervalCount": 1, "intervalUnit": "MONTH" }` |
+| `pace` | Shaped by kind, using the same names as `Mission`'s pace fields (section 10): `count` + `period` (+ `goalCount` for a gentle start), `intervalCount` + `intervalUnit`, or `weekDays` + `startTime` + `endTime` | `{ "intervalCount": 1, "intervalUnit": "MONTH" }` |
 | `durationMinutes` | One of the step 5 choices | `20` |
 | `effort` | LIGHT, STEADY, DRAINING | `LIGHT` |
 | `weight` | 1–3, or 0 for recharge | `1` |
@@ -343,15 +351,13 @@ The database is Room, currently version 4. **Existing data is not kept:** the ne
 
 | Entity | Change |
 |---|---|
-| `Mission` | Add `kind`, `weight` (1–3), `durationMinutes`, `effort`, `ifMissed` (MOVE, SAME_DAY, SKIP), `pausedUntil` (nullable); `ideaId` comes with the ideas library in the next pass. Replace `importanceValue` and `importanceSet` with `weight` (LOW → 1, MEDIUM → 2, HIGH → 3). Drop `frequencySetValue` and `frequencySet` (the occasional/comfortable/rigorous slider). |
-| `MissionFrequency` | Normalize per kind: `count` + `period` (DAY, WEEK, MONTH) for habits, finish lines and recharge. `intervalCount` + `intervalUnit` (DAY, WEEK, MONTH) for every so often. `weekDays` + `startTime` + `endTime` for fixed blocks (on habits, `weekDays` alone holds optional preferred days). Add `goalCount` for gentle starts. `frequencyMode` (APPROX, CUSTOM), `customMonthlyDates`, `frequencySetName` and `isDailyHabit` are dropped. |
-| `Pillar` | Drop `pillarFrequency`, `pillarFrequencyPeriod`, `pillarFrequencyUnit` and `pillarRelativeImportance`; targets are computed. |
-| `TodayTask` | `taskStatus`: PLANNED, DONE, PARTIAL, MOVED, SKIPPED. Add `pointsEarned`, `movedFromDate`, `reasonCode`, `reasonArgs`, `isFixedBlock`. `taskPageTag` TOP3 stays as the crown. Drop the AG_RANDOM task type and `getNewMissionForDay`. |
+| `Mission` | One table holds everything: title, `pillar` (enum name, including RECHARGE), `kind`, `weight` (0–3), `durationMinutes`, `effort`, `ifMissed`, pace fields (`count` + `period`, `goalCount`, `intervalCount` + `intervalUnit`, `weekDays`, `startTime`, `endTime`), `startDate`, `endDate`, `pausedUntil`, `motivation`, `active`. The old `mission_frequency`, `pillar` and `mission_pillar_mapping` tables are gone; pillars are a fixed enum in code. `ideaId` comes with the ideas library. |
+| `TodayTask` | `state` (PLANNED, DONE, PARTIAL, MOVED, SKIPPED), `pointsEarned`, `isFixedBlock`, `crowned` (replaces the TOP3 tag), `movedFromDate`, `reasonCode`, `reasonArgs`, `sortOrder`. The reminder and sub-task tables are dropped. |
 | `Milestone` | Unchanged. |
-| New `DaySettings` | Free minutes per weekday, evening check time (default 18:00). |
-| New `DayPlan` | Date, free minutes, energy, built-at time. |
-| New `WeekSummary` | Week start; per-pillar earned and target points; balanced flag. |
-| New `PaceOffer` | Mission, offer type, week shown, response, snooze-until date. |
+| New `DaySettings` | Free minutes per weekday. The evening check time is a constant (18:00) for now. |
+| New `DayPlan` | Date, free minutes, energy, confirmed, fixed-blocks-ticked, and the day's didn't-fit pick. The row is written last, so a day exists only once its list is built. |
+| New `WeekSummary` | Added in plan 2 (week cycle): week start, per-pillar earned and target points, balanced flag. |
+| New `PaceOffer` | Added in plan 2: mission, offer type, week shown, response, snooze-until date. |
 
 ## 11. Build order
 
