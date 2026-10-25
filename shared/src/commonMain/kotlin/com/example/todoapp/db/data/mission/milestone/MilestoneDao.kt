@@ -1,6 +1,7 @@
 package com.example.todoapp.db.data.mission.milestone
 
 import androidx.room.Dao
+import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
@@ -28,6 +29,18 @@ interface MilestoneDao {
     @Query("SELECT * FROM milestone")
     suspend fun getAll(): List<Milestone>
 
+    @Query("SELECT * FROM milestone ORDER BY mile_mission_id, milestone_order")
+    fun observeAll(): Flow<List<Milestone>>
+
+    @Query("SELECT * FROM milestone WHERE mile_mission_id = :missionId ORDER BY milestone_order")
+    suspend fun getForMission(missionId: Long): List<Milestone>
+
+    @Insert
+    suspend fun insert(milestone: Milestone): Long
+
     @Update
     suspend fun updateMilestone(milestone: Milestone)
+
+    @Query("DELETE FROM milestone WHERE milestone_id = :milestoneId")
+    suspend fun delete(milestoneId: Long)
 }

@@ -20,6 +20,9 @@ interface PlanDao {
     @Query("SELECT * FROM day_settings ORDER BY settings_weekday")
     suspend fun getSettings(): List<DaySettings>
 
+    @Query("SELECT * FROM day_settings ORDER BY settings_weekday")
+    fun observeSettings(): Flow<List<DaySettings>>
+
     @Upsert
     suspend fun upsertSettings(settings: List<DaySettings>)
 }

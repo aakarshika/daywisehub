@@ -27,5 +27,7 @@ class TodayTaskRepository(private val database: AppDatabase) {
 
     suspend fun delete(taskId: Long) = todayTaskDao.delete(taskId)
 
+    suspend fun deletePlannedFrom(missionId: Long, from: LocalDate) = todayTaskDao.deletePlannedFrom(missionId, key(from))
+
     private fun key(date: LocalDate): String = MyDate.fromLocalDate(date).dateString
 }

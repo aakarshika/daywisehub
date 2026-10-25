@@ -19,5 +19,9 @@ class MilestoneRepository(private val database: AppDatabase) {
 
     suspend fun getAll(): List<Milestone> = milestoneDao.getAll()
 
+    fun observeAll(): Flow<List<Milestone>> = milestoneDao.observeAll()
+
+    suspend fun getForMission(missionId: Long): List<Milestone> = milestoneDao.getForMission(missionId)
+
     suspend fun updateMilestone(milestone: Milestone) = milestoneDao.updateMilestone(milestone)
 }

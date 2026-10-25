@@ -47,6 +47,8 @@ class PlanRepository(
 
     fun observePlan(date: LocalDate): Flow<DayPlan?> = planDao.observePlan(key(date))
 
+    fun observeSettings(): Flow<List<DaySettings>> = planDao.observeSettings()
+
     suspend fun ensureDefaults() {
         if (planDao.getSettings().isEmpty()) planDao.upsertSettings(DaySettings.defaults)
     }
@@ -151,6 +153,28 @@ class PlanRepository(
 
     suspend fun removeTask(taskId: Long) = write { todayTaskRepository.delete(taskId) }
 
+    /** Free minutes per weekday (ISO numbers). Days already planned keep theirs; today changes from the diary. */
+    suspend fun saveSettings(minutesByWeekday: Map<Int, Int>) = write {
+        planDao.upsertSettings(
+            (1..7).map { day ->
+                DaySettings(day, (minutesByWeekday[day] ?: DaySettings.defaultFor(day)).coerceIn(0, MAX_FREE_MINUTES))
+            }
+        )
+    }
+
+    /** After a mission is saved: re-picks today's open items, unless the day was confirmed with "Looks good". */
+    suspend fun refreshToday() = write { refreshTodayIfOpen() }
+
+    /**
+     * Archives a mission: it leaves the Missions screen and the planner, and its still-planned
+     * items from today on are removed. Then today is re-picked as in [refreshToday].
+     */
+    suspend fun archiveMission(missionId: Long) = write {
+        missionRepository.setInactive(missionId)
+        todayTaskRepository.deletePlannedFrom(missionId, today())
+        refreshTodayIfOpen()
+    }
+
     /** All writes: one at a time, finished even if the caller's screen goes away, and off the main thread. */
     private suspend fun write(block: suspend () -> Unit) = writeFor(block)
 
@@ -169,6 +193,13 @@ class PlanRepository(
             .filter { it.isFixedBlock && it.taskState == TaskState.PLANNED }
             .forEach { updateState(it, TaskState.DONE) }
         planDao.upsertPlan(plan.copy(fixedTicked = true))
+    }
+
+    /** Rebuilds today's open picks when today has a plan that isn't confirmed. Call only inside [write]. */
+    private suspend fun refreshTodayIfOpen() {
+        val date = today()
+        val plan = planDao.getPlan(key(date)) ?: return
+        if (!plan.confirmed) rebuild(date, plan)
     }
 
     private suspend fun currentPlan(date: LocalDate): DayPlan =
@@ -273,5 +304,7 @@ class PlanRepository(
     companion object {
         const val HISTORY_DAYS = 120
         const val MAX_CROWNS = 3
+        /** Same cap as the diary's "Your day" dialog. */
+        const val MAX_FREE_MINUTES = 16 * 60
     }
 }

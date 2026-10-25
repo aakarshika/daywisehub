@@ -21,6 +21,10 @@ interface TodayTaskDao {
     @Query("DELETE FROM today_task WHERE today_task_id = :taskId")
     suspend fun delete(taskId: Long)
 
+    /** A mission's still-planned items from [from] on. Dates are yyyy-MM-dd, so text order is date order. */
+    @Query("DELETE FROM today_task WHERE task_mission_id = :missionId AND task_date >= :from AND task_state = 'PLANNED'")
+    suspend fun deletePlannedFrom(missionId: Long, from: String)
+
     @Query("SELECT * FROM today_task WHERE today_task_id = :taskId")
     suspend fun get(taskId: Long): TodayTask?
 
