@@ -2,34 +2,104 @@ package com.example.todoapp.screen.diary
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.mission.milestone.Milestone
 import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.db.models.TaskStatus
+import com.example.todoapp.domain.Energy
+import com.example.todoapp.domain.TaskState
 import com.example.todoapp.repo.MilestoneRepository
+import com.example.todoapp.repo.MissionRepository
+import com.example.todoapp.repo.PlanRepository
+import com.example.todoapp.repo.TodayTaskRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalDateTime
 
 class DiaryViewModel(
+    missionRepository: MissionRepository,
+    todayTaskRepository: TodayTaskRepository,
+    private val planRepository: PlanRepository,
     private val milestoneRepository: MilestoneRepository,
     private val currentDate: LocalDate,
 ) : ViewModel() {
+
+    val isToday: Boolean = currentDate == MyDate.now().toLocalDate()
+
+    /** Past days, and today from 18:00, show the evening check. */
+    val isEvening: Boolean
+        get() {
+            val today = MyDate.now().toLocalDate()
+            if (currentDate < today) return true
+            if (currentDate > today) return false
+            return Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).hour >= EVENING_HOUR
+        }
+
+    val state: StateFlow<DiaryUiState?> = combine(
+        missionRepository.observeActive(),
+        todayTaskRepository.observeBetween(
+            currentDate.minus(PlanRepository.HISTORY_DAYS, DateTimeUnit.DAY),
+            currentDate.plus(7, DateTimeUnit.DAY),
+        ),
+        planRepository.observePlan(currentDate),
+    ) { missions, tasks, plan ->
+        DiaryStateBuilder.build(currentDate, missions, tasks, plan)
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val missions: StateFlow<List<Mission>> = missionRepository.observeActive()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val milestones: StateFlow<List<MilestoneWithDetails>> = milestoneRepository
         .observeInRange(MyDate.fromLocalDate(currentDate).subtractDays(7), MyDate.fromLocalDate(currentDate).addDays(7))
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    fun updateMilestoneStatus(milestone: Milestone, achieved: Boolean, completionDate: LocalDate) {
+    init {
         viewModelScope.launch {
-            val updated = if (achieved) {
-                milestone.copy(status = TaskStatus.COMPLETED.value, actualCompletionDate = MyDate.fromLocalDate(completionDate))
-            } else {
-                milestone.copy(status = TaskStatus.IN_PROGRESS.value, actualCompletionDate = null)
+            if (isToday) {
+                planRepository.ensurePlanned(currentDate)
+                if (isEvening) planRepository.tickFixedBlocks(currentDate)
             }
-            milestoneRepository.updateMilestone(updated)
         }
+    }
+
+    fun toggleDone(taskId: Long) = act { planRepository.toggleDone(taskId) }
+    fun didSome(taskId: Long) = act { planRepository.setState(taskId, TaskState.PARTIAL) }
+    fun moveTask(taskId: Long) = act { planRepository.moveToNextRoom(taskId) }
+    fun skipTask(taskId: Long) = act { planRepository.setState(taskId, TaskState.SKIPPED) }
+    fun toggleCrown(taskId: Long) = act { planRepository.toggleCrown(taskId) }
+    fun swap(taskId: Long) = act { planRepository.swap(taskId) }
+    fun removeTask(taskId: Long) = act { planRepository.removeTask(taskId) }
+    fun addMission(missionId: Long) = act { planRepository.addMission(currentDate, missionId) }
+    fun lighterDay() = act { planRepository.lighterDay(currentDate) }
+    fun changeDay(freeMinutes: Int, energy: Energy) = act { planRepository.changeDay(currentDate, freeMinutes, energy) }
+    fun confirm() = act { planRepository.confirm(currentDate) }
+
+    fun updateMilestoneStatus(milestone: Milestone, achieved: Boolean, completionDate: LocalDate) = act {
+        val updated = if (achieved) {
+            milestone.copy(status = TaskStatus.COMPLETED.value, actualCompletionDate = MyDate.fromLocalDate(completionDate))
+        } else {
+            milestone.copy(status = TaskStatus.IN_PROGRESS.value, actualCompletionDate = null)
+        }
+        milestoneRepository.updateMilestone(updated)
+    }
+
+    private fun act(block: suspend () -> Unit) {
+        viewModelScope.launch { block() }
+    }
+
+    companion object {
+        const val EVENING_HOUR = 18
     }
 }

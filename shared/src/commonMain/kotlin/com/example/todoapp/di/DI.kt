@@ -33,7 +33,7 @@ fun vmModule(): Module {
         // ViewModels
         single { InitViewModel(get(), get(), get(), get()) }
         single { CalDiaryViewModel() }
-        factory { (day: LocalDate) -> DiaryViewModel(get(), day) }
+        factory { (day: LocalDate) -> DiaryViewModel(get(), get(), get(), get(), day) }
         factory { (day: LocalDate) -> MoodViewModel(get()) }
         factory { (day: LocalDate) -> WaterIntakeViewModel(get()) }
     }
