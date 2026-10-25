@@ -19,6 +19,7 @@ import com.example.todoapp.domain.Reason
 import com.example.todoapp.domain.ReasonCode
 import com.example.todoapp.domain.TaskState
 import com.example.todoapp.domain.WeekMath
+import com.example.todoapp.domain.WeekSummaries
 import com.example.todoapp.domain.date
 import com.example.todoapp.domain.missionKind
 import com.example.todoapp.domain.taskState
@@ -40,6 +41,7 @@ class PlanRepository(
     private val missionRepository: MissionRepository,
     private val todayTaskRepository: TodayTaskRepository,
     private val milestoneRepository: MilestoneRepository,
+    private val weekRepository: WeekRepository,
 ) {
     private val planDao: PlanDao by lazy { database.getPlanDao() }
     private val mutex = Mutex()
@@ -211,6 +213,7 @@ class PlanRepository(
     private suspend fun closePastDays(today: LocalDate) {
         planDao.getUntickedBefore(key(today)).forEach { tickBlocks(MyDate(it.date).toLocalDate()) }
         resolveUnfinished(today)
+        closeWeeks(today)
     }
 
     /** Items still planned on earlier days follow "if a day goes sideways". Call only inside [write]. */
@@ -244,6 +247,28 @@ class PlanRepository(
         )
     }
 
+    /**
+     * Spec 5.1: every finished week since the first item gets a summary, once. Its points are what the
+     * week's tasks earned, after the ticks and skips above. Call only inside [write].
+     */
+    private suspend fun closeWeeks(today: LocalDate) {
+        val thisWeek = WeekMath.weekStart(today)
+        val lastWeek = thisWeek.minus(7, DateTimeUnit.DAY)
+        val first = todayTaskRepository.firstDate()?.let { WeekMath.weekStart(it) } ?: return
+        if (first > lastWeek) return
+        val stored = weekRepository.summaryWeeksFrom(first)
+        val missing = generateSequence(first) { it.plus(7, DateTimeUnit.DAY) }
+            .takeWhile { it <= lastWeek }
+            .filter { it !in stored }
+            .toList()
+        if (missing.isEmpty()) return
+        val missions = missionRepository.getActive()
+        val allMissions = missionRepository.getAll()
+        val from = missing.first().minus(HISTORY_DAYS, DateTimeUnit.DAY)
+        val history = History(todayTaskRepository.getBetween(from, today.plus(7, DateTimeUnit.DAY)))
+        missing.forEach { weekRepository.saveSummary(WeekSummaries.summarize(it, missions, allMissions, history)) }
+    }
+
     private suspend fun currentPlan(date: LocalDate): DayPlan =
         planDao.getPlan(key(date)) ?: DayPlan(date = key(date), freeMinutes = defaultFreeMinutes(date))
 
@@ -254,6 +279,19 @@ class PlanRepository(
         todayTaskRepository.update(
             task.copy(state = state.name, pointsEarned = Points.forTask(mission, state), crowned = task.crowned && state.isOpen)
         )
+        refreshClosedWeek(task.date)
+    }
+
+    /**
+     * A tick or untick on a day of a finished week updates that week's stored points, so the
+     * "Last week" card stays right. Its targets stay as they were at close-out. Call only inside [write].
+     */
+    private suspend fun refreshClosedWeek(date: LocalDate) {
+        val weekStart = WeekMath.weekStart(date)
+        if (weekStart >= WeekMath.weekStart(today())) return
+        val summary = weekRepository.getSummary(weekStart) ?: return
+        val tasks = todayTaskRepository.getBetween(weekStart, weekStart.plus(6, DateTimeUnit.DAY))
+        weekRepository.saveSummary(WeekSummaries.withEarned(summary, missionRepository.getAll(), tasks))
     }
 
     private suspend fun rebuild(date: LocalDate, plan: DayPlan) {

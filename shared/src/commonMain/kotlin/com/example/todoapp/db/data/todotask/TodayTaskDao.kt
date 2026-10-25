@@ -28,6 +28,10 @@ interface TodayTaskDao {
     @Query("SELECT * FROM today_task WHERE today_task_id = :taskId")
     suspend fun get(taskId: Long): TodayTask?
 
+    /** The earliest day with any item, or null on an empty install. */
+    @Query("SELECT MIN(task_date) FROM today_task")
+    suspend fun getFirstDate(): String?
+
     /** Items still planned on a day before [date], newest day first. */
     @Query("SELECT * FROM today_task WHERE task_date < :date AND task_state = 'PLANNED' ORDER BY task_date DESC, task_order")
     suspend fun getPlannedBefore(date: String): List<TodayTask>

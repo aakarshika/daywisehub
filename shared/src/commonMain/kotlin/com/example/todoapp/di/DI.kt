@@ -6,6 +6,7 @@ import com.example.todoapp.repo.PlanRepository
 import com.example.todoapp.repo.TodayMoodRepository
 import com.example.todoapp.repo.TodayTaskRepository
 import com.example.todoapp.repo.WaterIntakeRepository
+import com.example.todoapp.repo.WeekRepository
 import com.example.todoapp.screen.diary.DiaryViewModel
 import com.example.todoapp.screen.diary.diaryitem.components.diarymood.MoodViewModel
 import com.example.todoapp.screen.diary.diaryitem.components.waterintake.WaterIntakeViewModel
@@ -30,7 +31,8 @@ fun vmModule(): Module {
         single { TodayTaskRepository(get()) }
         single { TodayMoodRepository(get()) }
         single { WaterIntakeRepository(get()) }
-        single { PlanRepository(get(), get(), get(), get()) }
+        single { WeekRepository(get()) }
+        single { PlanRepository(get(), get(), get(), get(), get()) }
 
         // ViewModels
         single { InitViewModel(get(), get(), get(), get()) }

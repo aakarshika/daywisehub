@@ -21,6 +21,8 @@ class TodayTaskRepository(private val database: AppDatabase) {
 
     suspend fun getPlannedBefore(date: LocalDate): List<TodayTask> = todayTaskDao.getPlannedBefore(key(date))
 
+    suspend fun firstDate(): LocalDate? = todayTaskDao.getFirstDate()?.let { MyDate(it).toLocalDate() }
+
     suspend fun insert(task: TodayTask): Long = todayTaskDao.insert(task)
 
     suspend fun insertAll(tasks: List<TodayTask>) = todayTaskDao.insertAll(tasks)
