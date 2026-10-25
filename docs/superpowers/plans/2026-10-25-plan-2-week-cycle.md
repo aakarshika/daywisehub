@@ -116,22 +116,29 @@ The spec leaves these open. Each is easy to change later.
    - A finish line whose end comes before the month is up has no "Pause a month".
    - An answer the sticky doesn't offer does nothing, and so does any answer once the mission is archived.
    - A "yes" that no longer changes anything leaves the offer unanswered.
-10. **The "Last week" card** shows on the day that opens the week: Monday, or the first day the diary was opened that week. So a past Monday's page shows its own look back. It's hidden when last week had no target and no points.
-    - The points line caps each pillar at its target and shows the rest as "+N extra", because extra never fills another pillar (spec 5).
-    - "What the app adjusted" lists up to 3 things: items "move it" carried from last week into this week, and every-so-often missions due last week and not done. Otherwise it says "Nothing to catch up on."
+10. **The "Last week" card** shows on the day that opens the week: Monday, or the first day the diary was opened that week. So a past Monday's page shows its own look back. It's hidden when last week had no target and no points. After review, a day that was never opened and isn't Monday doesn't open the week, so the card isn't repeated on it.
+    - The points line caps each pillar at its target and shows the rest as "+N extra", because extra never fills another pillar (spec 5). When no pillar had a target it reads just "+N extra", not "0 of 0".
+    - "What the app adjusted" lists up to 3 things: items "move it" carried from last week into this week, and every-so-often missions due last week and not done. Otherwise it says "Nothing to catch up on." A move that landed after this week isn't counted.
+    - Both the adjusted lines and the strip's "A FRESH START" read today's missions, so they show only on today's page. An earlier day's card has just the points and pillars lines (changed after review).
     - The mockup's "Love was light, so ⟨Call sister⟩ is set for Tuesday" isn't used. It claims a reason the app doesn't have.
 11. **Look.** These follow the mockup:
     - An easing-off offer is a yellow sticky with the wand and "A SMALL CHANGE?".
     - A step-up is a blue sticky with the flag and "GOING WELL".
-    - Buttons are the existing peach `PlanButton` (44dp).
-    - Titles in these sentences sit on chips in their pillar's light color (spec 7.1). The words around a chip never depend on the title.
+    - Buttons are the existing peach `PlanButton` (at least 44dp tall, a button to a screen reader).
+    - Titles in these sentences sit on chips in their pillar's light color (spec 7.1). The words around a chip never depend on the title. After review each chip has a 1dp outline in the pillar's strong color, since a Life chip on the blue sticky had almost no contrast, and every line box is the same height so a chip on a one-line sentence isn't cramped (the same fix as Plan 3's tap-to-jump).
+    - After review, a sticky dims to 60% once answered and slides away, and a sticky's tilt follows its offer, so the one left doesn't jump. Each sticky reads as one group to a screen reader, with its header and "LAST WEEK" as headings.
 12. **The pencil** lists every live mission that isn't a fixed block and isn't on the day's list.
     - Groups follow the pillar order, Recharge last. Today's candidates come first in each group, with the reason the planner would give.
     - The rest say where they stand: "3 of 3 this week · 4 days left", "Last done 3 days ago · you aim for every 2 weeks", "Every day · 5-day streak", "You usually take 2 breaks a week."
-    - Paused and not-yet-started missions are now left out.
-13. **"Move to Thursday"** is worked out with the same `Moves` functions the move itself uses, so the chip and the result agree. From an earlier day's page it can read "Move to today".
+    - Paused and not-yet-started missions are now left out. The list ignores the day's free time, energy and swapped-out missions on purpose: it is for adding by hand.
+    - After review, when nothing can be added it says so without guessing why ("Nothing else to add. Fixed blocks, paused and not-yet-started missions aren't listed."), and the day's own list says "Tap the pencil to see what can be added". On another day the dialog reads "Add to this day". The pencil is a 44dp button, and a screen reader hears "Added" after a tap. If the list can't load, a notice says so.
+13. **"Move to Thursday"** is worked out with the same `Moves` functions the move itself uses, so the chip and the result agree. From an earlier day's page it can read "Move to today". After review:
+    - It reads "next Thursday" when the day is the same weekday as the page's day, a week on, so it isn't taken for the page's own day. The "Moved to" line reads the same way.
+    - When the mission is live on none of the next 7 days, a move would skip it, so the chip is left out. "Skip today" is still there.
+    - A page older than yesterday names no day: its planned items were settled long ago, and it reads only a week past itself.
+    - The days to move to are cut out of the task list once, and only when a planned flexible item needs them.
 14. **"Ticked for you"** shows on a done fixed block the evening check ticked (`TodayTask.autoTicked`). Any change by hand clears it, so a block unticked and ticked again by hand loses the label (changed after review: it read `plan.fixedTicked`, which a hand tick kept).
-15. **The evening check at 18:00.** While today's diary stays open, the view model looks at the clock every 30 seconds and opens the evening check once, at 18:00. It looks every 30 seconds rather than waiting until 18:00 because timers pause while a phone sleeps. If you tap "Back to the plan" after that, it stays closed. Swap mode closes when the evening check opens.
+15. **The evening check at 18:00.** While today's diary stays open, the view model looks at the clock every 30 seconds and opens the evening check once, at 18:00. It looks every 30 seconds rather than waiting until 18:00 because timers pause while a phone sleeps. If you tap "Back to the plan" after that, it stays closed. Swap mode and the "change" dialog close when the evening check opens. After review the last wait is cut short, so it opens at 18:00 rather than up to 30 seconds late. Closing the check and then switching tabs or turning the phone opens it again: a new screen starts in the evening.
 16. **A seed for trying offers.** `SampleData` stays off. Turned on, it now writes 3 gentle weeks of Guitar and a 21-day Gym streak. So the first open shows both kinds of offer, the same on any weekday.
 
 ## File map
@@ -3667,6 +3674,7 @@ with:
 ```markdown
 - Anything still unresolved at midnight follows its "if a day goes sideways" answer automatically. As built, this runs on the first open of a new day. "Move it" carries an item up to 6 days, only to a day the mission is live on, and only when the mission has nothing else coming; otherwise the item is skipped. Unticking an item on an earlier day marks it skipped. Ticking a moved item takes the move back while its copy is still planned. Adding an item on an earlier day adds it as done.
 - "Ticked for you" stays on a fixed block only until it's changed by hand.
+- The Move chip names the day it will use ("Move to Thursday", or "next Thursday" for the same weekday a week on). It is left out when the mission can't go anywhere in the coming week, and "Skip today" stays.
 ```
 
 
@@ -3747,7 +3755,7 @@ Tell the owner the build is ready and point them to the checklist below.
 - **Android:** Settings → System → Date & time → turn off "Set time automatically", then set the date (and the time for section H). Then swipe the app away and open it again. While it's open, the diary also moves to the new day within a minute, but reopening is quicker and certain.
 - **iOS simulator:** it follows the Mac's clock. Go to System Settings → General → Date & Time, turn off "Set time and date automatically", set the date, then relaunch the app.
 - **Only move forward.** Moving back leaves plans, moved items and week summaries dated "in the future", which then look odd. When you're done, clear the app's storage and turn automatic time back on.
-- **"Opens the week"** means Monday, or the first day of the week you open the diary on. The "Last week" card shows on that day's page, and the offers only on that day, while it's today.
+- **"Opens the week"** means Monday, or the first day of the week you open the diary on. The "Last week" card shows on that day's page, and the offers only on that day, while it's today. A day you never opened doesn't open the week, so the card isn't repeated there.
 
 ### A. The upgrade keeps your data
 1. Note a few missions and today's ticks, then install this build over the old one.
@@ -3776,7 +3784,7 @@ Do this on a Tuesday to Saturday, so tomorrow is in the same week.
 8. Leave a "Move it" item unticked, then move the date 8 days ahead. On its own day it reads "Skipped today". The new day's list has no "Moved from …" for it (6 days at most).
 9. Taking a move back. Leave two short "Move it" items unticked (so both fit today), move the date to tomorrow and reopen. Both are on today's list as "Moved from …". Tick one of the two copies today. Then on yesterday's page:
    - Tick the other moved item (its copy is still unticked). It ticks and earns its points, and its "Moved from …" copy leaves today's list.
-   - The moved item whose copy you ticked can't be ticked: its box is off, and it still reads "Moved to ‹today's weekday›".
+   - The moved item whose copy you ticked can't be ticked: its box is off, and it still reads "Moved to ‹today's weekday›". The other one's box is on, and a screen reader calls it "Take back the move of …".
    - Untick the one you took back: it reads "Skipped today", and no copy comes back.
 
 ### C. Monday: the Last week card
@@ -3792,9 +3800,10 @@ Do this on a Tuesday to Saturday, so tomorrow is in the same week.
    - Heart: "X of 4 pillars full". If every pillar reached 80%, a crown and "All 4 pillars full · a balanced week".
    - Wand: "⟨Learn guitar⟩ moved to Monday." and "⟨‹the every-week mission›⟩ is still due, so it moved into this week." Titles sit on chips in their pillar's color.
 4. Today's list has the carried item ("Moved from …"), and the every-week mission reads "Due N days ago".
-5. Move the date to Tuesday. Tuesday's page has no card; Monday's page (week strip) still shows it.
+5. Move the date to Tuesday. Tuesday's page has no card; Monday's page (week strip) still shows it, with the points and pillars lines only: no wand lines, and its strip reads "THIS WEEK", not "A FRESH START". Nor does a later day of that week you never opened.
 6. Go to last week's Friday and tick something you'd skipped, then back to Monday. The card's points went up; its targets didn't change.
 7. A week with nothing to report reads "Nothing to catch up on." A week you didn't open on Monday shows the card on the first day you did open.
+8. A week where no pillar had a target but you ticked something (an every-so-often mission added with the pencil) reads "+N extra" on the star line, not "0 of 0".
 
 ### D. Pace offers, quickly, with the seed
 1. In `db/SampleData.kt` set `SEED_SAMPLE_MISSIONS = true` (don't commit this), build, clear the app's storage, and open the app.
@@ -3835,25 +3844,32 @@ Do this on a Tuesday to Saturday, so tomorrow is in the same week.
 2. Fixed blocks, paused missions and anything already on today's list aren't listed.
 3. Tap a mission: it joins today's list as "Added by you" and leaves the dialog. Tapping twice fast adds it once. "Done" closes the dialog.
 4. On an empty install it says "No missions yet. Add some on the Missions tab."
-5. Go to an earlier day's page and add a mission with the pencil. It joins that day's list already ticked, as "Added by you", and earns its points. If that day was last week, Monday's Last week card counts the points too.
+5. Go to an earlier day's page and add a mission with the pencil. The dialog reads "Add to this day". The mission joins that day's list already ticked, as "Added by you", and earns its points. If that day was last week, Monday's Last week card counts the points too.
+6. With only fixed blocks, paused or not-yet-started missions, the dialog reads "Nothing else to add. Fixed blocks, paused and not-yet-started missions aren't listed." and the list behind it reads "Nothing picked yet. Tap the pencil to see what can be added." Add every other mission one by one: after the last, the dialog reads "Everything is already on today's list." ("this day's list" on another day).
+7. After a tap the dialog says "Added" (then "Added · 2 so far"), and a screen reader says it too. The pillar names are headings.
 
 ### G. +N extra
-Find a pillar whose bar reads 0/0 this week, for instance one whose only mission is every-so-often and not due. Add that mission with the pencil and tick it. The bar reads "2/0", with "+2 extra" under it in the pillar's ink. The other bars don't change.
+Find a pillar whose bar reads 0/0 this week, for instance one whose only mission is every-so-often and not due. Add that mission with the pencil and tick it. The bar reads "2/0", with "+2 extra" under it in the pillar's ink. The other bars don't change. Before that, a pillar with nothing due reads "0/0" with a full bar, not an empty one.
 
 ### H. The evening check
 1. Set the time to 17:59 on a weekday, open today's diary and leave it on screen. Tap "Swap one" so swap mode is on. Within a minute of 18:00 the list switches to the evening check by itself:
    - The label reads TODAY.
-   - Swap mode is off.
+   - Swap mode is off. The same goes for the "change" dialog if you had it open.
    - Fixed blocks are struck through and read "‹times› · ticked for you".
 2. Each unticked pick offers "Did some · +N", "Move to ‹tomorrow's weekday›" and "Skip today". Tap "Move to …": the row reads "Moved to ‹that same weekday›".
 3. In Missions → Free time, set tomorrow's weekday to 0 min and save. Back on the diary, the chip names the day after tomorrow.
 4. "Back to the plan" still switches back by hand, and it stays there after 18:00.
 5. Untick a block in the evening check, then open the next day. That block's day shows it as "Skipped today".
 6. Untick another block and tick it again by hand: it's done, and it no longer reads "ticked for you".
+7. The Move chip's day. In Missions → Free time set every weekday except today's to 0 min. The chip reads "Move to next ‹today's weekday›", and after tapping it the row reads "Moved to next ‹that weekday›". Put the free times back afterwards.
+8. A mission that can't move. Add a mission whose last day is today (an end date of today) to today's list. In the evening check it offers "Did some" and "Skip today" only, with no Move chip.
+9. Close the evening check with "Back to the plan", then switch tabs and come back: it shows the evening check again. This is known (see the follow-ups at the end).
 
 ### I. Look and feel
-- The stickies tilt and have a soft shadow. All their buttons are at least 44dp tall and peach (filled or outlined).
-- The chips' text is readable on every pillar color.
+- The stickies tilt and have a soft shadow. All their buttons are at least 44dp tall and peach (filled or outlined). Answer one of two: it dims, then slides away, and the other keeps its tilt.
+- The chips' text is readable on every pillar color. Each chip has a thin outline in its pillar's color, and a chip on a one-line sentence has room above and below its text.
+- The pencil is easy to hit, and a screen reader calls it "Add to today" ("Add to this day" on another day).
+- With TalkBack or VoiceOver, a sticky reads as one group, and "LAST WEEK" and the sticky headers are headings.
 - The dialog's "Done" is dark peach.
 - Nothing in the new copy uses "missed", "failed", "lagging" or an exclamation mark.
 
@@ -3880,3 +3896,7 @@ Find a pillar whose bar reads 0/0 this week, for instance one whose only mission
   - The Missions tab doesn't show offers.
   - Installing an older build wipes the data (`fallbackToDestructiveMigrationOnDowngrade`).
   - Earlier days' skipped items read "Skipped today"; "Skipped" would read better there.
+  - Easing-off stickies have no "Not now". One that's ignored lapses, and can come back next Monday.
+  - If you close the evening check and then switch tabs or turn the phone, it opens again, because the new screen starts in the evening.
+  - "Moved to" in the Last week card's adjusted lines includes moves tapped in the evening check.
+  - A page older than yesterday doesn't name where "Move it" would go. Its "Moved to" line reads "another day" if the copy landed more than a week after that page's day.
