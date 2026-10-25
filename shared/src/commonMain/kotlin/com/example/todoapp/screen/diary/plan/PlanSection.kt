@@ -1,0 +1,221 @@
+package com.example.todoapp.screen.diary.plan
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.todoapp.domain.Energy
+import com.example.todoapp.domain.TaskState
+import com.example.todoapp.domain.minutesLabel
+import com.example.todoapp.screen.basicutils.Blue80
+import com.example.todoapp.screen.basicutils.ChipBorder
+import com.example.todoapp.screen.basicutils.CrownGold
+import com.example.todoapp.screen.basicutils.InkBlack
+import com.example.todoapp.screen.basicutils.InkGray
+import com.example.todoapp.screen.basicutils.LineBlueBorder
+import com.example.todoapp.screen.basicutils.Orange180
+import com.example.todoapp.screen.basicutils.Orange80
+import com.example.todoapp.screen.basicutils.PeachText
+import com.example.todoapp.screen.basicutils.pillarInk
+import com.example.todoapp.screen.basicutils.pillarLight
+import com.example.todoapp.screen.basicutils.pillarStrong
+import com.example.todoapp.screen.diary.DiaryUiState
+import com.example.todoapp.screen.diary.PlanRow
+import org.jetbrains.compose.resources.painterResource
+import todoapp.shared.generated.resources.Res
+import todoapp.shared.generated.resources.check_square
+import todoapp.shared.generated.resources.crown_a
+import todoapp.shared.generated.resources.square_b
+
+class PlanRowActions(
+    val onToggle: (Long) -> Unit,
+    val onCrown: (Long) -> Unit,
+    val onSwap: (Long) -> Unit,
+    val onRemove: (Long) -> Unit,
+    val onDidSome: (Long) -> Unit,
+    val onMove: (Long) -> Unit,
+    val onSkip: (Long) -> Unit,
+)
+
+/** "Picked for you · 2 h 15 min of your 2½ h free" and a link to change the day. */
+@Composable
+fun PlanSubline(state: DiaryUiState, onChange: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        val energy = if (state.energy == Energy.LOW) " · low energy" else ""
+        Text(
+            "Picked for you · ${minutesLabel(state.plannedMinutes)} of your ${minutesLabel(state.freeMinutes)} free$energy",
+            fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray, textAlign = TextAlign.Center
+        )
+        Text(
+            "change",
+            fontSize = 13.sp, fontStyle = FontStyle.Italic, color = PeachText,
+            textDecoration = TextDecoration.Underline,
+            modifier = Modifier.clickable { onChange() }.padding(horizontal = 12.dp, vertical = 6.dp)
+        )
+    }
+}
+
+@Composable
+fun PlanSection(state: DiaryUiState, evening: Boolean, editMode: Boolean, actions: PlanRowActions) {
+    Column(
+        modifier = Modifier.fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .border(1.dp, LineBlueBorder, RoundedCornerShape(8.dp))
+            .padding(start = 14.dp, end = 14.dp, top = 2.dp, bottom = 10.dp)
+    ) {
+        if (state.fixed.isNotEmpty()) {
+            GroupLabel("ALREADY IN YOUR DAY")
+            state.fixed.forEach { PlanRowItem(it, evening, editMode, actions) }
+        }
+        GroupLabel(if (evening) "TODAY" else "PICKED FOR TODAY")
+        if (state.picks.isEmpty()) {
+            Text(
+                "Nothing picked yet. Tap the pencil to add something.",
+                fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray,
+                modifier = Modifier.padding(vertical = 10.dp)
+            )
+        }
+        state.picks.forEach { PlanRowItem(it, evening, editMode, actions) }
+        if (!evening) {
+            Text(
+                "Hold a title to crown it.",
+                fontSize = 11.sp, color = InkGray, modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun GroupLabel(text: String) {
+    Text(text, fontSize = 11.sp, letterSpacing = 1.2.sp, color = InkGray, modifier = Modifier.padding(top = 12.dp, bottom = 2.dp))
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actions: PlanRowActions) {
+    val done = row.state.countsAsDone
+    val closed = !row.state.isOpen
+    val strong = pillarStrong(row.pillar)
+    Row(
+        modifier = Modifier.fillMaxWidth()
+            .drawBehind {
+                drawLine(Blue80, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 1.dp.toPx())
+            }
+            .padding(vertical = 9.dp, horizontal = 4.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Box(modifier = Modifier.size(width = 36.dp, height = 30.dp)) {
+            Image(
+                painter = painterResource(if (done) Res.drawable.check_square else Res.drawable.square_b),
+                contentDescription = if (done) "Untick ${row.title}" else "Tick ${row.title}",
+                colorFilter = ColorFilter.tint(strong),
+                modifier = Modifier.align(Alignment.CenterStart).size(24.dp)
+                    .clickable(enabled = !closed) { actions.onToggle(row.taskId) }
+            )
+            if (row.crowned) {
+                Image(
+                    painter = painterResource(Res.drawable.crown_a),
+                    contentDescription = "Crowned",
+                    colorFilter = ColorFilter.tint(CrownGold),
+                    modifier = Modifier.align(Alignment.TopEnd).size(width = 18.dp, height = 14.dp)
+                )
+            }
+        }
+        Column(
+            modifier = Modifier.weight(1f)
+                .pointerInput(row.taskId) { detectTapGestures(onLongPress = { actions.onCrown(row.taskId) }) }
+        ) {
+            Text(
+                row.title,
+                fontSize = 20.sp, fontStyle = FontStyle.Italic, fontWeight = FontWeight.Light, letterSpacing = 0.6.sp,
+                color = if (closed) InkGray else InkBlack,
+                modifier = Modifier.drawWithContent {
+                    drawContent()
+                    if (done) {
+                        val y = size.height * 0.58f
+                        drawLine(strong, Offset(0f, y), Offset(size.width, y), strokeWidth = 3.dp.toPx())
+                    }
+                }
+            )
+            Text(subline(row), fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray, lineHeight = 17.sp)
+            if (evening && row.state == TaskState.PLANNED && !row.isFixedBlock) {
+                FlowRow(modifier = Modifier.padding(top = 4.dp)) {
+                    val half = (row.points + 1) / 2
+                    SmallChip(if (row.pillar.scored) "Did some · +$half" else "Did some") { actions.onDidSome(row.taskId) }
+                    SmallChip("Move it") { actions.onMove(row.taskId) }
+                    SmallChip("Skip this week") { actions.onSkip(row.taskId) }
+                }
+            }
+            if (editMode && row.state == TaskState.PLANNED && !row.isFixedBlock) {
+                Row(modifier = Modifier.padding(top = 4.dp)) {
+                    SmallChip("Swap") { actions.onSwap(row.taskId) }
+                    SmallChip("Remove") { actions.onRemove(row.taskId) }
+                }
+            }
+        }
+        Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(start = 8.dp, top = 3.dp)) {
+            Text(minutesLabel(row.minutes), fontSize = 11.sp, color = InkGray)
+            Spacer(Modifier.height(5.dp))
+            Text(
+                if (row.pillar.scored) "+${row.points}" else "recharge",
+                fontSize = 12.sp, fontWeight = FontWeight.Medium, color = pillarInk(row.pillar),
+                modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(pillarLight(row.pillar))
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
+            )
+        }
+    }
+}
+
+private fun subline(row: PlanRow): String = when (row.state) {
+    TaskState.MOVED -> "Moved to ${row.movedTo ?: "another day"}"
+    TaskState.SKIPPED -> "Skipped this week"
+    else -> row.reason
+}
+
+/** Small rounded choice used for evening options, swap mode and the energy picker. */
+@Composable
+fun SmallChip(text: String, selected: Boolean = false, onClick: () -> Unit) {
+    Text(
+        text,
+        fontSize = 13.sp,
+        color = Color(0xFF4A4A4A),
+        modifier = Modifier.padding(top = 6.dp, end = 6.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .border(1.dp, if (selected) Orange180 else ChipBorder, RoundedCornerShape(16.dp))
+            .background(if (selected) Orange80 else Color.Transparent)
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp, vertical = 7.dp)
+    )
+}
