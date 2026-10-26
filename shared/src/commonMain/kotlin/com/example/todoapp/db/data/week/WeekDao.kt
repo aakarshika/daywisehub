@@ -4,8 +4,10 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import androidx.room.Upsert
+import com.example.todoapp.db.data.mission.Mission
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -37,6 +39,24 @@ interface WeekDao {
 
     @Update
     suspend fun updateOffer(offer: PaceOffer)
+
+    /** Upsert, not REPLACE, as in MissionDao: REPLACE would delete the row and cascade-delete its tasks. */
+    @Upsert
+    suspend fun upsertMission(mission: Mission)
+
+    @Query("DELETE FROM today_task WHERE task_mission_id = :missionId AND task_date >= :from AND task_state = 'PLANNED'")
+    suspend fun deletePlannedFrom(missionId: Long, from: String)
+
+    /**
+     * An answer that changes its mission: the offer's answer and the changed mission are saved, and for a
+     * pause the mission's still-planned items from [pausedFrom] on go, all or none.
+     */
+    @Transaction
+    suspend fun answerOffer(offer: PaceOffer, mission: Mission, pausedFrom: String?) {
+        updateOffer(offer)
+        upsertMission(mission)
+        if (pausedFrom != null) deletePlannedFrom(mission.missionId, pausedFrom)
+    }
 
     @Query("SELECT * FROM pace_offer WHERE offer_id = :offerId")
     suspend fun getOffer(offerId: Long): PaceOffer?

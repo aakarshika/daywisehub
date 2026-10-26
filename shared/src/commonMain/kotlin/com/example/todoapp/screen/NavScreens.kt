@@ -11,12 +11,17 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.viewModelScope
 import com.example.todoapp.app.MyScreen
 import com.example.todoapp.di.KoinF
@@ -54,7 +59,12 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
         backStackEntry?.route?.route ?: MyScreen.Diary.name
     )
 
+    // Timers pause in the background, so the day is looked at again as soon as the app is back in front.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { calDateViewModel.checkDate() }
+
     fun navigateTab(screen: MyScreen) {
+        // A tab opens on the current day, without waiting for the next timed check.
+        calDateViewModel.checkDate()
         navigator.navigate(
             screen.name,
             NavOptions(
@@ -97,7 +107,9 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                 initialRoute = MyScreen.Diary.name
             ) {
                 scene(route = MyScreen.Missions.name) {
-                    val missionsViewModel = remember { KoinF.di!!.get<MissionsViewModel>() }
+                    // A new one after midnight, so its "today" follows the date, as the Metrics tab's does.
+                    var missionsDay by remember { mutableStateOf(today) }
+                    val missionsViewModel = remember(missionsDay) { KoinF.di!!.get<MissionsViewModel>() }
                     DisposableEffect(missionsViewModel) {
                         onDispose { missionsViewModel.viewModelScope.cancel() }
                     }
@@ -105,6 +117,9 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                     val missionsList = rememberLazyListState()
                     val editor by missionsViewModel.editor.collectAsState()
                     val target = editor
+                    // The open editor lives in the view model, so a new day waits for it to close rather than
+                    // dropping a draft. Each opening makes a fresh editor, which reads the date then.
+                    LaunchedEffect(today, target) { if (target == null) missionsDay = today }
                     if (target == null) {
                         MissionsScreen(missionsViewModel, missionsList)
                     } else {

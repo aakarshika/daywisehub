@@ -44,7 +44,6 @@ import com.kizitonwose.calendar.core.YearMonth
 import com.kizitonwose.calendar.core.atEndOfMonth
 import com.kizitonwose.calendar.core.atStartOfMonth
 import com.kizitonwose.calendar.core.daysOfWeek
-import com.kizitonwose.calendar.core.firstDayOfWeekFromLocale
 import com.kizitonwose.calendar.core.minusYears
 import com.kizitonwose.calendar.core.plusYears
 import kotlinx.datetime.DayOfWeek
@@ -91,7 +90,8 @@ private fun CalendarArea(
     val currentMonth = remember { YearMonth.now() }
     val startMonth = remember { currentMonth.minusYears(3) }
     val endMonth = remember { currentMonth.plusYears(3) }
-    val firstDayOfWeek = remember { firstDayOfWeekFromLocale() }
+    // Weeks start on Monday everywhere in the app, as in the week row below and the Metrics calendar.
+    val firstDayOfWeek = DayOfWeek.MONDAY
     val daysOfWeekList = daysOfWeek(firstDayOfWeek = DayOfWeek.MONDAY)
 
     var visibleMonthFirst by remember { mutableStateOf(LocalDate(selectedDate.year, selectedDate.month, 1)) }

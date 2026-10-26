@@ -71,10 +71,13 @@ class PlanRepository(
      * Safe on every open: closing only touches what's still open, and a built day isn't rebuilt.
      */
     suspend fun ensurePlanned(date: LocalDate) = write {
+        val today = today()
         // Closes against today at the latest, never a day still to come.
-        closePastDays(minOf(date, today()))
+        closePastDays(minOf(date, today))
+        // A diary opened just before midnight asks for a day that's over by now; it isn't planned.
+        if (date < today) return@write
         if (planDao.getPlan(key(date)) != null) return@write
-        // fill() writes the plan row last, so a build cut short is simply redone next time.
+        // fill() writes the picks and the plan row in one transaction, so a build cut short is simply redone next time.
         fill(date, DayPlan(date = key(date), freeMinutes = defaultFreeMinutes(date)))
     }
 
@@ -163,8 +166,8 @@ class PlanRepository(
         val withoutIt = full.copy(todayTasks = full.todayTasks.filter { it.todayTaskId != taskId })
         val excluded = swappedOut[date].orEmpty() + task.missionId
         val next = Planner.nextCandidate(withoutIt, swappedOut = mission, exclude = excluded) ?: return@writeFor false
-        todayTaskRepository.delete(taskId)
-        todayTaskRepository.insert(newTask(next.mission, date, next.reason, fixed = false, order = task.sortOrder))
+        // One transaction, so the item never goes without its replacement.
+        todayTaskRepository.replace(taskId, newTask(next.mission, date, next.reason, fixed = false, order = task.sortOrder))
         // Only a real swap keeps the mission out for the rest of the day.
         swappedOut.getOrPut(date) { mutableSetOf() }.add(task.missionId)
         true
@@ -243,11 +246,14 @@ class PlanRepository(
         }
         val week = MyDate(offer.week).toLocalDate()
         val snoozeUntil = if (response == OfferResponse.NOT_YET) week.plus(PaceOffers.SNOOZE_WEEKS * 7, DateTimeUnit.DAY) else null
-        weekRepository.updateOffer(offer.copy(response = response.name, snoozeUntil = snoozeUntil?.let { key(it) }))
-        if (changed == null) return@write
-        missionRepository.save(changed)
-        // A paused mission leaves today's list and anything moved ahead, as when it's archived.
-        if (response == OfferResponse.PAUSED) todayTaskRepository.deletePlannedFrom(changed.missionId, today)
+        val answered = offer.copy(response = response.name, snoozeUntil = snoozeUntil?.let { key(it) })
+        if (changed == null) {
+            weekRepository.updateOffer(answered)
+            return@write
+        }
+        // One transaction, so the answer is never kept without its change, nor the change without its answer.
+        // A paused mission also leaves today's list and anything moved ahead, as when it's archived.
+        weekRepository.answerOffer(answered, changed, pausedFrom = if (response == OfferResponse.PAUSED) today else null)
         // As in archiveMission: a failed re-pick doesn't undo the answer.
         runCatching { refreshTodayIfOpen() }
     }
@@ -281,10 +287,7 @@ class PlanRepository(
         val date = today()
         val plan = planDao.getPlan(key(date)) ?: return
         if (plan.confirmed) return
-        todayTaskRepository.getBetween(date, date)
-            .filter { it.isFixedBlock && it.taskState == TaskState.PLANNED }
-            .forEach { todayTaskRepository.delete(it.todayTaskId) }
-        rebuild(date, plan)
+        rebuild(date, plan, withBlocks = true)
     }
 
     /**
@@ -424,36 +427,47 @@ class PlanRepository(
         weekRepository.saveSummary(WeekSummaries.withEarned(summary, missionRepository.getAll(), tasks))
     }
 
-    private suspend fun rebuild(date: LocalDate, plan: DayPlan) {
-        todayTaskRepository.getBetween(date, date)
-            .filter {
-                it.taskState == TaskState.PLANNED && !it.isFixedBlock && !it.crowned &&
-                    it.movedFromDate == null && it.reasonCode != ReasonCode.ADDED.name
+    /**
+     * Re-picks [date]'s still-planned picks that aren't crowned, moved in or added by hand, and its
+     * still-planned fixed blocks too when [withBlocks]. Call only inside [write].
+     */
+    private suspend fun rebuild(date: LocalDate, plan: DayPlan, withBlocks: Boolean = false) {
+        val removed = todayTaskRepository.getBetween(date, date)
+            .filter { task ->
+                val planned = task.taskState == TaskState.PLANNED
+                if (task.isFixedBlock) planned && withBlocks
+                else planned && !task.crowned && task.movedFromDate == null && task.reasonCode != ReasonCode.ADDED.name
             }
-            .forEach { todayTaskRepository.delete(it.todayTaskId) }
-        fill(date, plan)
+            .mapTo(mutableSetOf()) { it.todayTaskId }
+        fill(date, plan, removed)
     }
 
-    private suspend fun fill(date: LocalDate, plan: DayPlan) {
-        val input = input(date, plan)
+    /**
+     * Plans [date] as if the items in [removed] were already gone. The picks are worked out first; then
+     * [removed] go, the picks come in and the plan row is saved, in one transaction, so a day is never
+     * left half planned. Call only inside [write].
+     */
+    private suspend fun fill(date: LocalDate, plan: DayPlan, removed: Set<Long> = emptySet()) {
+        val input = input(date, plan, without = removed)
         // A mission swapped out today stays out of the new picks, but still counts for budget and pillar gaps.
         val result = Planner.plan(input, exclude = swappedOut[date].orEmpty())
         val firstOrder = (input.todayTasks.maxOfOrNull { it.sortOrder } ?: -1) + 1
-        todayTaskRepository.insertAll(
-            result.picks.mapIndexed { i, pick -> newTask(pick.mission, date, pick.reason, pick.isFixedBlock, firstOrder + i) }
-        )
-        planDao.upsertPlan(
-            plan.copy(
+        planDao.savePicks(
+            removed = removed.toList(),
+            picks = result.picks.mapIndexed { i, pick -> newTask(pick.mission, date, pick.reason, pick.isFixedBlock, firstOrder + i) },
+            plan = plan.copy(
                 didntFitMissionId = result.didntFit?.missionId,
                 didntFitDue = result.didntFit?.due?.let { key(it) },
                 didntFitRoomDay = result.didntFit?.roomDay?.let { key(it) },
-            )
+            ),
         )
     }
 
-    private suspend fun input(date: LocalDate, plan: DayPlan): PlanInput {
+    /** What the planner reads for [date], leaving out the items in [without] (ones about to be re-picked). */
+    private suspend fun input(date: LocalDate, plan: DayPlan, without: Set<Long> = emptySet()): PlanInput {
         val missions = missionRepository.getActive()
         val tasks = todayTaskRepository.getBetween(date.minus(HISTORY_DAYS, DateTimeUnit.DAY), date.plus(7, DateTimeUnit.DAY))
+            .filter { it.todayTaskId !in without }
         val room = roomByDay(date, missions, tasks)
         return PlanInput(
             date = date,

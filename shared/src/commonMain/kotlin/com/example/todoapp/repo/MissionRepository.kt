@@ -43,41 +43,43 @@ class MissionRepository(private val database: AppDatabase) {
      * Saves a mission from the editor with its milestones, their due dates spread evenly up to the
      * mission's end date. Saved milestones left out of [milestones] are deleted; a kept one keeps its
      * done state and progress, and a done one keeps its due date. Pass an empty list for anything
-     * but a finish line. Returns the mission's id.
+     * but a finish line. The changes are worked out first, then written in one transaction, so a save
+     * is never half done. Returns the mission's id.
      */
     suspend fun saveWithMilestones(mission: Mission, milestones: List<MilestoneDraft>): Long = write {
-        val id = save(mission)
-        val existing = milestoneDao.getForMission(id)
+        // A new mission (id 0) has none saved yet.
+        val existing = if (mission.missionId == 0L) emptyList() else milestoneDao.getForMission(mission.missionId)
         val kept = milestones.map { it.copy(text = it.text.trim()) }.filter { it.text.isNotEmpty() }
         val keptIds = kept.map { it.milestoneId }.filter { it != 0L }.toSet()
-        existing.filter { it.milestoneId !in keptIds }.forEach { milestoneDao.delete(it.milestoneId) }
         val dates = MissionDrafts.milestoneDates(mission.startDate.toLocalDate(), mission.endDate?.toLocalDate(), kept.size)
+        val updated = mutableListOf<Milestone>()
+        val added = mutableListOf<Milestone>()
         kept.forEachIndexed { order, draft ->
             val due = MyDate.fromLocalDate(dates[order])
             val old = existing.firstOrNull { draft.milestoneId != 0L && it.milestoneId == draft.milestoneId }
             if (old != null) {
                 val keptDue = if (old.status == TaskStatus.COMPLETED.value) old.expectedCompletionDate else due
-                milestoneDao.updateDetails(old.milestoneId, draft.text, order, keptDue)
+                updated += old.copy(text = draft.text, milestoneOrder = order, expectedCompletionDate = keptDue)
             } else {
-                milestoneDao.insert(
-                    Milestone(
-                        missionId = id,
-                        text = draft.text,
-                        priority = "NORMAL",
-                        expectedCompletionDate = due,
-                        milestoneOrder = order,
-                        status = TaskStatus.IN_PROGRESS.value,
-                        progressValue = 0f,
-                        progressUnit = 0f,
-                        progressText = "",
-                        mileStartDate = mission.startDate,
-                        actualCompletionDate = null,
-                        completionTaskId = null,
-                    )
+                added += Milestone(
+                    // The transaction sets the saved mission's id, which a new mission doesn't have yet.
+                    missionId = mission.missionId,
+                    text = draft.text,
+                    priority = "NORMAL",
+                    expectedCompletionDate = due,
+                    milestoneOrder = order,
+                    status = TaskStatus.IN_PROGRESS.value,
+                    progressValue = 0f,
+                    progressUnit = 0f,
+                    progressText = "",
+                    mileStartDate = mission.startDate,
+                    actualCompletionDate = null,
+                    completionTaskId = null,
                 )
             }
         }
-        id
+        val deleted = existing.map { it.milestoneId }.filter { it !in keptIds }
+        milestoneDao.saveWithMilestones(mission, deleted, updated, added)
     }
 
     /** Archives a mission in one statement. Doesn't lock: PlanRepository.archiveMission calls it inside its own write. */

@@ -36,6 +36,13 @@ interface TodayTaskDao {
         delete(copyId)
     }
 
+    /** A swap: the item [oldId] goes and [task] comes in its place, both or neither. */
+    @Transaction
+    suspend fun replace(oldId: Long, task: TodayTask) {
+        delete(oldId)
+        insert(task)
+    }
+
     /** A mission's still-planned items from [from] on. Dates are yyyy-MM-dd, so text order is date order. */
     @Query("DELETE FROM today_task WHERE task_mission_id = :missionId AND task_date >= :from AND task_state = 'PLANNED'")
     suspend fun deletePlannedFrom(missionId: Long, from: String)

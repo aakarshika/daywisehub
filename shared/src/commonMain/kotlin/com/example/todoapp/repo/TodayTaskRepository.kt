@@ -37,6 +37,9 @@ class TodayTaskRepository(private val database: AppDatabase) {
     /** One transaction: [done] is saved and the copy [copyId] goes. */
     suspend fun takeBack(done: TodayTask, copyId: Long) = todayTaskDao.takeBack(done, copyId)
 
+    /** One transaction: the item [oldId] goes and [task] goes in. */
+    suspend fun replace(oldId: Long, task: TodayTask) = todayTaskDao.replace(oldId, task)
+
     suspend fun deletePlannedFrom(missionId: Long, from: LocalDate) = todayTaskDao.deletePlannedFrom(missionId, key(from))
 
     private fun key(date: LocalDate): String = MyDate.fromLocalDate(date).dateString

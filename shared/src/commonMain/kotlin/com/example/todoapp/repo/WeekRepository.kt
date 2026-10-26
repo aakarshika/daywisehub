@@ -1,6 +1,7 @@
 package com.example.todoapp.repo
 
 import com.example.todoapp.db.AppDatabase
+import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.week.PaceOffer
 import com.example.todoapp.db.data.week.WeekDao
 import com.example.todoapp.db.data.week.WeekSummary
@@ -42,6 +43,10 @@ class WeekRepository(private val database: AppDatabase) {
     suspend fun insertOffers(offers: List<PaceOffer>) = weekDao.insertOffers(offers)
 
     suspend fun updateOffer(offer: PaceOffer) = weekDao.updateOffer(offer)
+
+    /** One transaction: [offer]'s answer, the [mission] it changed, and for a pause its planned items from [pausedFrom] on go. */
+    suspend fun answerOffer(offer: PaceOffer, mission: Mission, pausedFrom: LocalDate?) =
+        weekDao.answerOffer(offer, mission, pausedFrom?.let { key(it) })
 
     private fun key(date: LocalDate): String = MyDate.fromLocalDate(date).dateString
 }
