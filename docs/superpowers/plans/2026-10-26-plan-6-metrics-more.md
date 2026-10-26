@@ -67,10 +67,10 @@ Paths under `shared/src/commonMain/kotlin/com/example/todoapp/`.
    - **Folding.** The tab shows the first 4 lines and a "More patterns" chip that shows the rest ("Fewer patterns" folds them again). The weekday line no longer keeps a reserved slot, since nothing is dropped.
 7. **The All months filter.** `CalendarFilter(pillars, missionIds)`. An item counts when its mission's pillar is picked or its mission is picked; both empty means the filter is off.
    - **With a filter on,** a day's ring is sized by items: one slice per counted item done or done in part, in its pillar's strong color (Recharge too), with white for counted items that didn't happen (skipped, or left planned on an earlier day). There's no closing, no badges and no crown.
-   - **The summary** covers every month shown: "⟨A⟩ and ⟨B⟩: done 23 times, 4 in part". It names one or two missions on chips; with three or more it says "3 missions". Pillars picked alone name themselves on chips. With both picked, the missions and pillars are each named or counted ("⟨Health⟩ and 2 missions: …"). With nothing done: "⟨A⟩: nothing done yet".
+   - **The summary** covers every month shown, away weeks left out: "⟨A⟩ and ⟨B⟩: done 23 times, 4 in part". Every pick is named on a chip while that makes two chips at most. Otherwise 3 or more pillars are counted ("3 pillars"), missions beside a picked pillar are counted ("⟨Health⟩ and 2 missions: …"), and missions alone are named up to 2. With nothing done: "⟨A⟩: nothing done yet". With no filter: "Everything counts." It and the caption are the list's first items, so they sit just under this month; only the back arrow and the chips are pinned.
 8. **All months data.**
    - **Reads.** Tasks and plans from the first stored day's month grid, less `HISTORY_DAYS` (for due dates and badges), to the end of this week.
-   - **Months.** From the first stored day's month to this month, built once per change on `Dispatchers.Default` and listed newest first in a `reverseLayout` list, so it opens on this month at the bottom. There's bottom padding for the tab bar.
+   - **Months.** From the first stored day's month to this month, built once per change on `Dispatchers.Default` and listed newest first in a `reverseLayout` list, so it opens on this month at the bottom. The tab bar is the Scaffold's own bar, outside the content, so the list needs only a small bottom padding. The unfiltered months, the indexes and the badge book are built per data change; a filter toggle only reruns the filtered grid.
    - **Badges.** One badge book covers the whole span.
    - **Lifetime.** The view model is made when the screen opens and cancelled when it closes, as the Metrics one is.
 9. **Back** uses precompose's `BackHandler`, as the mission editor does. "Open this day" and a day tap with a filter on both go to the diary, which leaves Metrics and so closes the overlay.
@@ -139,15 +139,16 @@ Each task ends with `:androidApp:assembleDebug` and `:shared:compileKotlinIosSim
 ### B. Stickers
 1. A past day with an earned badge shows one 26dp sticker in the middle of its ring, and no number. The ring shows around it.
 2. A quiet day ("Recharging day") shows its number, with a small moon sticker on the lower right.
-3. Today and later days show their numbers. Today keeps its outline.
-4. Screen reader: a day still reads its date, points and badges.
+3. Later days show their numbers. Today shows its number until it earns a badge, then wears the sticker. Its outline stays either way.
+4. Days from the month before or after keep their faded number; any badge is a small faded sticker in the corner.
+5. Screen reader: a day still reads its date, points and badges.
 
 ### C. Closed rings
 1. Pillar ring at 80% or more: strong arc, then the rest of the ring in the light color. It reads "full". At 100% it's all strong.
-2. A pillar with 6 or more items that week, all but 2 done, under 80% of its points: the ring closes in the light color and reads "nearly". 5 items with 3 done: it doesn't close.
+2. A finished week where a pillar had 6 or more items due, all but 2 done, under 80% of its points: the ring closes in the light color and reads "nearly". 5 due with 3 done: it doesn't close. Mid-week, the ring doesn't close on the few items done so far: "all but 2" counts what's due this week.
 3. An away week's rings stay empty, with "–".
-4. A finished day with most of its points done: the missed part shows in light pillar colors instead of white. A day below the rule keeps white. Today never closes.
-5. Screen reader: the ring says "nearly" where it shows; a closed day adds "ring closed".
+4. A finished day with most of its points done: the missed part shows in light pillar colors instead of white. A day below the rule keeps white. Today never closes. A day where everything left was done and one item moved away closes.
+5. Screen reader: the ring says "nearly" where it shows; a closed day ends with "Ring closed."
 
 ### D. Patterns
 1. Only lines the data holds up appear, in spec 9.2's order. With more than 4, "More patterns" shows the rest and "Fewer patterns" folds them.
@@ -161,21 +162,38 @@ Each task ends with `:androidApp:assembleDebug` and `:shared:compileKotlinIosSim
 1. The calendar card has an "All months" chip. It, and the month title, open a full screen with this month at the bottom and older months above, back to the first month with data.
 2. Days look as on the Metrics calendar: rings, closed rings, crowns, stickers. No week is tinted.
 3. Back arrow and system back return to Metrics, where you left it.
-4. Pick Health: rings show only Health items, sized by items, and stickers and crowns go. The summary reads "⟨Health⟩: done N times, M in part".
+4. On opening, this month shows whole at the bottom, with "Everything counts." and the caption under it. Pick Health: rings show only Health items, sized by items, and stickers and crowns go. The line reads "⟨Health⟩: done N times, M in part".
 5. Pick Recharge: Recharge items show as grey slices.
-6. Missions → pick two from different pillars → Done. The chip reads "2 missions", and the rings show only those missions' items. Health still counts if it's on too.
-7. An archived mission is in the list, marked "archived", and its old days show.
-8. With a filter on, tapping a day opens it in the diary. With none, a day with badges opens the badge list.
-9. Clear every filter: stickers, crowns and point-sized rings come back.
+6. Missions → pick two from different pillars → Done. The chip reads "2 missions", the rings show only those missions' items, and the line names both. With Health on too, Health's items count as well and the line reads "⟨Health⟩ and 2 missions: …".
+7. At the largest font size, the chips wrap but the months still have most of the screen.
+8. An archived mission is in the list, marked "archived", and its old days show.
+9. With a filter on, tapping a day opens it in the diary. With none, a day with badges opens the badge list.
+10. Clear every filter: stickers, crowns and point-sized rings come back.
 
 ### F. Swipe to fill
-1. Drag right across a planned item. A thin line in its pillar color grows along the row's bottom line, and the points pill shows the percent in 5% steps.
-2. Let go at 40%. The subline reads "Did some · 40%", the pill "+1 of 2" (for a 2-point mission), and the line stays.
+1. Drag right across a planned item. A thin line in its pillar color runs along the row's bottom line and ends under your finger, and the points pill shows the percent in 5% steps. One stroke from the title to the row's right end reaches 100%.
+2. Let go at 40%. The subline reads "Did some · 40%", the pill "+1 of 2" (for a 2-point mission), and the line stays. The box stays open, with no strike-through.
 3. Drag it on to the end. It ticks, strikes through and earns full points. The line goes.
 4. Drag a ticked item back to 0. It's unticked (on an earlier day, skipped). Drag back up to 30% and it's a did-some again.
-5. Tick the box: 100%. Untick: 0%. Evening check's "Did some": 50%.
+5. Tick the box: 100%. Untick: 0%. Evening check's "Did some": 50%. Tapping a did-some's box ticks it (100%).
 6. A moved item doesn't drag. In swap mode, rows don't drag.
 7. A fixed block "Ticked for you", dragged to 60%: "Ticked for you" goes, and it's a did-some.
-8. The list still scrolls up and down normally, and long-press still crowns.
+8. The list still scrolls up and down normally, and long-press still crowns. Watch for slips: a slightly sideways scroll that starts a drag would save the finger's spot. A press held still before sliding crowns instead of dragging.
 9. Week bars, rings and badges count a dragged did-some as half points.
-10. Screen reader: the row reads its percent and can be adjusted up and down in 5% steps.
+10. Screen reader: the row reads as one item with its percent. TalkBack adjusts it up and down in 5% steps; on both, the "5% more" and "5% less" actions work, and "Crown" crowns it. VoiceOver reads the percent too.
+
+## Review fixes
+
+Each task had its own review, and the fixes changed some of the decisions above. The spec and the checklist now say what was built.
+
+| Commit | What it fixed |
+|---|---|
+| `55c459c` | **Tasks 1–2.** <br>• A pillar's "all but 2" counts the times its missions were due that week when that's more than the rows, so a ring doesn't close mid-week or in a week opened on a few days only.<br>• Days from the next or previous month keep their faded number, with a faded corner sticker.<br>• Moved items stay out of a day's close rule.<br>• "Ring closed." is its own sentence.<br>• A closed ring's strong arc has square ends, so the light part shows near 100%.<br>• `PillarScore` has no silent defaults. |
+| `66679ed` | **Task 5.**<br>• The line ends under the finger, so one stroke fills the row.<br>• A did-some looks open (no tick, no strike-through), and tapping its box ticks it.<br>• VoiceOver hears the percent, and "5% more", "5% less" and "Crown" actions work on both platforms.<br>• A retry after a failed save isn't dropped.<br>• The row is one screen-reader item in every mode. |
+| `7f47d91` | **Task 3.**<br>• Each mission's full-week run is worked out once per build, and `PaceOffers.full` reads only its week through a per-mission index in `History`.<br>• "Strong" looks at the last 6 weeks and "picking up" at the last 8, so a monthly pillar can't read "strong this past month" from a season of weeks.<br>• One line per pillar.<br>• A missing summary row ends the walk.<br>• "Going well" needs the mission live today.<br>• "Best yet" checks every stored week.<br>• Mission runs stop at the mission's start and the first stored week; before, a two-week-old install read "full every week for a year or more".<br>• Shared wording helpers are in `domain/LineWords.kt`.<br>• One failed build no longer freezes Metrics or All months. |
+| `972c52b` | **Task 4.**<br>• Only the back arrow and the chips are pinned; the summary and caption sit under this month, and the bottom padding is 16dp, so this month fits on opening.<br>• New summary naming rule (decision 7), with "Everything counts." when no filter is on.<br>• A filter toggle reuses the unfiltered months and the badge book.<br>• Away weeks stay out of the summary.<br>• The Metrics card's title is centred.<br>• Spoken dates carry the year when it isn't this year.<br>• Action chips aren't presented as selectable. |
+
+Left for the hand test:
+- A slightly sideways scroll can start a drag.
+- A press held still before sliding crowns instead.
+- The summary's live region is only read while it's on screen.
