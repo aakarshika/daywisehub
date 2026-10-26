@@ -108,6 +108,8 @@ object MetricsStateBuilder {
         )
         // A badge run stays inside the badges' look-back and starts no earlier than the first stored day.
         val badgeFloor = maxOf(lookBack, input.firstDay ?: lookBack)
+        // Each mission's run of full weeks, walked once for its mission line and "going well".
+        val runs = MissionProgress.fullRuns(input.today, missions, history, opened, input.firstDay)
         val title = weekTitle(week, thisWeek)
         val end = week.plus(6, DateTimeUnit.DAY)
         return MetricsUiState(
@@ -122,9 +124,9 @@ object MetricsStateBuilder {
             highlights = WeekHighlightsBuilder.build(title.uppercase(), week, thisWeek, score, byWeek, opened),
             aheadTitle = if (week < thisWeek) "THE WEEK AFTER" else "NEXT WEEK",
             ahead = WeekAhead.lines(week, input.today, missions, history),
-            patterns = Patterns.lines(input.today, byWeek, input.allMissions, days, history, opened) { it >= badgeFloor && badges.counts(it) },
+            patterns = Patterns.lines(input.today, byWeek, input.allMissions, days, runs, opened) { it >= badgeFloor && badges.counts(it) },
             calendar = MonthGrid.build(week, input.today, input.allMissions, days, byWeek, opened, badges, selected = week),
-            missions = MissionProgress.lines(input.today, missions, history, input.milestones, opened),
+            missions = MissionProgress.lines(input.today, missions, history, input.milestones, runs),
         )
     }
 

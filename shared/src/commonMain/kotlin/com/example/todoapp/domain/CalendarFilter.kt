@@ -44,20 +44,15 @@ data class CalendarFilter(val pillars: Set<PillarType> = emptySet(), val mission
             }
         }
         val names = named(
-            PillarType.entries.filter { it in pillars }.map { LinePart(it.title, it) }, "pillars"
+            PillarType.entries.filter { it in pillars }.map { chip(it) }, "pillars"
         ) + named(
             allMissions.filter { it.missionId in missionIds }
                 .sortedWith(compareBy({ it.pillarType.ordinal }, { it.title.lowercase() }))
-                .map { LinePart(it.title, it.pillarType) },
+                .map { chip(it) },
             "missions"
         )
-        val subject = mutableListOf<LinePart>()
-        names.forEachIndexed { i, name ->
-            if (i > 0) subject += LinePart(if (i == names.lastIndex) " and " else ", ")
-            subject += name
-        }
         // Only picked missions that are no longer stored: nothing names them.
-        if (subject.isEmpty()) subject += LinePart("Picked missions")
+        val subject = joined(names).ifEmpty { words("Picked missions") }
         val counted = when {
             done == 0 && inPart == 0 -> "nothing done yet"
             done == 0 -> "done in part ${times(inPart)}"

@@ -18,7 +18,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -118,7 +117,12 @@ fun MetricsScreen(viewModel: MetricsViewModel, openDay: (LocalDate) -> Unit) {
                     item(key = "patterns-none") { RuledLine("Nothing stands out yet.", color = InkGray) }
                 }
                 val patterns = if (allPatterns) s.patterns else s.patterns.take(FOLDED_PATTERNS)
-                patterns.forEachIndexed { i, line -> item(key = "pattern-$i") { RuledLine(line) } }
+                // Keyed by their words, so a line keeps its place as others come and go; a repeat falls back to its place.
+                val keys = mutableSetOf<String>()
+                patterns.forEachIndexed { i, line ->
+                    val text = "pattern:" + line.joinToString("") { it.text }
+                    item(key = if (keys.add(text)) text else "pattern-$i") { RuledLine(line) }
+                }
                 if (s.patterns.size > FOLDED_PATTERNS) {
                     item(key = "patterns-more") {
                         Box(modifier = Modifier.padding(start = 22.dp, top = 4.dp)) {
@@ -219,7 +223,7 @@ private fun RuledLine(text: String, color: Color = InkBlack) {
 private fun RuledLine(parts: List<LinePart>) {
     Ruled {
         // ChipText takes its weight and spacing from here, so the hand matches the plain lines'.
-        ProvideTextStyle(LocalTextStyle.current.merge(TextStyle(fontWeight = FontWeight.Light, letterSpacing = 0.3.sp))) {
+        ProvideTextStyle(TextStyle(fontWeight = FontWeight.Light, letterSpacing = 0.3.sp)) {
             ChipText(parts, fontSize = 17.sp, color = InkBlack, italic = true, modifier = Modifier.padding(vertical = 6.dp))
         }
     }

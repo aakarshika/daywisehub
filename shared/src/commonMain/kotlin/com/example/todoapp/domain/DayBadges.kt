@@ -251,7 +251,7 @@ class DayBadgeBook internal constructor(private val input: BadgeInput) {
         if (fullEnough && date in lowEnergy) add(Badge.GENTLE_WIN, words("A low-energy day, $points of ${MissionWords.pointsPhrase(planned)}"))
         val touched = byHand.mapTo(mutableSetOf()) { mission(it).pillarType }
         if (PillarType.scoredPillars.all { it in touched }) {
-            add(Badge.ALL_FOUR, words("Something in ${names(PillarType.scoredPillars.map { it.title })}"))
+            add(Badge.ALL_FOUR, words("Something in ${joinedNames(PillarType.scoredPillars.map { it.title })}"))
         }
         if (crowned.size >= input.maxCrowns && crowned.all { it.taskState == TaskState.DONE }) {
             add(Badge.ALL_THREE_CROWNS, words("All ${crowned.size} crowned done"))
@@ -263,7 +263,7 @@ class DayBadgeBook internal constructor(private val input: BadgeInput) {
         val fill = week(WeekMath.weekStart(date))
         val dayIndex = WeekMath.weekStart(date).daysUntil(date)
         fill.filled[dayIndex].takeIf { it.isNotEmpty() }?.let { pillars ->
-            add(Badge.PILLAR_FILLED, words("${names(pillars.map { it.title })} full for the week"))
+            add(Badge.PILLAR_FILLED, words("${joinedNames(pillars.map { it.title })} full for the week"))
         }
         val returns = ticked.missions().filter { it.monthlyish }.mapNotNull { gap(it, date, floor) }
         returns.filter { it.cyclesMissed == 1 }.maxByOrNull { it.days }?.let { add(Badge.THE_RETURN, it.line(lookBack)) }
@@ -455,25 +455,13 @@ class DayBadgeBook internal constructor(private val input: BadgeInput) {
     }
 
     private companion object {
-        fun words(text: String): List<LinePart> = listOf(LinePart(text))
-
-        fun chip(mission: Mission) = LinePart(mission.title, mission.pillarType)
-
-        /** "Health", "Health and Love", "Health, Wealth, Love and Life". */
-        fun names(names: List<String>): String =
-            if (names.size <= 1) names.joinToString() else names.dropLast(1).joinToString(", ") + " and " + names.last()
-
         /**
          * [prefix], one or two missions on chips, then [suffix]: "Did ⟨Run⟩ and ⟨Swim⟩ after a move". Three
          * or more are counted instead ([many]), so the line stays short.
          */
         fun about(prefix: String, missions: List<Mission>, suffix: String, many: (Int) -> String): List<LinePart> {
-            val chips = when (missions.size) {
-                1 -> listOf(chip(missions[0]))
-                2 -> listOf(chip(missions[0]), LinePart(" and "), chip(missions[1]))
-                else -> return words(many(missions.size))
-            }
-            return (listOf(LinePart(prefix)) + chips + LinePart(suffix)).filter { it.text.isNotEmpty() }
+            if (missions.size !in 1..2) return words(many(missions.size))
+            return (listOf(LinePart(prefix)) + joined(missions.map { chip(it) }) + LinePart(suffix)).filter { it.text.isNotEmpty() }
         }
     }
 }

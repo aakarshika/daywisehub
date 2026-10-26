@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
@@ -154,7 +155,8 @@ class AllMonthsViewModel(
 
     /**
      * Built off the main thread, once per change to the data or the filter. Null until the first build. A
-     * builder failure keeps what's on screen instead of closing the app.
+     * builder failure keeps what's on screen instead of closing the app, and the next change of data or
+     * filter builds again.
      */
     val state: StateFlow<AllMonthsUiState?> = combine(
         filter,
@@ -164,12 +166,21 @@ class AllMonthsViewModel(
         // Archived missions' too, so a finished line keeps its badges once it's archived.
         milestoneRepository.observeIncludingArchived(),
     ) { filter, missions, window, summaries, milestones ->
-        AllMonthsStateBuilder.build(AllMonthsInput(today, filter, missions, window.tasks, summaries, milestones, window.plans, window.firstDay))
+        // One bad build is skipped, so the flow goes on and the last state stays.
+        try {
+            AllMonthsStateBuilder.build(AllMonthsInput(today, filter, missions, window.tasks, summaries, milestones, window.plans, window.firstDay))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Logger.w(e) { "All months couldn't be built; the screen keeps what it showed." }
+            null
+        }
     }
+        .filterNotNull()
         .flowOn(Dispatchers.Default)
         .catch { e ->
             if (e is CancellationException) throw e
-            Logger.w(e) { "All months couldn't be built; the screen keeps what it showed." }
+            Logger.w(e) { "All months' data stopped loading; the screen keeps what it showed." }
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 

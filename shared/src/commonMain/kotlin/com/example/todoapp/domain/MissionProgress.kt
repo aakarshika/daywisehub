@@ -29,15 +29,15 @@ data class MissionLine(
 object MissionProgress {
 
     /**
-     * [opened] is PaceOffers.openedWeeks of the tasks read. Only done days in the last
-     * Patterns.LOOK_BACK_DAYS count, so browsing an older month (which reads further back) changes nothing.
+     * [runs] is [fullRuns] of the same missions. Only done days in the last Patterns.LOOK_BACK_DAYS count, so
+     * browsing an older month (which reads further back) changes nothing.
      */
     fun lines(
         today: LocalDate,
         missions: List<Mission>,
         history: History,
         milestones: List<Milestone>,
-        opened: Set<LocalDate>,
+        runs: Map<Long, Patterns.Run>,
     ): List<MissionLine> {
         val thisWeek = WeekMath.weekStart(today)
         val since = today.minus(Patterns.LOOK_BACK_DAYS, DateTimeUnit.DAY)
@@ -57,7 +57,7 @@ object MissionProgress {
                     title = mission.title,
                     pillar = mission.pillarType,
                     finishLine = mission.missionKind == MissionKind.FINISH_LINE,
-                    detail = detail(mission, done, today, thisWeek, history, milestonesById[mission.missionId].orEmpty(), opened),
+                    detail = detail(mission, done, today, thisWeek, history, milestonesById[mission.missionId].orEmpty(), runs),
                 )
             }
     }
@@ -69,7 +69,7 @@ object MissionProgress {
         thisWeek: LocalDate,
         history: History,
         milestones: List<Milestone>,
-        opened: Set<LocalDate>,
+        runs: Map<Long, Patterns.Run>,
     ): String {
         notLive(mission, today)?.let { return it }
         val weekEnd = thisWeek.plus(6, DateTimeUnit.DAY)
@@ -87,7 +87,7 @@ object MissionProgress {
             mission.periodUnit == Period.DAY -> daily(mission, untilToday, today)
             mission.periodUnit == Period.MONTH ->
                 "${count(done, LocalDate(today.year, today.month, 1), today)} of ${mission.count} this month"
-            else -> weekly(mission, done, thisWeek, history, opened)
+            else -> weekly(mission, done, thisWeek, history, runs)
         }
     }
 
@@ -144,7 +144,7 @@ object MissionProgress {
     }
 
     /** "2 of 3 this week", then the gentle pace or a run of full weeks. */
-    private fun weekly(mission: Mission, done: List<LocalDate>, thisWeek: LocalDate, history: History, opened: Set<LocalDate>): String {
+    private fun weekly(mission: Mission, done: List<LocalDate>, thisWeek: LocalDate, history: History, runs: Map<Long, Patterns.Run>): String {
         val target = Points.occurrencesInWeek(mission, thisWeek, history)
         if (target == 0) return "Nothing due this week"
         val base = "${count(done, thisWeek, thisWeek.plus(6, DateTimeUnit.DAY))} of $target this week"
@@ -152,7 +152,8 @@ object MissionProgress {
         if (goal != null && goal > mission.count) {
             return "$base · ${if (mission.count == 1) "once a week" else "${mission.count}× a week"} for now"
         }
-        val run = fullWeeks(mission, thisWeek, history, opened)
+        // Live, scored and not a fixed block, so [fullRuns] has it.
+        val run = runs[mission.missionId] ?: Patterns.Run(0, capped = false)
         return when {
             run.weeks < 2 -> base
             run.capped -> "$base · full every week for a year or more"
@@ -161,18 +162,39 @@ object MissionProgress {
     }
 
     /**
+     * Each mission's run of full weeks ([fullWeeks]), worked out once per build for the mission lines and
+     * the "going well" pattern. Only [missions] live on [today], scored and not fixed blocks have one: the
+     * others show no run. [firstDay] is the first stored item's day.
+     */
+    fun fullRuns(
+        today: LocalDate,
+        missions: List<Mission>,
+        history: History,
+        opened: Set<LocalDate>,
+        firstDay: LocalDate?,
+    ): Map<Long, Patterns.Run> {
+        val thisWeek = WeekMath.weekStart(today)
+        val firstWeek = firstDay?.let { WeekMath.weekStart(it) } ?: thisWeek
+        return missions
+            .filter { it.isLiveOn(today) && it.scored && it.missionKind != MissionKind.BLOCK }
+            .associate { it.missionId to fullWeeks(it, thisWeek, history, opened, firstWeek) }
+    }
+
+    /**
      * Finished weeks in a row, back from last week, that were full the way pace offers judge it
      * (PaceOffers.full): 80% of the mission's own points, a did-some earning half. A week it wasn't due
      * ends the run, and so does its last pace change (Mission.paceSince): only weeks starting on or after
-     * it count. An away week (no items of its own) neither counts nor ends it. The "going well" pattern
-     * reads it too (Patterns), so the two never disagree.
+     * it count. An away week (no items of its own) neither counts nor ends it. The run also ends, uncapped,
+     * before the week the mission started and before [firstWeek], the first stored item's week: the weeks
+     * before them look away, but nothing was there to do.
      */
-    internal fun fullWeeks(mission: Mission, thisWeek: LocalDate, history: History, opened: Set<LocalDate>): Patterns.Run {
+    private fun fullWeeks(mission: Mission, thisWeek: LocalDate, history: History, opened: Set<LocalDate>, firstWeek: LocalDate): Patterns.Run {
         val since = mission.paceSince?.let { MyDate(it).toLocalDate() }
+        val start = maxOf(WeekMath.weekStart(mission.startDate.toLocalDate()), firstWeek)
         var week = thisWeek.minus(7, DateTimeUnit.DAY)
         var run = 0
         repeat(Patterns.MAX_RUN_WEEKS) {
-            if (since != null && week < since) return Patterns.Run(run, capped = false)
+            if (week < start || (since != null && week < since)) return Patterns.Run(run, capped = false)
             if (!WeekScores.isAway(week, opened)) {
                 if (!PaceOffers.full(mission, week, history)) return Patterns.Run(run, capped = false)
                 run++

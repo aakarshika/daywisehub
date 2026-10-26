@@ -26,13 +26,19 @@ object Patterns {
     const val FULL_RUN = 3
     /** …and at most this many pillars get one. */
     const val MAX_RUN_LINES = 2
-    /** A pillar is strong when it was full in [STRONG_FULL] or more of its last [STRONG_WEEKS] counted weeks. */
+    /** Strong looks at this many finished calendar weeks back from last week, so "this past month" holds… */
+    const val STRONG_SPAN = 6
+    /** …needs this many counted weeks in them… */
     const val STRONG_WEEKS = 4
+    /** …and the pillar full in this many of the latest [STRONG_WEEKS]. */
     const val STRONG_FULL = 3
-    /** A pillar is picking up when it was full in each of its last [PICKING_UP_WEEKS] counted weeks… */
+    /** Picking up looks at this many finished calendar weeks back from last week… */
+    const val PICKING_UP_SPAN = 8
+    /** …where the pillar was full in each of its latest this many counted weeks… */
     const val PICKING_UP_WEEKS = 2
-    /** …after at most [PICKING_UP_EARLIER_FULL] full weeks in the [PICKING_UP_EARLIER] counted weeks before them. */
+    /** …after this many counted weeks before them… */
     const val PICKING_UP_EARLIER = 4
+    /** …with at most this many of those full. */
     const val PICKING_UP_EARLIER_FULL = 1
     /** Weekends in a row before they get a line… */
     const val WEEKEND_RUN = 2
@@ -62,9 +68,6 @@ object Patterns {
      */
     const val MAX_RUN_WEEKS = LOOK_BACK_DAYS / 7 - 1
 
-    /** Counted weeks a pillar needs for strong and picking up: the walk back stops once each has this many. */
-    private val COUNTED_WEEKS = maxOf(STRONG_WEEKS, PICKING_UP_WEEKS + PICKING_UP_EARLIER)
-
     private val pluralDays = listOf("Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays", "Sundays")
 
     /**
@@ -75,16 +78,18 @@ object Patterns {
 
     /**
      * As of [today], whatever week is on screen, in spec 9.2's order. [byWeek] holds the finished weeks by
-     * their Monday, and [opened] is PaceOffers.openedWeeks of the tasks read. [badgeDay] is true for a day
-     * with a badge besides "Recharging day" (DayBadgeBook.counts), and false past the badges' look-back and
-     * before the first stored day. Ticks of archived missions count too: they happened.
+     * their Monday, and [opened] is PaceOffers.openedWeeks of the tasks read. [missionRuns] is
+     * MissionProgress.fullRuns, the mission lines' own runs. [badgeDay] follows the fallback badge's test
+     * (DayBadgeBook.counts): true for a day with something done by hand, done in part or a milestone
+     * reached, and false past the badges' look-back and before the first stored day. Ticks of archived
+     * missions count too: they happened.
      */
     fun lines(
         today: LocalDate,
         byWeek: Map<LocalDate, WeekSummary>,
         allMissions: List<Mission>,
         days: DayTasks,
-        history: History,
+        missionRuns: Map<Long, Run>,
         opened: Set<LocalDate>,
         badgeDay: (LocalDate) -> Boolean,
     ): List<List<LinePart>> {
@@ -94,36 +99,44 @@ object Patterns {
         if (balanced.weeks >= BALANCED_RUN) {
             lines += words(if (balanced.capped) "Balanced weeks in a row for a year or more." else "${balanced.weeks} balanced weeks in a row.")
         }
-        goingWell(thisWeek, allMissions, history, opened)?.let { lines += it }
-        // A pillar with nothing due isn't a full week here. A balanced run already covers a shorter pillar run.
-        val runs = PillarType.scoredPillars
-            .map { pillar ->
-                pillar to runBack(thisWeek, byWeek, opened) { it.target(pillar) > 0 && Points.isFull(it.earned(pillar), it.target(pillar)) }
-            }
+        goingWell(allMissions, missionRuns)?.let { lines += it }
+        // A pillar with nothing due isn't a full week here.
+        val pillarRuns = PillarType.scoredPillars.map { pillar ->
+            pillar to runBack(thisWeek, byWeek, opened) { it.target(pillar) > 0 && Points.isFull(it.earned(pillar), it.target(pillar)) }
+        }
+        // A balanced run already covers a shorter pillar run.
+        pillarRuns
             .filter { (_, run) -> run.weeks >= FULL_RUN && run.weeks > balanced.weeks }
             .sortedByDescending { it.second.weeks }
             .take(MAX_RUN_LINES)
-        runs.forEach { (pillar, run) ->
-            lines += listOf(chip(pillar), LinePart(if (run.capped) " has been full for a year or more." else " has been full ${run.weeks} weeks running."))
-        }
-        // A pillar with a run line says it already, so strong and picking up leave it out.
-        val withRun = runs.mapTo(mutableSetOf()) { it.first }
-        val counted = countedWeeks(thisWeek, byWeek, opened)
-        // With 3 or more balanced weeks running, every pillar would be strong.
-        if (balanced.weeks < STRONG_FULL) {
-            val strong = PillarType.scoredPillars.filter { pillar ->
-                val weeks = counted.getValue(pillar)
-                pillar !in withRun && weeks.size >= STRONG_WEEKS && weeks.take(STRONG_WEEKS).count { it } >= STRONG_FULL
+            .forEach { (pillar, run) ->
+                lines += listOf(chip(pillar), LinePart(if (run.capped) " has been full for a year or more." else " has been full ${run.weeks} weeks running."))
             }
-            if (strong.isNotEmpty()) lines += named(strong, " has been strong this past month.", " have been strong this past month.")
+        // A pillar with a run says more than strong or picking up would, even when its line didn't show.
+        val running = pillarRuns.filter { (_, run) -> run.weeks >= FULL_RUN }.mapTo(mutableSetOf()) { it.first }
+        // With 3 or more balanced weeks running, every pillar would be strong.
+        val strong = if (balanced.weeks >= STRONG_FULL) emptyList() else {
+            val counted = countedWeeks(thisWeek, byWeek, opened, STRONG_SPAN)
+            PillarType.scoredPillars.filter { pillar ->
+                val weeks = counted.getValue(pillar)
+                pillar !in running && weeks.size >= STRONG_WEEKS && weeks.take(STRONG_WEEKS).count { it } >= STRONG_FULL
+            }
         }
+        if (strong.isNotEmpty()) {
+            lines += joined(strong.map { chip(it) }) +
+                LinePart(if (strong.size == 1) " has been strong this past month." else " have been strong this past month.")
+        }
+        // One line per pillar: a strong one isn't picking up too.
+        val counted = countedWeeks(thisWeek, byWeek, opened, PICKING_UP_SPAN)
         val pickingUp = PillarType.scoredPillars.filter { pillar ->
             val weeks = counted.getValue(pillar)
-            pillar !in withRun && weeks.size >= PICKING_UP_WEEKS + PICKING_UP_EARLIER &&
+            pillar !in running && pillar !in strong && weeks.size >= PICKING_UP_WEEKS + PICKING_UP_EARLIER &&
                 weeks.take(PICKING_UP_WEEKS).all { it } &&
                 weeks.drop(PICKING_UP_WEEKS).take(PICKING_UP_EARLIER).count { it } <= PICKING_UP_EARLIER_FULL
         }
-        if (pickingUp.isNotEmpty()) lines += named(pickingUp, " is picking up.", " are picking up.")
+        if (pickingUp.isNotEmpty()) {
+            lines += joined(pickingUp.map { chip(it) }) + LinePart(if (pickingUp.size == 1) " is picking up." else " are picking up.")
+        }
         val weekends = weekendRun(today, allMissions, days, opened)
         if (weekends >= WEEKEND_RUN) lines += words("$weekends weekends in a row with $WEEKEND_DONE or more things done.")
         bestWeek(thisWeek, byWeek, opened)?.let { lines += it }
@@ -152,19 +165,19 @@ object Patterns {
     }
 
     /**
-     * "⟨Call mom⟩ and ⟨Gym⟩ are going well.": active missions full by their own 80% rule [GOING_WELL_RUN]
-     * or more counted weeks running since their last pace change, the mission lines' own run
-     * (MissionProgress.fullWeeks). Fixed blocks and Recharge are left out. Two are named, the longest runs
-     * first and then in the mission lines' order, and the rest are counted.
+     * "⟨Call mom⟩ and ⟨Gym⟩ are going well.": missions full by their own 80% rule [GOING_WELL_RUN] or more
+     * counted weeks running since their last pace change, the mission lines' own run ([missionRuns]). Only
+     * missions live today, scored and not fixed blocks have one, so Recharge, a block and a mission that
+     * just ended are left out. Two are named, the longest runs first and then in the mission lines' order,
+     * and the rest are counted.
      */
-    private fun goingWell(thisWeek: LocalDate, allMissions: List<Mission>, history: History, opened: Set<LocalDate>): List<LinePart>? {
+    private fun goingWell(allMissions: List<Mission>, missionRuns: Map<Long, Run>): List<LinePart>? {
         val going = allMissions
-            .filter { it.active && it.scored && it.missionKind != MissionKind.BLOCK }
-            .sortedWith(compareBy({ it.pillarType.ordinal }, { it.missionId }))
-            .map { it to MissionProgress.fullWeeks(it, thisWeek, history, opened).weeks }
+            .mapNotNull { mission -> missionRuns[mission.missionId]?.let { mission to it.weeks } }
             .filter { (_, weeks) -> weeks >= GOING_WELL_RUN }
+            .sortedWith(compareBy({ it.first.pillarType.ordinal }, { it.first.missionId }))
             .sortedByDescending { (_, weeks) -> weeks }
-            .map { (mission, _) -> LinePart(mission.title, mission.pillarType) }
+            .map { (mission, _) -> chip(mission) }
         return when (going.size) {
             0 -> null
             1 -> listOf(going[0], LinePart(" is going well."))
@@ -174,21 +187,21 @@ object Patterns {
     }
 
     /**
-     * Each pillar's last counted weeks, newest first: true where it was full. A counted week is a finished
-     * week with a stored row, not away, in which the pillar had something due; any other week is passed
-     * over. It looks back [MAX_RUN_WEEKS] at most, and stops once every pillar has [COUNTED_WEEKS].
+     * Each pillar's counted weeks among the [span] finished weeks back from last week, newest first: true
+     * where it was full. A counted week has a stored row, isn't away, and gave the pillar something to do;
+     * an away week or one with nothing due is passed over. A week without a row ends the walk, as it ends
+     * a run: before the diary closes last week, or before the first stored week.
      */
-    private fun countedWeeks(thisWeek: LocalDate, byWeek: Map<LocalDate, WeekSummary>, opened: Set<LocalDate>): Map<PillarType, List<Boolean>> {
+    private fun countedWeeks(thisWeek: LocalDate, byWeek: Map<LocalDate, WeekSummary>, opened: Set<LocalDate>, span: Int): Map<PillarType, List<Boolean>> {
         val counted = PillarType.scoredPillars.associateWith { mutableListOf<Boolean>() }
         var week = thisWeek.minus(7, DateTimeUnit.DAY)
-        repeat(MAX_RUN_WEEKS) {
-            val summary = byWeek[week]
-            if (summary != null && !WeekScores.isAway(week, opened)) {
+        repeat(span) {
+            val summary = byWeek[week] ?: return counted
+            if (!WeekScores.isAway(week, opened)) {
                 counted.forEach { (pillar, full) ->
                     val target = summary.target(pillar)
-                    if (target > 0 && full.size < COUNTED_WEEKS) full += Points.isFull(summary.earned(pillar), target)
+                    if (target > 0) full += Points.isFull(summary.earned(pillar), target)
                 }
-                if (counted.values.all { it.size >= COUNTED_WEEKS }) return counted
             }
             week = week.minus(7, DateTimeUnit.DAY)
         }
@@ -225,8 +238,9 @@ object Patterns {
      * "Last week was your best in 6 weeks.": last week's points, extra included, beat each of the
      * [BEST_WEEK_MIN] or more counted weeks before it. Counted weeks have a stored row and aren't away; the
      * others are passed over, neither beaten nor ending the walk. N is calendar weeks from the nearest
-     * earlier week with as many points or more to last week, so the weeks passed over are in it. With none
-     * by the first stored week or the run cap, it's the best yet. A week with no points is never a best.
+     * earlier week with as many points or more to last week, so the weeks passed over are in it. Past the
+     * run cap, the older rows are read too, so "yet" means no stored week did as well. A week with no points
+     * is never a best.
      */
     private fun bestWeek(thisWeek: LocalDate, byWeek: Map<LocalDate, WeekSummary>, opened: Set<LocalDate>): List<LinePart>? {
         val lastWeek = thisWeek.minus(7, DateTimeUnit.DAY)
@@ -240,19 +254,24 @@ object Patterns {
         while (week >= floor) {
             val summary = byWeek[week]
             if (summary != null && !WeekScores.isAway(week, opened)) {
-                if (points(summary) >= points) {
-                    if (beaten < BEST_WEEK_MIN) return null
-                    val weeks = week.daysUntil(lastWeek) / 7
-                    return words(
-                        if (weeks <= BEST_WEEK_MAX_WEEKS) "Last week was your best in $weeks weeks."
-                        else "Last week was your best in ${weeks / 4} months."
-                    )
-                }
+                if (points(summary) >= points) return if (beaten < BEST_WEEK_MIN) null else bestIn(week, lastWeek)
                 beaten++
             }
             week = week.minus(7, DateTimeUnit.DAY)
         }
-        return if (beaten >= BEST_WEEK_MIN) words("Last week was your best yet.") else null
+        if (beaten < BEST_WEEK_MIN) return null
+        // Rows past the cap weren't loaded with tasks, so their away weeks can't be told; one with points had items anyway.
+        val older = byWeek.filter { (monday, summary) -> monday < floor && points(summary) >= points }.keys.maxOrNull()
+        return if (older != null) bestIn(older, lastWeek) else words("Last week was your best yet.")
+    }
+
+    /** "Last week was your best in 6 weeks.", counting calendar weeks from [since] to [lastWeek]; months past [BEST_WEEK_MAX_WEEKS]. */
+    private fun bestIn(since: LocalDate, lastWeek: LocalDate): List<LinePart> {
+        val weeks = since.daysUntil(lastWeek) / 7
+        return words(
+            if (weeks <= BEST_WEEK_MAX_WEEKS) "Last week was your best in $weeks weeks."
+            else "Last week was your best in ${weeks / 4} months."
+        )
     }
 
     /** A week's points over the scored pillars, extra included. */
@@ -308,19 +327,4 @@ object Patterns {
     /** Not a fixed block, not every day, and no preferred days: which weekday it lands on is up to you. */
     private fun freeDay(mission: Mission): Boolean =
         mission.missionKind != MissionKind.BLOCK && mission.periodUnit != Period.DAY && mission.daySet.isEmpty()
-
-    private fun words(text: String): List<LinePart> = listOf(LinePart(text))
-
-    private fun chip(pillar: PillarType) = LinePart(pillar.title, pillar)
-
-    /** "⟨Life⟩[one]", "⟨Life⟩ and ⟨Health⟩[many]", "⟨Health⟩, ⟨Love⟩ and ⟨Life⟩[many]". */
-    private fun named(pillars: List<PillarType>, one: String, many: String): List<LinePart> {
-        val parts = mutableListOf<LinePart>()
-        pillars.forEachIndexed { i, pillar ->
-            if (i > 0) parts += LinePart(if (i == pillars.lastIndex) " and " else ", ")
-            parts += chip(pillar)
-        }
-        parts += LinePart(if (pillars.size == 1) one else many)
-        return parts
-    }
 }

@@ -86,7 +86,8 @@ class MetricsViewModel(
 
     /**
      * Built off the main thread: months of tasks go through it on every change. Null until the first
-     * build. A builder failure keeps what's on screen instead of closing the app.
+     * build. A builder failure keeps what's on screen instead of closing the app, and the next change of
+     * data or week builds again.
      */
     val state: StateFlow<MetricsUiState?> = combine(
         week,
@@ -97,14 +98,22 @@ class MetricsViewModel(
         milestoneRepository.observeIncludingArchived(),
     ) { week, missions, window, summaries, milestones ->
         // An older week waits for its own window, so it never shows as away for a moment: the last state stays.
-        if (window.from > firstDay(week)) null
-        else MetricsStateBuilder.build(MetricsInput(today, week, missions, window.tasks, summaries, milestones, window.plans, window.firstDay))
+        if (window.from > firstDay(week)) return@combine null
+        // One bad build is skipped, so the flow goes on and the last state stays.
+        try {
+            MetricsStateBuilder.build(MetricsInput(today, week, missions, window.tasks, summaries, milestones, window.plans, window.firstDay))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Logger.w(e) { "Metrics couldn't be built; the tab keeps what it showed." }
+            null
+        }
     }
         .filterNotNull()
         .flowOn(Dispatchers.Default)
         .catch { e ->
             if (e is CancellationException) throw e
-            Logger.w(e) { "Metrics couldn't be built; the tab keeps what it showed." }
+            Logger.w(e) { "Metrics' data stopped loading; the tab keeps what it showed." }
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
