@@ -7,6 +7,8 @@ import com.example.todoapp.db.data.week.WeekSummary
 import com.example.todoapp.domain.DayTasks
 import com.example.todoapp.domain.History
 import com.example.todoapp.domain.LinePart
+import com.example.todoapp.domain.MissionLine
+import com.example.todoapp.domain.MissionProgress
 import com.example.todoapp.domain.MonthCalendar
 import com.example.todoapp.domain.MonthGrid
 import com.example.todoapp.domain.Patterns
@@ -58,6 +60,8 @@ data class MetricsUiState(
     val patterns: List<String>,
     /** The month of the week on screen. */
     val calendar: MonthCalendar,
+    /** One per active mission, as of today, in pillar order. */
+    val missions: List<MissionLine>,
 )
 
 object MetricsStateBuilder {
@@ -87,6 +91,7 @@ object MetricsStateBuilder {
             ahead = WeekAhead.lines(week, thisWeek, missions, days, history),
             patterns = Patterns.lines(input.today, byWeek, input.allMissions, days),
             calendar = MonthGrid.build(week, input.today, input.allMissions, days, byWeek),
+            missions = MissionProgress.lines(input.today, missions, history, input.milestones, days),
         )
     }
 

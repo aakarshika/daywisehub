@@ -43,6 +43,8 @@ import com.example.todoapp.screen.basicutils.components.MarkerHeading
 import com.example.todoapp.screen.diary.plan.SmallChip
 import kotlinx.datetime.LocalDate
 
+private val MissionsMarker = Color(0xFFE8DEF8)
+
 /** Spec 9: the Metrics tab, one week at a time. [openDay] shows a date in the diary. */
 @Composable
 fun MetricsScreen(viewModel: MetricsViewModel, openDay: (LocalDate) -> Unit) {
@@ -66,6 +68,13 @@ fun MetricsScreen(viewModel: MetricsViewModel, openDay: (LocalDate) -> Unit) {
                 }
                 s.patterns.forEachIndexed { i, line -> item(key = "pattern-$i") { RuledLine(line) } }
                 item(key = "calendar") { MonthCalendarCard(s.calendar, openDay) }
+                item(key = "missions-heading") {
+                    MarkerHeading("MISSIONS", MissionsMarker, Modifier.padding(top = 24.dp, bottom = 4.dp))
+                }
+                if (s.missions.isEmpty()) {
+                    item(key = "missions-none") { RuledLine("Missions you add show their progress here.", color = InkGray) }
+                }
+                s.missions.forEach { line -> item(key = "mission-${line.missionId}") { MissionProgressRow(line) } }
             }
             item(key = "bottom-space") { Spacer(Modifier.height(120.dp)) }
         }
