@@ -91,15 +91,19 @@ fun MonthCalendarCard(
         if (onAllMonths == null) {
             MonthTitle(calendar.title, Modifier.fillMaxWidth())
         } else {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            // The title stays centred on the card, with the chip at its end.
+            Box(modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)) {
                 Box(
-                    modifier = Modifier.weight(1f).heightIn(min = 44.dp)
-                        .clickable(role = Role.Button, onClickLabel = "Open all months", onClick = onAllMonths),
+                    modifier = Modifier.align(Alignment.Center).heightIn(min = 44.dp)
+                        .clickable(role = Role.Button, onClickLabel = "Open all months", onClick = onAllMonths)
+                        .padding(horizontal = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     MonthTitle(calendar.title, Modifier)
                 }
-                SmallChip("All months", onClick = onAllMonths)
+                Box(modifier = Modifier.align(Alignment.CenterEnd)) {
+                    SmallChip("All months", onClick = onAllMonths)
+                }
             }
         }
         // The letters are for the eye; each day tells a screen reader its own name.

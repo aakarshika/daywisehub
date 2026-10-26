@@ -8,7 +8,10 @@ import kotlinx.datetime.Month
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
-/** One pillar's points on one day, or with a filter on, its counted items (CalendarDay.byItems). */
+/**
+ * One pillar's points on one day. With a filter on (spec 9.4), [points] holds the pillar's counted items
+ * instead, one per item, so the ring is sized by items.
+ */
 data class DaySlice(val pillar: PillarType, val points: Int)
 
 /** One day of the month calendar. */
@@ -23,32 +26,27 @@ data class CalendarDay(
      */
     val hasRing: Boolean,
     /**
-     * Points earned per pillar that day, in pillar order, without empty ones. With [byItems], the counted
-     * items done or done in part per pillar instead, Recharge too.
+     * Points earned per pillar that day, in pillar order, without empty ones. With a filter on (spec 9.4),
+     * the counted items done or done in part per pillar instead, Recharge too.
      */
     val slices: List<DaySlice>,
     /**
      * Points that didn't happen: skipped or moved items, the missing half of a did-some, and anything still
-     * planned on an earlier day. Today's planned items can still happen, so they aren't counted. With
-     * [byItems], the counted items that didn't happen: skipped, or still planned on an earlier day.
+     * planned on an earlier day. Today's planned items can still happen, so they aren't counted. With a
+     * filter on, the counted items that didn't happen: skipped, or still planned on an earlier day.
      */
     val notDone: Int,
     /**
      * [notDone] split by pillar, in pillar order, without empty ones: a closed ring draws each in its light
-     * color. Empty with [byItems].
+     * color. Empty with a filter on.
      */
     val missed: List<DaySlice>,
     /**
      * A finished day with a ring that's close enough (Points.closes, over its scored items and its earned
      * points against earned and missed, less what moved away): its missed points, moved ones too, are
-     * drawn in light colors instead of white. Never with [byItems].
+     * drawn in light colors instead of white. Never with a filter on.
      */
     val closed: Boolean,
-    /**
-     * A filter is on (spec 9.4): [slices] and [notDone] count items instead of points, one per item, and
-     * the day has no badges and never closes.
-     */
-    val byItems: Boolean,
     /** The day's badges, rarest first (spec 9.3). The cell shows the first; tapping the day lists them all. */
     val badges: List<EarnedBadge>,
     /** "Tuesday, Oct 20", with the year in another year than this week's: the badge list's title. */
@@ -188,7 +186,6 @@ object MonthGrid {
             notDone = notDone,
             missed = missedSlices,
             closed = closed,
-            byItems = false,
             badges = badges,
             title = title(date, today),
             description = describe(date, today, slices, notDone, closed, badges),
@@ -241,7 +238,6 @@ object MonthGrid {
             notDone = notDone,
             missed = emptyList(),
             closed = false,
-            byItems = true,
             badges = emptyList(),
             title = title(date, today),
             description = describeItems(date, today, done, inPart, items = done + inPart + notDone + open),
@@ -294,10 +290,10 @@ object MonthGrid {
         return parts.joinToString(". ")
     }
 
-    /** "Monday, October 19", or "Today, Monday, October 26". */
+    /** "Monday, October 19", "Monday, October 19, 2025" in another year than today's, or "Today, Monday, October 26". */
     private fun spokenName(date: LocalDate, today: LocalDate): String {
         val month = date.month.name.lowercase().replaceFirstChar { it.uppercase() }
-        val name = "${date.weekdayName()}, $month ${date.dayOfMonth}"
+        val name = "${date.weekdayName()}, $month ${date.dayOfMonth}" + if (date.year != today.year) ", ${date.year}" else ""
         return if (date == today) "Today, $name" else name
     }
 }

@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.todoapp.domain.CalendarDay
+import com.example.todoapp.domain.CalendarFilter
 import com.example.todoapp.domain.PillarType
 import com.example.todoapp.screen.basicutils.InkBlack
 import com.example.todoapp.screen.basicutils.InkGray
@@ -52,9 +53,10 @@ import moe.tlaster.precompose.navigation.BackHandler
 
 /**
  * Spec 9.4: every month from the first stored item's to this one, over the Metrics tab. It opens on this
- * month at the bottom, with older ones above, under the filters pinned at the top. With a filter on, or
- * for a day without badges, tapping a day hands it to [openDay]; otherwise its badges show first, as on
- * the Metrics calendar. The back arrow and the system back call [onClose].
+ * month at the bottom, with older ones above, under the top bar and the filter chips, which stay pinned.
+ * The line summing the filter up and the caption sit under this month, so the months get the room. With
+ * a filter on, or for a day without badges, tapping a day hands it to [openDay]; otherwise its badges
+ * show first, as on the Metrics calendar. The back arrow and the system back call [onClose].
  */
 @Composable
 fun AllMonthsScreen(viewModel: AllMonthsViewModel, openDay: (LocalDate) -> Unit, onClose: () -> Unit) {
@@ -72,14 +74,29 @@ fun AllMonthsScreen(viewModel: AllMonthsViewModel, openDay: (LocalDate) -> Unit,
     ) {
         TopBar(onClose)
         if (s != null) {
-            Filters(s, onPillar = viewModel::togglePillar, onMissions = { picking = true }, onClear = viewModel::clear)
+            FilterChips(s.filter, onPillar = viewModel::togglePillar, onMissions = { picking = true }, onClear = viewModel::clear)
             LazyColumn(
-                // The newest month is the first item, at the bottom, so the screen opens on it.
+                // The first items sit at the bottom: the caption, the summary just above it, then this month, so
+                // the screen opens on it, with older months above.
                 reverseLayout = true,
-                // Room for the tab bar, as under the Metrics list.
-                contentPadding = PaddingValues(bottom = 120.dp),
+                // The tab bar is the scaffold's own, outside this screen.
+                contentPadding = PaddingValues(bottom = 16.dp),
                 modifier = Modifier.weight(1f).fillMaxWidth()
             ) {
+                item(key = "caption") {
+                    CalendarCaption(
+                        if (s.filter.isOn) ITEMS_CAPTION else POINTS_CAPTION,
+                        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)
+                    )
+                }
+                item(key = "summary") {
+                    // Always there, so the first pick changes the line and a screen reader reads it again.
+                    ChipText(
+                        s.summary, fontSize = 16.sp, color = InkBlack, italic = true,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 2.dp)
+                            .semantics { liveRegion = LiveRegionMode.Polite }
+                    )
+                }
                 items(s.months, key = { it.title }) { month ->
                     MonthCalendarCard(month, onDay = { day ->
                         if (s.filter.isOn || day.badges.isEmpty()) openDay(day.date) else badgeDay = day
@@ -130,38 +147,24 @@ private fun TopBar(onClose: () -> Unit) {
     }
 }
 
-/**
- * A chip for each pillar and one for missions ("2 missions" once some are picked), then "Clear" while
- * anything is. With a filter on, the line summing it up, and then what the rings mean.
- */
+/** A chip for each pillar and one for missions ("2 missions" once some are picked), then "Clear" while anything is. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Filters(state: AllMonthsUiState, onPillar: (PillarType) -> Unit, onMissions: () -> Unit, onClear: () -> Unit) {
-    val filter = state.filter
-    Column(modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 8.dp)) {
-        FlowRow {
-            PillarType.entries.forEach { pillar ->
-                SmallChip(pillar.title, selected = pillar in filter.pillars, onClick = { onPillar(pillar) })
-            }
-            val picked = filter.missionIds.size
-            SmallChip(
-                when (picked) {
-                    0 -> "Missions"
-                    1 -> "1 mission"
-                    else -> "$picked missions"
-                },
-                selected = picked > 0,
-                onClick = onMissions
-            )
-            if (filter.isOn) SmallChip("Clear", onClick = onClear)
+private fun FilterChips(filter: CalendarFilter, onPillar: (PillarType) -> Unit, onMissions: () -> Unit, onClear: () -> Unit) {
+    FlowRow(modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 4.dp)) {
+        PillarType.entries.forEach { pillar ->
+            SmallChip(pillar.title, selected = pillar in filter.pillars, onClick = { onPillar(pillar) })
         }
-        state.summary?.let { line ->
-            // Read again as the picks change.
-            ChipText(
-                line, fontSize = 16.sp, color = InkBlack, italic = true,
-                modifier = Modifier.padding(top = 4.dp).semantics { liveRegion = LiveRegionMode.Polite }
-            )
-        }
-        CalendarCaption(if (filter.isOn) ITEMS_CAPTION else POINTS_CAPTION, Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp))
+        val picked = filter.missionIds.size
+        SmallChip(
+            when (picked) {
+                0 -> "Missions"
+                1 -> "1 mission"
+                else -> "$picked missions"
+            },
+            selected = picked > 0,
+            onClick = onMissions
+        )
+        if (filter.isOn) SmallChip("Clear", onClick = onClear)
     }
 }

@@ -389,20 +389,26 @@ private fun subline(row: PlanRow): String = when (row.state) {
     }
 }
 
-/** Small rounded choice used for evening options, swap mode and the energy picker. */
+/**
+ * Small rounded choice used for evening options, swap mode and the energy picker. A toggle or a pick from
+ * a set passes [selected], and a screen reader hears whether it's on; an action leaves it null, so it isn't
+ * presented as something that can be selected.
+ */
 @Composable
-fun SmallChip(text: String, selected: Boolean = false, onClick: () -> Unit) {
+fun SmallChip(text: String, selected: Boolean? = null, onClick: () -> Unit) {
     val shape = RoundedCornerShape(16.dp)
+    val on = selected == true
     Box(
         modifier = Modifier.heightIn(min = 44.dp).clickable(role = Role.Button, onClick = onClick)
-            .semantics { this.selected = selected }.padding(end = 6.dp),
+            .then(if (selected != null) Modifier.semantics { this.selected = selected } else Modifier)
+            .padding(end = 6.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text, fontSize = 13.sp, color = Color(0xFF4A4A4A),
             modifier = Modifier.clip(shape)
-                .border(1.dp, if (selected) Orange180 else ChipBorder, shape)
-                .background(if (selected) Orange80 else Color.Transparent)
+                .border(1.dp, if (on) Orange180 else ChipBorder, shape)
+                .background(if (on) Orange80 else Color.Transparent)
                 .padding(horizontal = 12.dp, vertical = 7.dp)
         )
     }
