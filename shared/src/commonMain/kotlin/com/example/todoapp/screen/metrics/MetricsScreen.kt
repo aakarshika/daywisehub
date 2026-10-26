@@ -41,10 +41,11 @@ import com.example.todoapp.screen.basicutils.Light_Yellowww
 import com.example.todoapp.screen.basicutils.Yellow180
 import com.example.todoapp.screen.basicutils.components.MarkerHeading
 import com.example.todoapp.screen.diary.plan.SmallChip
+import kotlinx.datetime.LocalDate
 
-/** Spec 9: the Metrics tab, one week at a time. */
+/** Spec 9: the Metrics tab, one week at a time. [openDay] shows a date in the diary. */
 @Composable
-fun MetricsScreen(viewModel: MetricsViewModel) {
+fun MetricsScreen(viewModel: MetricsViewModel, openDay: (LocalDate) -> Unit) {
     val state by viewModel.state.collectAsState()
     val s = state
 
@@ -64,6 +65,7 @@ fun MetricsScreen(viewModel: MetricsViewModel) {
                     item(key = "patterns-none") { RuledLine("Patterns show up after a few weeks.", color = InkGray) }
                 }
                 s.patterns.forEachIndexed { i, line -> item(key = "pattern-$i") { RuledLine(line) } }
+                item(key = "calendar") { MonthCalendarCard(s.calendar, openDay) }
             }
             item(key = "bottom-space") { Spacer(Modifier.height(120.dp)) }
         }

@@ -150,7 +150,11 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                     DisposableEffect(metricsViewModel) {
                         onDispose { metricsViewModel.viewModelScope.cancel() }
                     }
-                    MetricsScreen(metricsViewModel)
+                    MetricsScreen(metricsViewModel, openDay = { date ->
+                        // The diary shows the date the shared CalDiaryViewModel holds.
+                        calDateViewModel.selectDate(date)
+                        navigateTab(MyScreen.Diary)
+                    })
                 }
             }
         }
