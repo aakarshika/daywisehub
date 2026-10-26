@@ -125,7 +125,7 @@ class DayBadgeBook internal constructor(private val input: BadgeInput) {
     private val rows = mutableMapOf<LocalDate, MutableList<TodayTask>>()
     /** The days each mission was done or done in part: the planner's streak and due-date rule. */
     private val doneDays = mutableMapOf<Long, MutableSet<LocalDate>>()
-    /** Days with something done or done in part by hand. Every other day is quiet. */
+    /** Days with something done or done in part by hand, or a milestone reached. Every other day is quiet. */
     private val handDays = mutableSetOf<LocalDate>()
     /** Days with something done by hand: ticked, not done in part. */
     private val tickDays = mutableSetOf<LocalDate>()
@@ -158,13 +158,19 @@ class DayBadgeBook internal constructor(private val input: BadgeInput) {
         lowEnergy = input.plans
             .filter { it.energy == Energy.LOW.name && it.date >= fromDay && it.date <= toDay }
             .mapTo(mutableSetOf()) { MyDate(it.date).toLocalDate() }
-        val completed = input.milestones.filter { it.status == TaskStatus.COMPLETED.value && it.actualCompletionDate != null }
+        val completed = input.milestones.filter {
+            it.status == TaskStatus.COMPLETED.value && it.actualCompletionDate != null && it.missionId in byId
+        }
         completedOn = completed.groupBy { it.actualCompletionDate!!.toLocalDate() }
+        // A milestone reached counts as doing something, though it isn't an item: the day keeps Milestone (and
+        // Finish line) instead of the fallback, and a quiet stretch ends there.
+        handDays += completedOn.keys
         milestonesOf = input.milestones.groupBy { it.missionId }
     }
 
     /**
-     * [date]'s badges, rarest first. A finished day with nothing done by hand gets only "Recharging day",
+     * [date]'s badges, rarest first. A finished day with nothing done by hand and no milestone reached gets
+     * only "Recharging day",
      * and so does an away week's day: its quiet shows without a word about missing anything. Today has
      * the ones earned so far and never "Recharging day". Days after today, days before the first stored
      * item and days outside the input's range get none.
@@ -186,7 +192,8 @@ class DayBadgeBook internal constructor(private val input: BadgeInput) {
         // Picks: what the day holds besides its fixed blocks, minus what moved away.
         val picks = day.filter { !it.isFixedBlock && it.taskState != TaskState.MOVED }
         val blocks = day.filter { it.isFixedBlock }
-        val crowned = day.filter { it.crowned }
+        // Open crowns only, as the diary counts them: a skipped item can keep its crown.
+        val crowned = day.filter { it.crowned && it.taskState.isOpen }
         val weekday = date.dayOfWeek
         // Points over the scored picks: what they earned against everything they could earn.
         val scoredPicks = picks.filter { mission(it).scored }
@@ -231,13 +238,13 @@ class DayBadgeBook internal constructor(private val input: BadgeInput) {
             val feel = if (it.size == 1) ", which feels draining" else ", which feel draining"
             add(Badge.HEAVY_LIFTING, about("Did ", it, feel, many = { n -> "Did $n draining things" }))
         }
-        if (fullEnough) add(Badge.FULL_ENOUGH, words("$points of ${MissionWords.pointsPhrase(planned)} · full at 80%"))
+        if (fullEnough) add(Badge.FULL_ENOUGH, words("$points of ${MissionWords.pointsPhrase(planned)} · full at ${(Points.FULL_SHARE * 100).toInt()}%"))
         val donePicks = picks.count { it.taskState == TaskState.DONE }
         if (picks.size >= 3 && donePicks == picks.size - 1) add(Badge.COUNT_IT, words("$donePicks of ${picks.size} done"))
         if ((weekday == DayOfWeek.SATURDAY || weekday == DayOfWeek.SUNDAY) && byHand.size >= 2) {
             add(Badge.WEEKEND_WARRIOR, words("${byHand.size} done on a ${date.weekdayName()}"))
         }
-        if (date in tickDays) quietBefore(date, maxOf(first, floor))?.let { add(Badge.BACK_AT_IT, words("Back after $it quiet days")) }
+        if (date in tickDays) backAfter(date, first, floor)?.let { add(Badge.BACK_AT_IT, words(it)) }
         ticked.filter { it.reasonCode == ReasonCode.RHYTHM_OVERDUE.name }.missions().takeIf { it.isNotEmpty() }?.let {
             add(Badge.OVERDUE_NO_MORE, about("Caught up on ", it, "", many = { n -> "Caught up on $n things" }))
         }
@@ -267,7 +274,8 @@ class DayBadgeBook internal constructor(private val input: BadgeInput) {
             add(Badge.SEVEN_DAY_RUN, about("", it, " 7 days running", many = { n -> "$n habits 7 days running" }))
         }
         milestonesDoneOn(date)?.let { (mission, count) ->
-            add(Badge.FINISH_LINE, listOf(chip(mission), LinePart(" · ${MissionWords.allMilestonesDone(count)}")))
+            val done = if (count == 1) "its milestone is done" else MissionWords.allMilestonesDone(count)
+            add(Badge.FINISH_LINE, listOf(chip(mission), LinePart(" · $done")))
         }
         returns.filter { it.cyclesMissed >= 2 }.maxByOrNull { it.days }?.let { add(Badge.RE_RETURN, it.line(lookBack)) }
         if (fill.maker == dayIndex) {
@@ -280,6 +288,8 @@ class DayBadgeBook internal constructor(private val input: BadgeInput) {
         bestRun(runs, date, floor)?.let { (mission, run, best) ->
             add(Badge.PERSONAL_BEST, listOf(chip(mission), LinePart(" $run days running, past its best of $best")))
         }
+        // Every finished day keeps at least one badge, even one whose only act earns nothing on its own.
+        if (earned.isEmpty() && date < today) return listOf(EarnedBadge(Badge.RECHARGING_DAY, words("A quiet day")))
         return earned.sortedByDescending { it.badge.ordinal }
     }
 
@@ -300,17 +310,21 @@ class DayBadgeBook internal constructor(private val input: BadgeInput) {
     }
 
     /**
-     * "Back at it": the quiet days in a row before [date], when there are 3 or more and something was done
-     * by hand before them, from [floor] on. Null otherwise, so the first day ever done isn't a comeback.
+     * "Back at it": its reason when the 3 or more days before [date] were quiet and something was done by
+     * hand before them. A quiet stretch that runs past the look-back, with items stored before it, is a long
+     * break. Null otherwise, so the first day ever done isn't a comeback.
      */
-    private fun quietBefore(date: LocalDate, floor: LocalDate): Int? {
+    private fun backAfter(date: LocalDate, first: LocalDate, floor: LocalDate): String? {
+        val from = maxOf(first, floor)
         var day = date.minus(1, DateTimeUnit.DAY)
         var quiet = 0
-        while (day >= floor && day !in handDays) {
+        while (day >= from && day !in handDays) {
             quiet++
             day = day.minus(1, DateTimeUnit.DAY)
         }
-        return quiet.takeIf { it >= 3 && day >= floor }
+        if (quiet < 3) return null
+        if (day >= from) return "Back after $quiet quiet days"
+        return if (first < from) "Back after a long break" else null
     }
 
     /**

@@ -376,7 +376,7 @@ Every finished day earns at least one badge, so the calendar always looks genero
 **Rules**
 - **Computed, never stored.** Badges come from tasks, plans, milestones and week summaries every time (`domain/DayBadges.kt`). There's no table and no schema change.
 - **Which days.** Every day before today, from the first stored item's day on, including away weeks. Today has only what it has earned so far, never "Recharging day". Later days and days before the first item have none.
-- **Done by hand** is a ticked item, not one the evening check ticked ("Ticked for you"), so a work block alone never makes a day count. A block ticked by hand counts. A did-some counts as something done (it earns "Did some" rather than "Recharging day"); otherwise a badge says when it counts did-somes.
+- **Done by hand** is a ticked item, not one the evening check ticked ("Ticked for you"), so a work block alone never makes a day count. A block ticked by hand counts. A did-some counts as something done (it earns "Did some" rather than "Recharging day"), and so does a milestone reached that day; otherwise a badge says when it counts did-somes.
 - **Picks** are a day's items that aren't fixed blocks and didn't move away. Percent badges compare points earned with the full points of the day's scored picks.
 - **The fallback.** A finished day with nothing done by hand gets "Recharging day" and nothing else.
 - **Look-back.** Runs, personal bests, returns and quiet days look back at most `PlanRepository.HISTORY_DAYS` (120 days), which is what the diary reads, so the diary and Metrics agree about every day.
@@ -406,7 +406,7 @@ Every finished day earns at least one badge, so the calendar always looks genero
 | | Full enough | Points earned reach 80% of the picks' points (the pillar rule) |
 | | We'll count it | 3 or more picks, all but one done |
 | | Weekend warrior | A Saturday or Sunday with 2 or more done by hand |
-| | Back at it | Something done by hand after 3 or more quiet days, with something done before them |
+| | Back at it | Something done by hand after 3 or more quiet days, with something done before them (or after a break longer than the look-back) |
 | | Overdue no more | An item picked as overdue was done |
 | | Gentle win | A low-energy day (or "Lighter day") that was full enough |
 | | All four | Something done by hand in Health, Wealth, Love and Life |

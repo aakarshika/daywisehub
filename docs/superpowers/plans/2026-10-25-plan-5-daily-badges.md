@@ -39,7 +39,7 @@ The brief is followed as written except where noted.
    - They apply to missions the planner repeats on an interval of 28 days or more (`repeatsByInterval` and `intervalDays() >= 28`): rhythms of 4 weeks or more, and habits once a month. A habit twice a month is a 15-day cycle by the planner's own rule, so it doesn't qualify (the brief lists "a habit with period MONTH"). Recharge never counts as missed, so it has no return.
    - The gap runs from the last time it was done or done in part, as its due date does, else from its start. Cycles missed = `gap / cycle − 1`.
    - When neither the last time nor the start is inside the 120-day look-back, the gap is known only to be longer than 120 days. That is still certainly a re-return when even 121 days misses 2 cycles (cycles up to 40 days); otherwise no badge, since it can't be told.
-4. **Milestones don't make a day count.** "Done by hand" reads items only, as the brief defines it, so a finished day whose only act was ticking a milestone gets "Recharging day", and today shows nothing until an item is done. This keeps a day's badges the same before and after midnight.
+4. **A milestone reached makes a day count.** A day whose only act was ticking a milestone isn't quiet: it shows Milestone (and Finish line on the last one), not "Recharging day", and it ends a quiet stretch for "Back at it". It isn't an item, so "Two in a row" and "First one" still need a tick. (Changed after review: at first such a day got "Recharging day" and lost its rarest badges.)
 5. **Archived missions keep their badges.** Their items count everywhere, as their points do, and their milestones are read too (the new `observeIncludingArchived`). Mission lines still read only active missions' milestones.
 6. **The first day** comes from a live `MIN(task_date)`. Adding an item on an earlier day with the pencil moves it back.
 7. **The look-back and the crown count are inputs.** `BadgeInput.lookBackDays` and `.maxCrowns` take `PlanRepository.HISTORY_DAYS` and `PlanRepository.MAX_CROWNS` at both call sites, so `domain` doesn't import `repo`.
@@ -49,7 +49,7 @@ The brief is followed as written except where noted.
 11. **Personal best** fires when the run is exactly one day longer than the longest earlier run in the look-back. A record run that sits right at the 120-day edge can shift by a day as the window slides; both screens use the same window, so they still agree.
 12. **The diary row** follows the day card: no card, no row. A page with no plan and no items (a day the app wasn't opened) shows no card, so its "Recharging day" shows only on the calendar. Each sticker's line is its content description rather than a tap, the simpler accessible choice the brief offered; the calendar's dialog shows the lines on screen.
 13. **Sizes.** Calendar sticker 20dp (icon 14dp), offset 12.5dp down and right from the cell's centre so it sits on the ring's lower right, clear of the day number; the cell stays 44dp. Dialog 32dp, diary 36dp. Tilt is −7° to 7°, from the date and the badge.
-14. **Contrast.** The ink `#3B3226` is 6.3:1 on the lilac fill (the darkest) and 9:1 or more on the others.
+14. **Contrast.** The ink `#3B3226` is about 9:1 or more on every fill, lilac and gold being the lowest.
 
 ## Keeping it fast
 
@@ -115,7 +115,7 @@ Some days move with the weekday you seeded on, because Call Grandma's three tick
 2. **Rested on purpose.** Add New episode with the pencil and tick it: "Made time for ⟨New episode⟩".
 3. **Crowned and All three crowns.** Crown 3 picks and tick them all: "3 crowned and done" and "All 3 crowned done". With one crowned: "⟨it⟩ was crowned and done".
 4. **Gentle win.** Tap "Lighter day", then tick at least 80% of the picks' points: for example "A low-energy day, 4 of 5 points".
-5. **Milestone and Finish line.** Tick a finish line's milestone in the diary: "Milestone 1 of 3 for ⟨it⟩". Ticking its last one adds the gold checkered flag: "⟨it⟩ · All 3 milestones done". Archive that mission: the day keeps both badges. A day whose only act was ticking a milestone stays "Recharging day" (decision 4).
+5. **Milestone and Finish line.** Tick a finish line's milestone in the diary: "Milestone 1 of 3 for ⟨it⟩". Ticking its last one adds the gold checkered flag: "⟨it⟩ · All 3 milestones done". Archive that mission: the day keeps both badges. A day whose only act was ticking a milestone shows Milestone (and Finish line), not "Recharging day" (decision 4).
 6. Nothing anywhere uses "missed", "failed" or an exclamation mark, and singulars read right ("1 done", "1 of 1 point").
 
 ### H. Date travel
@@ -124,7 +124,7 @@ Change the device date as in Plan 2's checklist (Android: turn off automatic tim
 2. **The return.** Tick a once-a-month habit, move the date about 60 days on and tick it again: "⟨it⟩ done for the first time in 60 days". After 90 days or more it's "The re-return".
 
 ### I. Agreement and speed
-1. For any day in the last 120 days, the diary row and the calendar dialog list the same badges.
+1. For any day in the last 120 days whose page shows the day card, the diary row and the calendar dialog list the same badges. (A day with no plan and no items, such as an away day, has no card, so its "Recharging day" shows on the calendar only.)
 2. With the seed, Metrics opens and steps weeks without a visible pause, and ticking in the diary feels as quick as before.
 
 ### J. iOS
@@ -134,3 +134,18 @@ Change the device date as in Plan 2's checklist (Android: turn off automatic tim
 - A seed day with a real "Ticked for you" block, and a seeded personal best, would let A–F run without hand steps.
 - If the owner prefers a tap to reveal a sticker's line in the diary, the row can grow a reason line under it.
 - Monthly habits twice a month could get returns on a 30-day cycle, if wanted (decision 3).
+
+## Review fixes
+
+- A milestone reached makes the day count (decision 4), so a milestone-only day keeps Milestone and Finish line.
+- "All three crowns" counts open crowns only, as the diary does. A skipped item can keep its crown.
+- "Back at it" also fires after a quiet stretch longer than the 120-day look-back, when items were stored before it: "Back after a long break".
+- The first stored day is read only when it changes, so a tick doesn't rebuild the diary or Metrics twice.
+- The calendar sticker sits 11 dp in from the ring's centre, so it stays inside its cell on narrow phones.
+- A finish line with a single milestone reads "its milestone is done".
+- A finished day can never end up with no badge.
+
+Left as built, for the hand test:
+- If a pillar or the week fills on a day whose only points came from blocks the app ticked, that day is still "Recharging day", so "Pillar filled" or "Week maker" shows on no day that week, though the week's crown does.
+- The return badges skip Recharge-kind missions.
+

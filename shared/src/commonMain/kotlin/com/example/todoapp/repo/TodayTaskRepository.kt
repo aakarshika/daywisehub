@@ -5,6 +5,7 @@ import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.todotask.TodayTaskDao
 import com.example.todoapp.db.models.MyDate
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.LocalDate
 
@@ -25,7 +26,7 @@ class TodayTaskRepository(private val database: AppDatabase) {
     suspend fun firstDate(): LocalDate? = todayTaskDao.getFirstDate()?.let { MyDate(it).toLocalDate() }
 
     /** The earliest day with any item, as it changes; null on an empty install. Day badges start there. */
-    fun observeFirstDate(): Flow<LocalDate?> = todayTaskDao.observeFirstDate().map { it?.let { day -> MyDate(day).toLocalDate() } }
+    fun observeFirstDate(): Flow<LocalDate?> = todayTaskDao.observeFirstDate().distinctUntilChanged().map { it?.let { day -> MyDate(day).toLocalDate() } }
 
     suspend fun insert(task: TodayTask): Long = todayTaskDao.insert(task)
 

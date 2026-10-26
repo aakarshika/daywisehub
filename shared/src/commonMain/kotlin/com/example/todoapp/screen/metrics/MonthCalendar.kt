@@ -128,7 +128,7 @@ private fun DayCell(day: CalendarDay, modifier: Modifier, onClick: () -> Unit) {
             color = if (day.inMonth) NoteInk else InkGray.copy(alpha = 0.6f),
             modifier = Modifier.clearAndSetSemantics {}
         )
-        day.badges.firstOrNull()?.let { BadgeSticker(it.badge, day.date, 20.dp, Modifier.offset(12.5.dp, 12.5.dp)) }
+        day.badges.firstOrNull()?.let { BadgeSticker(it.badge, day.date, 20.dp, Modifier.offset(11.dp, 11.dp)) }
     }
 }
 
