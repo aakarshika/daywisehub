@@ -20,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -112,12 +113,14 @@ fun MonthCalendarCard(calendar: MonthCalendar, onDay: (CalendarDay) -> Unit) {
  * A tap target at least 44dp tall with the day's ring and number. Today has an outline as well as a bold
  * number. The day's rarest badge sits in the ring's middle as a 26dp sticker, over the number, which then
  * doesn't show. "Recharging day" stays a 20dp sticker on the ring's lower right, so a quiet day keeps its
- * number (spec 9.3). The day's description names the date and every badge.
+ * number (spec 9.3). A day from the month before or after keeps its faded number too, with any badge as
+ * the small corner sticker, faded the same. The day's description names the date and every badge.
  */
 @Composable
 private fun DayCell(day: CalendarDay, modifier: Modifier, onClick: () -> Unit) {
     val top = day.badges.firstOrNull()?.badge
-    val quiet = top == Badge.RECHARGING_DAY
+    // In the corner, clear of the number, rather than over it.
+    val corner = top == Badge.RECHARGING_DAY || !day.inMonth
     Box(
         modifier = modifier.heightIn(min = 44.dp)
             .clickable(role = Role.Button, onClickLabel = if (day.badges.isEmpty()) "Open in the diary" else "Show badges", onClick = onClick)
@@ -126,7 +129,7 @@ private fun DayCell(day: CalendarDay, modifier: Modifier, onClick: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         if (day.hasRing) DayRing(day)
-        if (top == null || quiet) {
+        if (top == null || corner) {
             Text(
                 "${day.date.dayOfMonth}",
                 fontSize = 13.sp,
@@ -137,7 +140,10 @@ private fun DayCell(day: CalendarDay, modifier: Modifier, onClick: () -> Unit) {
         }
         when {
             top == null -> Unit
-            quiet -> BadgeSticker(top, day.date, 20.dp, Modifier.offset(11.dp, 11.dp))
+            corner -> BadgeSticker(
+                top, day.date, 20.dp,
+                Modifier.offset(11.dp, 11.dp).then(if (day.inMonth) Modifier else Modifier.alpha(0.6f))
+            )
             else -> BadgeSticker(top, day.date, 26.dp)
         }
     }

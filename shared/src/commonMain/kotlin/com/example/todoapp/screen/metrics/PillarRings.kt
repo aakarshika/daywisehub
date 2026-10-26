@@ -83,8 +83,10 @@ private fun PillarRing(score: PillarScore, away: Boolean, modifier: Modifier) {
                 val topLeft = Offset(stroke / 2, stroke / 2)
                 val arc = Size(size.width - stroke, size.height - stroke)
                 drawArc(Color.White, 0f, 360f, useCenter = false, topLeft = topLeft, size = arc, style = Stroke(stroke))
-                // A closed ring's rest, from the arc's end round to the top, under the arc so its round end shows.
-                if (!away && score.closed && score.share < 1f) {
+                // A closed ring's rest, from the arc's end round to the top. The arc's ends are square then, so
+                // round ones don't cover a sliver of the rest near 100%.
+                val rest = !away && score.closed && score.share < 1f
+                if (rest) {
                     drawArc(
                         pillarLight(score.pillar), -90f + 360f * score.share, 360f * (1f - score.share), useCenter = false,
                         topLeft = topLeft, size = arc, style = Stroke(stroke)
@@ -93,7 +95,7 @@ private fun PillarRing(score: PillarScore, away: Boolean, modifier: Modifier) {
                 if (!away && score.share > 0f) {
                     drawArc(
                         pillarStrong(score.pillar), -90f, 360f * score.share, useCenter = false,
-                        topLeft = topLeft, size = arc, style = Stroke(stroke, cap = StrokeCap.Round)
+                        topLeft = topLeft, size = arc, style = Stroke(stroke, cap = if (rest) StrokeCap.Butt else StrokeCap.Round)
                     )
                 }
             }
@@ -102,7 +104,7 @@ private fun PillarRing(score: PillarScore, away: Boolean, modifier: Modifier) {
         }
         Text(score.pillar.title, fontSize = 13.sp, color = CardHeadInk, modifier = Modifier.padding(top = 4.dp))
         // A closed ring's word is in the pillar's ink, as it reads done.
-        Text(state, fontSize = 12.sp, fontStyle = FontStyle.Italic, color = if ((score.full || score.nearly) && !away) pillarInk(score.pillar) else InkGray)
+        Text(state, fontSize = 12.sp, fontStyle = FontStyle.Italic, color = if ((score.full || score.closed) && !away) pillarInk(score.pillar) else InkGray)
         if (!away && score.extra > 0) Text("+${score.extra} extra", fontSize = 11.sp, color = pillarInk(score.pillar))
     }
 }
