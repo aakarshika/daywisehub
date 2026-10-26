@@ -54,6 +54,10 @@ interface TodayTaskDao {
     @Query("SELECT MIN(task_date) FROM today_task")
     suspend fun getFirstDate(): String?
 
+    /** [getFirstDate], as it changes: an item added on an earlier day moves it back. */
+    @Query("SELECT MIN(task_date) FROM today_task")
+    fun observeFirstDate(): Flow<String?>
+
     /** Items still planned on a day before [date], newest day first. */
     @Query("SELECT * FROM today_task WHERE task_date < :date AND task_state = 'PLANNED' ORDER BY task_date DESC, task_order")
     suspend fun getPlannedBefore(date: String): List<TodayTask>

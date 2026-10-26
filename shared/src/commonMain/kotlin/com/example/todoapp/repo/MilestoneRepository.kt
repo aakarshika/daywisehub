@@ -21,6 +21,8 @@ class MilestoneRepository(private val database: AppDatabase) {
 
     fun observeAll(): Flow<List<Milestone>> = milestoneDao.observeAll()
 
+    fun observeIncludingArchived(): Flow<List<Milestone>> = milestoneDao.observeIncludingArchived()
+
     suspend fun getForMission(missionId: Long): List<Milestone> = milestoneDao.getForMission(missionId)
 
     suspend fun updateMilestone(milestone: Milestone) = milestoneDao.updateMilestone(milestone)

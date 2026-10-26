@@ -43,6 +43,10 @@ interface MilestoneDao {
     """)
     fun observeAll(): Flow<List<Milestone>>
 
+    /** Every milestone, archived missions' too: a day keeps the badges its milestones earned. */
+    @Query("SELECT * FROM milestone ORDER BY mile_mission_id, milestone_order")
+    fun observeIncludingArchived(): Flow<List<Milestone>>
+
     @Query("SELECT * FROM milestone WHERE mile_mission_id = :missionId ORDER BY milestone_order")
     suspend fun getForMission(missionId: Long): List<Milestone>
 
