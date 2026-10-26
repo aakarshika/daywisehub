@@ -65,8 +65,17 @@ fun MetricsScreen(viewModel: MetricsViewModel, openDay: (LocalDate) -> Unit) {
                 item(key = "patterns-heading") {
                     MarkerHeading("PATTERNS", Yellow180, Modifier.padding(top = 24.dp, bottom = 4.dp))
                 }
+                // Patterns follow today, whichever week is on screen.
+                if (!s.isThisWeek) {
+                    item(key = "patterns-as-of") {
+                        Text(
+                            "As of today", fontSize = 12.sp, fontStyle = FontStyle.Italic, color = InkGray,
+                            modifier = Modifier.padding(horizontal = 22.dp)
+                        )
+                    }
+                }
                 if (s.patterns.isEmpty()) {
-                    item(key = "patterns-none") { RuledLine("Patterns show up after a few weeks.", color = InkGray) }
+                    item(key = "patterns-none") { RuledLine("Nothing stands out yet.", color = InkGray) }
                 }
                 s.patterns.forEachIndexed { i, line -> item(key = "pattern-$i") { RuledLine(line) } }
                 item(key = "calendar") { MonthCalendarCard(s.calendar, openDay) }

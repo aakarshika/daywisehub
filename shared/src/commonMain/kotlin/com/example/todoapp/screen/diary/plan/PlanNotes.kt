@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import com.example.todoapp.domain.PillarType
 import com.example.todoapp.screen.basicutils.CardCream
 import com.example.todoapp.screen.basicutils.InkBlack
+import com.example.todoapp.screen.basicutils.InkGray
 import com.example.todoapp.screen.basicutils.Orange180
 import com.example.todoapp.screen.basicutils.PeachInk
 import com.example.todoapp.screen.basicutils.PeachText
@@ -155,19 +157,25 @@ private fun HighlightLine(icon: DrawableResource, text: String) {
     HighlightRow(icon) { Text(text, fontSize = 15.sp, color = InkBlack) }
 }
 
-/** One line of a highlights card: an icon, then [content]. */
+/** One line of a highlights card: an icon (a quiet dot without one), then [content]. */
 @Composable
-internal fun HighlightRow(icon: DrawableResource, content: @Composable () -> Unit) {
+internal fun HighlightRow(icon: DrawableResource?, content: @Composable () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
             .background(Color(0xFFFDFAF1), RoundedCornerShape(8.dp))
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Image(
-            painterResource(icon), contentDescription = null,
-            colorFilter = ColorFilter.tint(Color(0xFF3A3A3A)), modifier = Modifier.size(22.dp)
-        )
+        if (icon != null) {
+            Image(
+                painterResource(icon), contentDescription = null,
+                colorFilter = ColorFilter.tint(Color(0xFF3A3A3A)), modifier = Modifier.size(22.dp)
+            )
+        } else {
+            Box(modifier = Modifier.size(22.dp), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.size(6.dp).background(InkGray, CircleShape))
+            }
+        }
         Spacer(Modifier.width(14.dp))
         content()
     }

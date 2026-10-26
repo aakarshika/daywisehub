@@ -148,8 +148,10 @@ fun LastWeekCard(state: LastWeekState) {
         HighlightRow(if (state.balanced) Res.drawable.crown_a else Res.drawable.heart_filled) {
             Text(state.pillars, fontSize = 15.sp, color = InkBlack)
         }
-        // The wand always means "the app adjusted something" (spec 9.1).
-        state.adjusted.forEach { line -> HighlightRow(Res.drawable.wand) { ChipText(line, fontSize = 15.sp, color = InkBlack) } }
+        // The wand always means "the app adjusted something" (spec 9.1), so "Nothing to catch up on." gets a quiet dot.
+        state.adjusted.forEach { line ->
+            HighlightRow(if (line.adjusted) Res.drawable.wand else null) { ChipText(line.parts, fontSize = 15.sp, color = InkBlack) }
+        }
     }
 }
 

@@ -6,6 +6,8 @@ import com.example.todoapp.db.data.plan.DaySettings
 import com.example.todoapp.db.data.week.PaceOffer
 import com.example.todoapp.db.data.week.WeekSummary
 import com.example.todoapp.db.models.MyDate
+import com.example.todoapp.domain.AheadLine
+import com.example.todoapp.domain.Carried
 import com.example.todoapp.domain.History
 import com.example.todoapp.domain.LinePart
 import com.example.todoapp.domain.MissionWords
@@ -13,14 +15,11 @@ import com.example.todoapp.domain.OfferType
 import com.example.todoapp.domain.OfferWords
 import com.example.todoapp.domain.PaceOffers
 import com.example.todoapp.domain.PillarType
-import com.example.todoapp.domain.Points
+import com.example.todoapp.domain.WeekAhead
 import com.example.todoapp.domain.WeekMath
-import com.example.todoapp.domain.date
 import com.example.todoapp.domain.earned
-import com.example.todoapp.domain.isLiveOn
 import com.example.todoapp.domain.pillarType
 import com.example.todoapp.domain.pillarsFull
-import com.example.todoapp.domain.repeatsByInterval
 import com.example.todoapp.domain.shortLabel
 import com.example.todoapp.domain.target
 import com.example.todoapp.domain.weekStartDate
@@ -40,9 +39,10 @@ data class LastWeekState(
     val balanced: Boolean,
     /**
      * What the app adjusted, each line naming its mission on a chip. Never empty on today's page. Empty on
-     * an earlier day's, which can't say what was adjusted: that reads today's missions.
+     * an earlier day's, which can't say what was adjusted: that reads today's missions. Only an adjusted
+     * line gets the wand; "Nothing to catch up on." doesn't.
      */
-    val adjusted: List<List<LinePart>>,
+    val adjusted: List<AheadLine>,
 )
 
 /** One pace-offer sticky (spec 5.2). */
@@ -61,8 +61,6 @@ data class DiaryExtras(
 )
 
 object WeekStateBuilder {
-
-    const val MAX_ADJUSTED = 3
 
     /**
      * True when [date] opens its week in the diary: Monday, or the first day of its week that has a plan
@@ -119,34 +117,19 @@ object WeekStateBuilder {
 
     /**
      * What the app adjusted, from stored data only: items "move it" carried from last week into this
-     * week, and every-so-often missions that were due last week and stay due (spec 5.1). A move that
-     * landed after this week isn't this week's.
+     * week, and every-so-often missions that were due last week and stay due (spec 5.1). The rule is
+     * WeekAhead.carried, which the Metrics tab reads too, so the two never disagree about a week.
      */
-    private fun adjusted(lastStart: LocalDate, missions: List<Mission>, history: History): List<List<LinePart>> {
-        val lastEnd = lastStart.plus(6, DateTimeUnit.DAY)
-        val thisStart = lastStart.plus(7, DateTimeUnit.DAY)
-        val thisEnd = lastStart.plus(13, DateTimeUnit.DAY)
-        val byId = missions.associateBy { it.missionId }
-        val named = mutableSetOf<Long>()
-        val lines = mutableListOf<List<LinePart>>()
-        history.all
-            .filter { task ->
-                val from = task.movedFromDate?.toLocalDate()
-                from != null && from >= lastStart && from <= lastEnd && task.date >= thisStart && task.date <= thisEnd
+    private fun adjusted(lastStart: LocalDate, missions: List<Mission>, history: History): List<AheadLine> =
+        WeekAhead.carried(lastStart, missions, history)
+            .map { item ->
+                val words = when (item) {
+                    is Carried.Moved -> " moved to ${item.day.weekdayName()}."
+                    is Carried.StillDue -> " is still due, so it moved into this week."
+                }
+                AheadLine(listOf(chip(item.mission), LinePart(words)), adjusted = true)
             }
-            .sortedBy { it.date }
-            .forEach { task ->
-                val mission = byId[task.missionId] ?: return@forEach
-                if (named.add(mission.missionId)) lines += listOf(chip(mission), LinePart(" moved to ${task.date.weekdayName()}."))
-            }
-        missions
-            .filter { it.repeatsByInterval && it.isLiveOn(thisStart) && it.missionId !in named }
-            .filter {
-                Points.occurrencesInWeek(it, lastStart, history) > 0 && history.doneCount(it.missionId, lastStart, lastEnd) == 0
-            }
-            .forEach { lines += listOf(chip(it), LinePart(" is still due, so it moved into this week.")) }
-        return lines.take(MAX_ADJUSTED).ifEmpty { listOf(listOf(LinePart("Nothing to catch up on."))) }
-    }
+            .ifEmpty { listOf(AheadLine(listOf(LinePart("Nothing to catch up on.")), adjusted = false)) }
 
     private fun chip(mission: Mission) = LinePart(mission.title, mission.pillarType)
 }

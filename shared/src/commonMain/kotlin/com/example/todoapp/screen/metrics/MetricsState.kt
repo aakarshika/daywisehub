@@ -4,9 +4,9 @@ import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.mission.milestone.Milestone
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.week.WeekSummary
+import com.example.todoapp.domain.AheadLine
 import com.example.todoapp.domain.DayTasks
 import com.example.todoapp.domain.History
-import com.example.todoapp.domain.LinePart
 import com.example.todoapp.domain.MissionLine
 import com.example.todoapp.domain.MissionProgress
 import com.example.todoapp.domain.MonthCalendar
@@ -56,7 +56,7 @@ data class MetricsUiState(
     /** "NEXT WEEK", or "THE WEEK AFTER" for a finished week. */
     val aheadTitle: String,
     /** What next week adjusts, each line naming its mission on a chip. Never empty. */
-    val ahead: List<List<LinePart>>,
+    val ahead: List<AheadLine>,
     /** As of today, whichever week is on screen. Empty until the data holds a pattern up. */
     val patterns: List<String>,
     /** The month of the week on screen. */
@@ -91,7 +91,7 @@ object MetricsStateBuilder {
             score = score,
             highlights = WeekHighlightsBuilder.build(title.uppercase(), week, thisWeek, score, byWeek, opened),
             aheadTitle = if (week < thisWeek) "THE WEEK AFTER" else "NEXT WEEK",
-            ahead = WeekAhead.lines(week, thisWeek, missions, days, history),
+            ahead = WeekAhead.lines(week, input.today, missions, history),
             patterns = Patterns.lines(input.today, byWeek, input.allMissions, days, opened),
             calendar = MonthGrid.build(week, input.today, input.allMissions, days, byWeek),
             missions = MissionProgress.lines(input.today, missions, history, input.milestones, opened),

@@ -23,8 +23,8 @@ object Patterns {
     const val BALANCED_RUN = 2
     /** The weekday line looks at this many weeks, this one included… */
     const val WEEKDAY_WEEKS = 8
-    /** …and needs this many ticks in the pillar. */
-    const val WEEKDAY_MIN_DONE = 6
+    /** …and needs this many ticks in the pillar, more than half of them on one weekday. */
+    const val WEEKDAY_MIN_DONE = 8
     /**
      * Runs look back at most this far. That stays inside MetricsViewModel's year of tasks, which is what
      * tells an away week (no items of its own) from a week that simply wasn't loaded.
@@ -32,6 +32,12 @@ object Patterns {
     const val MAX_RUN_WEEKS = 51
 
     private val pluralDays = listOf("Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays", "Sundays")
+
+    /**
+     * A run of weeks back from last week. [capped] when it reached [MAX_RUN_WEEKS] without ending: it then
+     * reads "for a year or more".
+     */
+    data class Run(val weeks: Int, val capped: Boolean)
 
     /**
      * As of [today], whatever week is on screen. [byWeek] holds the finished weeks by their Monday, and
@@ -45,44 +51,50 @@ object Patterns {
         opened: Set<LocalDate>,
     ): List<String> {
         val thisWeek = WeekMath.weekStart(today)
-        val lines = mutableListOf<String>()
-        val balancedRun = runBack(thisWeek, byWeek, opened) { it.balanced }
-        if (balancedRun >= BALANCED_RUN) lines += "$balancedRun balanced weeks in a row."
+        val runs = mutableListOf<String>()
+        val balanced = runBack(thisWeek, byWeek, opened) { it.balanced }
+        if (balanced.weeks >= BALANCED_RUN) {
+            runs += if (balanced.capped) "Balanced weeks in a row for a year or more." else "${balanced.weeks} balanced weeks in a row."
+        }
         // A pillar with nothing due isn't a full week here. A balanced run already covers a shorter pillar run.
         PillarType.scoredPillars
             .map { pillar ->
                 pillar to runBack(thisWeek, byWeek, opened) { it.target(pillar) > 0 && Points.isFull(it.earned(pillar), it.target(pillar)) }
             }
-            .filter { (_, run) -> run >= FULL_RUN && run > balancedRun }
-            .sortedByDescending { it.second }
+            .filter { (_, run) -> run.weeks >= FULL_RUN && run.weeks > balanced.weeks }
+            .sortedByDescending { it.second.weeks }
             .take(MAX_RUN_LINES)
-            .forEach { (pillar, run) -> lines += "${pillar.title} has been full $run weeks running." }
-        lines += weekdayLines(today, thisWeek, allMissions, days)
-        return lines.take(MAX_LINES)
+            .forEach { (pillar, run) ->
+                runs += if (run.capped) "${pillar.title} has been full for a year or more." else "${pillar.title} has been full ${run.weeks} weeks running."
+            }
+        // A weekday line keeps a slot, so run lines can't crowd it out.
+        val weekdays = weekdayLines(today, thisWeek, allMissions, days)
+        return (runs.take(MAX_LINES - minOf(weekdays.size, 1)) + weekdays).take(MAX_LINES)
     }
 
     /**
      * Finished weeks in a row, back from last week, that pass [test]. A week without a row ends the run.
      * An away week (WeekScores.isAway) neither counts nor ends it: its zeros aren't misses.
      */
-    private fun runBack(thisWeek: LocalDate, byWeek: Map<LocalDate, WeekSummary>, opened: Set<LocalDate>, test: (WeekSummary) -> Boolean): Int {
+    private fun runBack(thisWeek: LocalDate, byWeek: Map<LocalDate, WeekSummary>, opened: Set<LocalDate>, test: (WeekSummary) -> Boolean): Run {
         var week = thisWeek.minus(7, DateTimeUnit.DAY)
         var run = 0
         repeat(MAX_RUN_WEEKS) {
-            val summary = byWeek[week] ?: return run
+            val summary = byWeek[week] ?: return Run(run, capped = false)
             if (!WeekScores.isAway(week, opened)) {
-                if (!test(summary)) return run
+                if (!test(summary)) return Run(run, capped = false)
                 run++
             }
             week = week.minus(7, DateTimeUnit.DAY)
         }
-        return run
+        return Run(run, capped = true)
     }
 
     /**
-     * "Love mostly happens on Sundays": the pillar has enough ticks in the last [WEEKDAY_WEEKS] weeks,
-     * and one weekday has at least 40% of them and more than any other day. Fixed blocks are left out,
-     * since their days are set.
+     * "Love mostly happens on Mondays": in the last [WEEKDAY_WEEKS] weeks the pillar has at least
+     * [WEEKDAY_MIN_DONE] ticks, and more than half of them fall on one weekday, so "mostly" holds and no
+     * other day ties it. Only missions free to land on any day count: fixed blocks, daily missions and
+     * missions with preferred days are left out, since their days are set.
      */
     private fun weekdayLines(today: LocalDate, thisWeek: LocalDate, allMissions: List<Mission>, days: DayTasks): List<String> {
         val byId = allMissions.associateBy { it.missionId }
@@ -92,7 +104,7 @@ object Patterns {
             val weekday = day.dayOfWeek.isoDayNumber - 1
             days.on(day).forEach { task ->
                 val mission = byId[task.missionId]
-                if (mission != null && mission.scored && !task.isFixedBlock && task.taskState.countsAsDone) {
+                if (mission != null && mission.scored && freeDay(mission) && !task.isFixedBlock && task.taskState.countsAsDone) {
                     counts.getOrPut(mission.pillarType) { IntArray(7) }[weekday]++
                 }
             }
@@ -102,12 +114,15 @@ object Patterns {
             .mapNotNull { pillar ->
                 val byDay = counts[pillar] ?: return@mapNotNull null
                 val total = byDay.sum()
-                val ranked = byDay.sortedArrayDescending()
-                val top = ranked[0]
-                if (total < WEEKDAY_MIN_DONE || top * 5 < total * 2 || top == ranked[1]) return@mapNotNull null
+                val top = byDay.max()
+                if (total < WEEKDAY_MIN_DONE || top * 2 <= total) return@mapNotNull null
                 Triple(pillar, byDay.indexOf(top), top.toFloat() / total)
             }
             .sortedByDescending { it.third }
             .map { (pillar, weekday, _) -> "${pillar.title} mostly happens on ${pluralDays[weekday]}." }
     }
+
+    /** Not a fixed block, not every day, and no preferred days: which weekday it lands on is up to you. */
+    private fun freeDay(mission: Mission): Boolean =
+        mission.missionKind != MissionKind.BLOCK && mission.periodUnit != Period.DAY && mission.daySet.isEmpty()
 }
