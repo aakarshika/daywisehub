@@ -6,6 +6,8 @@ import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.week.WeekSummary
 import com.example.todoapp.domain.DayTasks
 import com.example.todoapp.domain.History
+import com.example.todoapp.domain.WeekHighlights
+import com.example.todoapp.domain.WeekHighlightsBuilder
 import com.example.todoapp.domain.WeekMath
 import com.example.todoapp.domain.WeekScore
 import com.example.todoapp.domain.WeekScores
@@ -42,6 +44,7 @@ data class MetricsUiState(
     val canGoForward: Boolean,
     /** The week's pillar scores: stored for a finished week, live for this one. */
     val score: WeekScore,
+    val highlights: WeekHighlights,
 )
 
 object MetricsStateBuilder {
@@ -57,14 +60,16 @@ object MetricsStateBuilder {
         // Stored weeks start at the week of the first task, so nothing comes before the first one.
         val earliest = input.summaries.firstOrNull()?.weekStartDate?.let { minOf(it, thisWeek) } ?: thisWeek
         val score = WeekScores.forWeek(week, thisWeek, byWeek[week], missions, input.allMissions, days, history)
+        val title = title(week, thisWeek)
         return MetricsUiState(
             weekStart = week,
-            title = title(week, thisWeek),
+            title = title,
             range = "${week.shortLabel()} to ${week.plus(6, DateTimeUnit.DAY).shortLabel()}",
             isThisWeek = week == thisWeek,
             canGoBack = week > earliest,
             canGoForward = week < thisWeek,
             score = score,
+            highlights = WeekHighlightsBuilder.build(title.uppercase(), week, thisWeek, score, byWeek, days),
         )
     }
 
