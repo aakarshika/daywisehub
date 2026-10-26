@@ -7,6 +7,7 @@ import com.example.todoapp.db.data.week.WeekSummary
 import com.example.todoapp.domain.DayTasks
 import com.example.todoapp.domain.History
 import com.example.todoapp.domain.LinePart
+import com.example.todoapp.domain.Patterns
 import com.example.todoapp.domain.WeekAhead
 import com.example.todoapp.domain.WeekHighlights
 import com.example.todoapp.domain.WeekHighlightsBuilder
@@ -51,6 +52,8 @@ data class MetricsUiState(
     val aheadTitle: String,
     /** What next week adjusts, each line naming its mission on a chip. Never empty. */
     val ahead: List<List<LinePart>>,
+    /** As of today, whichever week is on screen. Empty until the data holds a pattern up. */
+    val patterns: List<String>,
 )
 
 object MetricsStateBuilder {
@@ -78,6 +81,7 @@ object MetricsStateBuilder {
             highlights = WeekHighlightsBuilder.build(title.uppercase(), week, thisWeek, score, byWeek, days),
             aheadTitle = if (week < thisWeek) "THE WEEK AFTER" else "NEXT WEEK",
             ahead = WeekAhead.lines(week, thisWeek, missions, days, history),
+            patterns = Patterns.lines(input.today, byWeek, input.allMissions, days),
         )
     }
 

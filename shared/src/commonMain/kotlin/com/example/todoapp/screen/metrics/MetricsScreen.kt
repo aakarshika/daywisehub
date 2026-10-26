@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,15 +23,23 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.todoapp.screen.basicutils.Blue80
+import com.example.todoapp.screen.basicutils.InkBlack
 import com.example.todoapp.screen.basicutils.InkGray
 import com.example.todoapp.screen.basicutils.Light_Yellowww
+import com.example.todoapp.screen.basicutils.Yellow180
+import com.example.todoapp.screen.basicutils.components.MarkerHeading
 import com.example.todoapp.screen.diary.plan.SmallChip
 
 /** Spec 9: the Metrics tab, one week at a time. */
@@ -48,6 +57,13 @@ fun MetricsScreen(viewModel: MetricsViewModel) {
                 item(key = "rings") { PillarRings(s.score) }
                 item(key = "week-ahead") { WeekAheadNotes(s.aheadTitle, s.ahead) }
                 item(key = "highlights") { WeekHighlightsCard(s.highlights) }
+                item(key = "patterns-heading") {
+                    MarkerHeading("PATTERNS", Yellow180, Modifier.padding(top = 24.dp, bottom = 4.dp))
+                }
+                if (s.patterns.isEmpty()) {
+                    item(key = "patterns-none") { RuledLine("Patterns show up after a few weeks.", color = InkGray) }
+                }
+                s.patterns.forEachIndexed { i, line -> item(key = "pattern-$i") { RuledLine(line) } }
             }
             item(key = "bottom-space") { Spacer(Modifier.height(120.dp)) }
         }
@@ -81,5 +97,23 @@ private fun WeekArrow(icon: ImageVector, label: String, enabled: Boolean, onClic
         contentAlignment = Alignment.Center
     ) {
         Icon(icon, contentDescription = label, tint = if (enabled) InkGray else InkGray.copy(alpha = 0.3f))
+    }
+}
+
+/** One line in the diary's hand, on a ruled line (spec 9.1). */
+@Composable
+private fun RuledLine(text: String, color: Color = InkBlack) {
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp).heightIn(min = 38.dp)
+            .drawBehind {
+                val y = size.height - 1.dp.toPx()
+                drawLine(Blue80, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
+            },
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Text(
+            text, fontSize = 17.sp, fontStyle = FontStyle.Italic, fontWeight = FontWeight.Light, letterSpacing = 0.3.sp,
+            color = color, modifier = Modifier.padding(vertical = 6.dp)
+        )
     }
 }
