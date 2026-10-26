@@ -91,6 +91,19 @@ val EmptyDayRing = Color(0xFFB3A6C8)
 /** The outline around today on the calendar, at least 3:1 on both tints. */
 val TodayOutline = Color(0xFF7A6E94)
 
+// Day badges (spec 9.3)
+/** Sticker fills by tier: everyday cream, good-day peach, rare lilac, rarest gold. */
+val BadgeEveryday = Color(0xFFEFE6CF)
+val BadgeGoodDay = Color(0xFFFFD9BF)
+val BadgeRare = Color(0xFFE3D7F7)
+val BadgeRarest = Color(0xFFF8D98A)
+/** "Recharging day" only: calm and set apart, so it comes to read as a day with nothing on it. */
+val BadgeQuiet = Color(0xFFE4E0EC)
+/** A sticker's light rim. */
+val StickerRim = Color(0xFFFFFDF6)
+/** A sticker's icon: at least 6:1 on every fill. */
+val BadgeInk = Color(0xFF3B3226)
+
 /** Headings, chips and highlights. */
 fun pillarLight(pillar: PillarType): Color = when (pillar) {
     PillarType.HEALTH -> Color(0xFFF6D3FF)

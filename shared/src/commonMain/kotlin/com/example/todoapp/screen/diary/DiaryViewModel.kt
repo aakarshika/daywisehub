@@ -90,6 +90,12 @@ class DiaryViewModel(
         if (isToday) weekRepository.observeOffers(WeekMath.weekStart(today)) else flowOf(emptyList()),
     ) { plans, settings, lastWeek, thisPageWeek, offers -> DiaryExtras(plans, settings, lastWeek, thisPageWeek, offers) }
 
+    /** The page's badges also read when milestones were done, archived missions' too, and the first stored day. */
+    private val badgeExtras = combine(
+        milestoneRepository.observeIncludingArchived(),
+        todayTaskRepository.observeFirstDate(),
+    ) { milestones, first -> BadgeExtras(milestones, first) }
+
     /**
      * Archived missions come in too, only so their points earned this week still count in the bars.
      * A builder failure keeps what's on screen instead of closing the app, as on the Metrics tab.
@@ -100,16 +106,16 @@ class DiaryViewModel(
         missionRepository.observeActive(),
         missionRepository.observeAll(),
         todayTaskRepository.observeBetween(currentDate.minus(PlanRepository.HISTORY_DAYS, DateTimeUnit.DAY), lookAhead),
-        diaryExtras,
+        diaryExtras.combine(badgeExtras) { extras, badges -> extras to badges },
         planReady,
-    ) { missions, allMissions, tasks, extras, ready ->
+    ) { missions, allMissions, tasks, (extras, badgeExtras), ready ->
         if (!ready) return@combine null
         // One bad build keeps the last screen and the next change of data builds again.
         try {
             DiaryStateBuilder.build(
                 date = currentDate, today = today,
                 missions = missions, allMissions = allMissions,
-                tasks = tasks, extras = extras,
+                tasks = tasks, extras = extras, badgeExtras = badgeExtras,
             ).also { lastState = it }
         } catch (e: CancellationException) {
             throw e

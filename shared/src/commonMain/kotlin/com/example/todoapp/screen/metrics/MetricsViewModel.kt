@@ -3,6 +3,7 @@ package com.example.todoapp.screen.metrics
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
+import com.example.todoapp.db.data.plan.DayPlan
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.domain.Patterns
@@ -34,8 +35,9 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
 /**
- * The Metrics tab (spec 9). It only reads, so nothing here needs PlanRepository's write lock.
- * The tab makes a new one each time it opens, and again after midnight, and cancels it when it closes.
+ * The Metrics tab (spec 9). It only reads, so nothing here needs PlanRepository's write lock: its day
+ * plans come through a plain read. The tab makes a new one each time it opens, and again after midnight,
+ * and cancels it when it closes.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MetricsViewModel(
@@ -43,6 +45,7 @@ class MetricsViewModel(
     todayTaskRepository: TodayTaskRepository,
     milestoneRepository: MilestoneRepository,
     weekRepository: WeekRepository,
+    planRepository: PlanRepository,
 ) : ViewModel() {
 
     /** Fixed for this view model's life; NavScreens makes a new one when the date changes. */
@@ -59,18 +62,26 @@ class MetricsViewModel(
         .map { MetricsStateBuilder.earliest(it, thisWeek) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, thisWeek)
 
-    /** Tasks from [from] on, so a week's state is built only once its window covers it. */
-    private class Window(val from: LocalDate, val tasks: List<TodayTask>)
+    /**
+     * Tasks and day plans from [from] on, so a week's state is built only once its window covers it, and
+     * the first stored day, where day badges start.
+     */
+    private class Window(val from: LocalDate, val tasks: List<TodayTask>, val plans: List<DayPlan>, val firstDay: LocalDate?)
 
     /**
-     * Tasks from a year before today (or earlier, when an older week's month needs it) to the end of
-     * next week. The window only moves when a week that old is shown.
+     * Tasks and plans from a year before today (or earlier, when an older week's month needs it) to the
+     * end of next week. The window only moves when a week that old is shown.
      */
     private val window = week
         .map { firstDay(it) }
         .distinctUntilChanged()
         .flatMapLatest { from ->
-            todayTaskRepository.observeBetween(from, thisWeek.plus(13, DateTimeUnit.DAY)).map { Window(from, it) }
+            val to = thisWeek.plus(13, DateTimeUnit.DAY)
+            combine(
+                todayTaskRepository.observeBetween(from, to),
+                planRepository.observePlans(from, to),
+                todayTaskRepository.observeFirstDate(),
+            ) { tasks, plans, first -> Window(from, tasks, plans, first) }
         }
 
     /**
@@ -82,11 +93,12 @@ class MetricsViewModel(
         missionRepository.observeAll(),
         window,
         summaries,
-        milestoneRepository.observeAll(),
+        // Archived missions' too, so a finished line keeps its badges once it's archived.
+        milestoneRepository.observeIncludingArchived(),
     ) { week, missions, window, summaries, milestones ->
         // An older week waits for its own window, so it never shows as away for a moment: the last state stays.
         if (window.from > firstDay(week)) null
-        else MetricsStateBuilder.build(MetricsInput(today, week, missions, window.tasks, summaries, milestones))
+        else MetricsStateBuilder.build(MetricsInput(today, week, missions, window.tasks, summaries, milestones, window.plans, window.firstDay))
     }
         .filterNotNull()
         .flowOn(Dispatchers.Default)
@@ -110,7 +122,7 @@ class MetricsViewModel(
 
     /**
      * The look-back of patterns and mission lines (a year), or the history the week's month grid needs for
-     * due dates, whichever is earlier.
+     * due dates and day badges, whichever is earlier.
      */
     private fun firstDay(week: LocalDate): LocalDate {
         val gridStart = WeekMath.weekStart(LocalDate(week.year, week.month, 1))

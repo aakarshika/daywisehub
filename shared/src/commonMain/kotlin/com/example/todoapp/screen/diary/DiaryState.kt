@@ -1,10 +1,15 @@
 package com.example.todoapp.screen.diary
 
 import com.example.todoapp.db.data.mission.Mission
+import com.example.todoapp.db.data.mission.milestone.Milestone
 import com.example.todoapp.db.data.plan.DayPlan
 import com.example.todoapp.db.data.plan.DaySettings
 import com.example.todoapp.db.data.todotask.TodayTask
+import com.example.todoapp.db.data.week.WeekSummary
 import com.example.todoapp.db.models.MyDate
+import com.example.todoapp.domain.BadgeInput
+import com.example.todoapp.domain.DayBadges
+import com.example.todoapp.domain.EarnedBadge
 import com.example.todoapp.domain.Energy
 import com.example.todoapp.domain.History
 import com.example.todoapp.domain.Moves
@@ -24,6 +29,7 @@ import com.example.todoapp.domain.target
 import com.example.todoapp.domain.taskState
 import com.example.todoapp.domain.weekTitle
 import com.example.todoapp.domain.weekdayName
+import com.example.todoapp.repo.PlanRepository
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.isoDayNumber
@@ -68,6 +74,14 @@ data class PlanRow(
 
 data class DidntFitRow(val title: String, val text: String)
 
+/** What the page's badges read besides tasks and plans. */
+data class BadgeExtras(
+    /** Every milestone, archived missions' too. */
+    val milestones: List<Milestone>,
+    /** The first stored item's day; null on an empty install. */
+    val firstDay: LocalDate?,
+)
+
 /** One mission in the pencil's list, with its reason line. */
 data class AddOption(val missionId: Long, val title: String, val pillar: PillarType, val minutes: Int, val reason: String) {
     companion object {
@@ -111,6 +125,8 @@ data class DiaryUiState(
     val weekLabel: String,
     /** Today's week has just begun: the strip reads "THIS WEEK · A FRESH START". Only on today's page. */
     val freshStart: Boolean,
+    /** The page's badges, rarest first (spec 9.3), as the Metrics calendar has them. Today's are those earned so far. */
+    val badges: List<EarnedBadge>,
 ) {
     /** Every open scored pick resolved as done or did-some; drives the confetti. */
     val allPicksDone: Boolean
@@ -130,6 +146,7 @@ object DiaryStateBuilder {
         allMissions: List<Mission>,
         tasks: List<TodayTask>,
         extras: DiaryExtras,
+        badgeExtras: BadgeExtras,
     ): DiaryUiState {
         val dateKey = MyDate.fromLocalDate(date).dateString
         val plan = extras.plans.firstOrNull { it.date == dateKey }
@@ -197,8 +214,32 @@ object DiaryStateBuilder {
             offers = if (date == today && opensWeek) WeekStateBuilder.offers(extras.offers, missions, today) else emptyList(),
             weekLabel = weekTitle(weekStart, thisWeek).uppercase(),
             freshStart = date == today && lastWeek != null && pillars.all { it.earned == 0 },
+            badges = badges(date, today, allMissions, history, plan, stored, badgeExtras),
         )
     }
+
+    /**
+     * The page's badges, by the rules and look-back the Metrics calendar uses: the tasks read reach
+     * PlanRepository.HISTORY_DAYS back, and a finished week's targets are its stored ones, as on the strip.
+     */
+    private fun badges(
+        date: LocalDate,
+        today: LocalDate,
+        allMissions: List<Mission>,
+        history: History,
+        plan: DayPlan?,
+        stored: WeekSummary?,
+        extras: BadgeExtras,
+    ): List<EarnedBadge> = DayBadges.book(
+        BadgeInput(
+            today = today, from = date, to = date,
+            allMissions = allMissions, history = history, plans = listOfNotNull(plan),
+            milestones = extras.milestones,
+            summaries = stored?.let { mapOf(WeekMath.weekStart(date) to it) }.orEmpty(),
+            firstDay = extras.firstDay,
+            lookBackDays = PlanRepository.HISTORY_DAYS, maxCrowns = PlanRepository.MAX_CROWNS,
+        )
+    ).on(date)
 
     /**
      * Can [date]'s page name where "Move it" goes? From yesterday on, yes. An older page's days to move

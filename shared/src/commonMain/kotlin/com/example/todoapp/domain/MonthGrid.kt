@@ -29,6 +29,10 @@ data class CalendarDay(
      * planned on an earlier day. Today's planned items can still happen, so they aren't counted.
      */
     val notDone: Int,
+    /** The day's badges, rarest first (spec 9.3). The cell shows the first; tapping the day lists them all. */
+    val badges: List<EarnedBadge>,
+    /** "Tuesday, Oct 20", with the year in another year than this week's: the badge list's title. */
+    val title: String,
     /** What a screen reader says for the day. */
     val description: String,
 )
@@ -51,10 +55,18 @@ data class MonthCalendar(
 /** Spec 9: the Monday-first month calendar on the Metrics tab. */
 object MonthGrid {
 
+    /** The days the month of [week]'s Monday shows: from the Monday of its first week to the Sunday of its last. */
+    fun span(week: LocalDate): ClosedRange<LocalDate> {
+        val first = LocalDate(week.year, week.month, 1)
+        val last = first.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY)
+        return WeekMath.weekStart(first)..WeekMath.weekEnd(last)
+    }
+
     /**
      * The month of [week]'s Monday, as rows of whole weeks from Monday to Sunday. [allMissions] include
      * archived ones, so every tick keeps its pillar. Only finished weeks get a crown, and a finished week
-     * that isn't in [opened] (PaceOffers.openedWeeks) gets no rings. Each task is read once, through [days].
+     * that isn't in [opened] (PaceOffers.openedWeeks) gets no rings, though its days keep their badges.
+     * Each task is read once, through [days]; [badges] covers [span].
      */
     fun build(
         week: LocalDate,
@@ -63,6 +75,7 @@ object MonthGrid {
         days: DayTasks,
         byWeek: Map<LocalDate, WeekSummary>,
         opened: Set<LocalDate>,
+        badges: DayBadgeBook,
     ): MonthCalendar {
         val first = LocalDate(week.year, week.month, 1)
         val last = first.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY)
@@ -76,7 +89,10 @@ object MonthGrid {
             val away = finished && WeekScores.isAway(monday, opened)
             weeks += CalendarWeek(
                 weekStart = monday,
-                days = (0..6).map { day(monday.plus(it, DateTimeUnit.DAY), first.month, today, byId, days, ringed = !away) },
+                days = (0..6).map {
+                    val date = monday.plus(it, DateTimeUnit.DAY)
+                    day(date, first.month, today, byId, days, ringed = !away, badges.on(date))
+                },
                 crowned = finished && summary?.balanced == true,
                 crownDescription = "Balanced week of ${monday.shortLabel()}",
                 selected = monday == week,
@@ -86,7 +102,15 @@ object MonthGrid {
         return MonthCalendar("${first.month.name} ${first.year}", weeks)
     }
 
-    private fun day(date: LocalDate, month: Month, today: LocalDate, byId: Map<Long, Mission>, days: DayTasks, ringed: Boolean): CalendarDay {
+    private fun day(
+        date: LocalDate,
+        month: Month,
+        today: LocalDate,
+        byId: Map<Long, Mission>,
+        days: DayTasks,
+        ringed: Boolean,
+        badges: List<EarnedBadge>,
+    ): CalendarDay {
         val earned = mutableMapOf<PillarType, Int>()
         var notDone = 0
         if (date <= today) {
@@ -114,12 +138,14 @@ object MonthGrid {
             hasRing = ringed && date <= today,
             slices = slices,
             notDone = notDone,
-            description = describe(date, today, slices, notDone),
+            badges = badges,
+            title = "${date.weekdayName()}, ${date.labelFrom(WeekMath.weekStart(today))}",
+            description = describe(date, today, slices, notDone, badges),
         )
     }
 
-    /** "Monday, October 26. 10 points: Health 2, Wealth 6, Love 2. 3 points didn't happen" */
-    private fun describe(date: LocalDate, today: LocalDate, slices: List<DaySlice>, notDone: Int): String {
+    /** "Monday, October 26. 10 points: Health 2, Wealth 6, Love 2. 3 points didn't happen. Badges: Hat trick, First one" */
+    private fun describe(date: LocalDate, today: LocalDate, slices: List<DaySlice>, notDone: Int, badges: List<EarnedBadge>): String {
         val month = date.month.name.lowercase().replaceFirstChar { it.uppercase() }
         val name = "${date.weekdayName()}, $month ${date.dayOfMonth}"
         val parts = mutableListOf(if (date == today) "Today, $name" else name)
@@ -133,6 +159,7 @@ object MonthGrid {
             }
             if (notDone > 0) parts += "${MissionWords.pointsPhrase(notDone)} didn't happen"
         }
+        if (badges.isNotEmpty()) parts += (if (badges.size == 1) "Badge: " else "Badges: ") + badges.joinToString(", ") { it.badge.title }
         return parts.joinToString(". ")
     }
 }

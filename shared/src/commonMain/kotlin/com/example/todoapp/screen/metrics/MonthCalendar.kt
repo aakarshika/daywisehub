@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -46,7 +47,7 @@ import com.example.todoapp.screen.basicutils.NoteInk
 import com.example.todoapp.screen.basicutils.SelectedWeekTint
 import com.example.todoapp.screen.basicutils.TodayOutline
 import com.example.todoapp.screen.basicutils.pillarStrong
-import kotlinx.datetime.LocalDate
+import com.example.todoapp.screen.metrics.badges.BadgeSticker
 import org.jetbrains.compose.resources.painterResource
 import todoapp.shared.generated.resources.Res
 import todoapp.shared.generated.resources.crown_a
@@ -57,10 +58,11 @@ private val weekLetters = listOf("M", "T", "W", "T", "F", "S", "S")
 /**
  * Spec 9: the Monday-first month. Each day's ring is split by points per pillar, with white for what
  * didn't happen, and each balanced week has a crown. The week on screen is tinted, with flat tints
- * instead of the old gradient (spec 9.1). Tapping a day opens it in the diary.
+ * instead of the old gradient (spec 9.1). A day with badges wears its rarest as a sticker (spec 9.3).
+ * Tapping a day hands it to [onDay].
  */
 @Composable
-fun MonthCalendarCard(calendar: MonthCalendar, openDay: (LocalDate) -> Unit) {
+fun MonthCalendarCard(calendar: MonthCalendar, onDay: (CalendarDay) -> Unit) {
     Column(
         // The same inset as the highlights card.
         modifier = Modifier.fillMaxWidth()
@@ -93,7 +95,7 @@ fun MonthCalendarCard(calendar: MonthCalendar, openDay: (LocalDate) -> Unit) {
                         )
                     }
                 }
-                week.days.forEach { day -> DayCell(day, Modifier.weight(1f)) { openDay(day.date) } }
+                week.days.forEach { day -> DayCell(day, Modifier.weight(1f)) { onDay(day) } }
             }
         }
         Text(
@@ -104,12 +106,16 @@ fun MonthCalendarCard(calendar: MonthCalendar, openDay: (LocalDate) -> Unit) {
     }
 }
 
-/** A tap target at least 44dp tall with the day's ring and number. Today has an outline as well as a bold number. */
+/**
+ * A tap target at least 44dp tall with the day's ring and number. Today has an outline as well as a bold
+ * number. The day's rarest badge sits on the ring's lower right like an avatar's badge, clear of the number;
+ * the day's description names every badge.
+ */
 @Composable
 private fun DayCell(day: CalendarDay, modifier: Modifier, onClick: () -> Unit) {
     Box(
         modifier = modifier.heightIn(min = 44.dp)
-            .clickable(role = Role.Button, onClickLabel = "Open in the diary", onClick = onClick)
+            .clickable(role = Role.Button, onClickLabel = if (day.badges.isEmpty()) "Open in the diary" else "Show badges", onClick = onClick)
             .semantics { contentDescription = day.description }
             .then(if (day.isToday) Modifier.border(1.5.dp, TodayOutline, RoundedCornerShape(10.dp)) else Modifier),
         contentAlignment = Alignment.Center
@@ -122,6 +128,7 @@ private fun DayCell(day: CalendarDay, modifier: Modifier, onClick: () -> Unit) {
             color = if (day.inMonth) NoteInk else InkGray.copy(alpha = 0.6f),
             modifier = Modifier.clearAndSetSemantics {}
         )
+        day.badges.firstOrNull()?.let { BadgeSticker(it.badge, day.date, 20.dp, Modifier.offset(12.5.dp, 12.5.dp)) }
     }
 }
 

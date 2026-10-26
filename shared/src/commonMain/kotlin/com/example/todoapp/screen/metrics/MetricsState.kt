@@ -2,9 +2,12 @@ package com.example.todoapp.screen.metrics
 
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.mission.milestone.Milestone
+import com.example.todoapp.db.data.plan.DayPlan
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.week.WeekSummary
 import com.example.todoapp.domain.AheadLine
+import com.example.todoapp.domain.BadgeInput
+import com.example.todoapp.domain.DayBadges
 import com.example.todoapp.domain.DayTasks
 import com.example.todoapp.domain.History
 import com.example.todoapp.domain.MissionLine
@@ -23,6 +26,7 @@ import com.example.todoapp.domain.labelFrom
 import com.example.todoapp.domain.shortLabel
 import com.example.todoapp.domain.weekStartDate
 import com.example.todoapp.domain.weekTitle
+import com.example.todoapp.repo.PlanRepository
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
@@ -38,8 +42,12 @@ data class MetricsInput(
     val tasks: List<TodayTask>,
     /** Every finished week, oldest first. */
     val summaries: List<WeekSummary>,
-    /** Milestones of active missions. */
+    /** Every milestone, archived missions' too. Mission lines read only the active ones'. */
     val milestones: List<Milestone>,
+    /** Day plans over the same window as [tasks], for the badges' energy. */
+    val plans: List<DayPlan>,
+    /** The first stored item's day, where day badges start; null on an empty install. */
+    val firstDay: LocalDate?,
 )
 
 data class MetricsUiState(
@@ -79,6 +87,16 @@ object MetricsStateBuilder {
         // The weeks the diary was opened in, once for every section: the rest of the finished weeks are away.
         val opened = PaceOffers.openedWeeks(input.tasks)
         val score = WeekScores.forWeek(week, thisWeek, byWeek[week], missions, input.allMissions, days, history, opened)
+        // One index for the calendar's days, so each of them looks its badges up rather than reading every task.
+        val span = MonthGrid.span(week)
+        val badges = DayBadges.book(
+            BadgeInput(
+                today = input.today, from = span.start, to = span.endInclusive,
+                allMissions = input.allMissions, history = history, plans = input.plans,
+                milestones = input.milestones, summaries = byWeek, firstDay = input.firstDay,
+                lookBackDays = PlanRepository.HISTORY_DAYS, maxCrowns = PlanRepository.MAX_CROWNS,
+            )
+        )
         val title = weekTitle(week, thisWeek)
         val end = week.plus(6, DateTimeUnit.DAY)
         return MetricsUiState(
@@ -94,7 +112,7 @@ object MetricsStateBuilder {
             aheadTitle = if (week < thisWeek) "THE WEEK AFTER" else "NEXT WEEK",
             ahead = WeekAhead.lines(week, input.today, missions, history),
             patterns = Patterns.lines(input.today, byWeek, input.allMissions, days, opened),
-            calendar = MonthGrid.build(week, input.today, input.allMissions, days, byWeek, opened),
+            calendar = MonthGrid.build(week, input.today, input.allMissions, days, byWeek, opened, badges),
             missions = MissionProgress.lines(input.today, missions, history, input.milestones, opened),
         )
     }

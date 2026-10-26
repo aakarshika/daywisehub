@@ -43,7 +43,7 @@ fun vmModule(): Module {
         factory { (day: LocalDate) -> WaterIntakeViewModel(get()) }
         factory { MissionsViewModel(get(), get(), get(), get()) }
         factory { (missionId: Long) -> MissionEditorViewModel(get(), get(), get(), get(), missionId) }
-        factory { MetricsViewModel(get(), get(), get(), get()) }
+        factory { MetricsViewModel(get(), get(), get(), get(), get()) }
     }
 }
 

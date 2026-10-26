@@ -48,6 +48,7 @@ import com.example.todoapp.screen.diary.plan.PlanActions
 import com.example.todoapp.screen.diary.plan.PlanRowActions
 import com.example.todoapp.screen.diary.plan.PlanSection
 import com.example.todoapp.screen.diary.plan.PlanSubline
+import com.example.todoapp.screen.metrics.badges.DayBadgesRow
 import kotlinx.datetime.LocalDate
 import kottieAnimationState.KottieAnimationState
 import kottieComposition.KottieCompositionSpec
@@ -191,6 +192,10 @@ fun DiaryScreen(
                 }
                 if (evening && (s.hasPlan || s.picks.isNotEmpty() || s.fixed.isNotEmpty())) {
                     item(key = "highlights") { DayHighlightsCard(s, selection) }
+                    // The day's badges, under its card (spec 9.3).
+                    if (s.badges.isNotEmpty()) {
+                        item(key = "badges") { DayBadgesRow(s.badges, selection, isToday = diaryViewModel.isToday) }
+                    }
                 }
             }
             HeadingText("WATER INTAKE", Blue80)

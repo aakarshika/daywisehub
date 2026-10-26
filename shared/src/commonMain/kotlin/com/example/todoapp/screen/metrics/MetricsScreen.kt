@@ -21,6 +21,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -36,6 +39,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.todoapp.domain.CalendarDay
 import com.example.todoapp.screen.basicutils.Blue80
 import com.example.todoapp.screen.basicutils.InkBlack
 import com.example.todoapp.screen.basicutils.InkGray
@@ -44,13 +48,19 @@ import com.example.todoapp.screen.basicutils.MissionsMarker
 import com.example.todoapp.screen.basicutils.Yellow180
 import com.example.todoapp.screen.basicutils.components.MarkerHeading
 import com.example.todoapp.screen.diary.plan.SmallChip
+import com.example.todoapp.screen.metrics.badges.DayBadgesDialog
 import kotlinx.datetime.LocalDate
 
-/** Spec 9: the Metrics tab, one week at a time. [openDay] shows a date in the diary. */
+/**
+ * Spec 9: the Metrics tab, one week at a time. [openDay] shows a date in the diary: a calendar day with
+ * badges lists them first (spec 9.3), and its "Open this day" goes on to the diary.
+ */
 @Composable
 fun MetricsScreen(viewModel: MetricsViewModel, openDay: (LocalDate) -> Unit) {
     val state by viewModel.state.collectAsState()
     val s = state
+    // The day whose badges are open. A new view model after midnight closes it, since today's badges change.
+    var badgeDay by remember(viewModel) { mutableStateOf<CalendarDay?>(null) }
 
     Box(modifier = Modifier.fillMaxSize().background(Light_Yellowww)) {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -77,7 +87,9 @@ fun MetricsScreen(viewModel: MetricsViewModel, openDay: (LocalDate) -> Unit) {
                     item(key = "patterns-none") { RuledLine("Nothing stands out yet.", color = InkGray) }
                 }
                 s.patterns.forEachIndexed { i, line -> item(key = "pattern-$i") { RuledLine(line) } }
-                item(key = "calendar") { MonthCalendarCard(s.calendar, openDay) }
+                item(key = "calendar") {
+                    MonthCalendarCard(s.calendar, onDay = { day -> if (day.badges.isEmpty()) openDay(day.date) else badgeDay = day })
+                }
                 item(key = "missions-heading") {
                     MarkerHeading("MISSIONS", MissionsMarker, Modifier.padding(top = 24.dp, bottom = 4.dp))
                 }
@@ -88,6 +100,16 @@ fun MetricsScreen(viewModel: MetricsViewModel, openDay: (LocalDate) -> Unit) {
             }
             item(key = "bottom-space") { Spacer(Modifier.height(120.dp)) }
         }
+    }
+    badgeDay?.let { day ->
+        DayBadgesDialog(
+            day,
+            onOpen = {
+                badgeDay = null
+                openDay(day.date)
+            },
+            onDismiss = { badgeDay = null }
+        )
     }
 }
 
