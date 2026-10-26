@@ -2,9 +2,11 @@ package com.example.todoapp.screen.diary.diaryitem.components.diarymood
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.mood.TodayMood
 import com.example.todoapp.db.data.mood.TodayMoodWithDetails
 import com.example.todoapp.repo.TodayMoodRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -29,9 +31,16 @@ class MoodViewModel(
         }
     }
 
+    /** A failed save is logged, not thrown, so it can't close the app. */
     fun upsertTodayMood(todayMood: TodayMood) {
         viewModelScope.launch {
-            withContext(NonCancellable) { todayMoodRepository.upsertTodayMood(todayMood) }
+            try {
+                withContext(NonCancellable) { todayMoodRepository.upsertTodayMood(todayMood) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Logger.w(e) { "The mood didn't save." }
+            }
         }
     }
 }

@@ -33,7 +33,10 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -61,6 +64,7 @@ import todoapp.shared.generated.resources.plus_sign
 @Composable
 fun MissionsScreen(viewModel: MissionsViewModel, listState: LazyListState) {
     val state by viewModel.state.collectAsState()
+    val notice by viewModel.notice.collectAsState()
     var showFreeTime by remember { mutableStateOf(false) }
     val s = state
 
@@ -72,6 +76,12 @@ fun MissionsScreen(viewModel: MissionsViewModel, listState: LazyListState) {
                     if (s != null) {
                         Text(s.summary, fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray, modifier = Modifier.padding(top = 4.dp))
                         SmallChip("Free time · ${MissionWords.hoursNumber(s.weeklyFreeMinutes)} h a week") { showFreeTime = true }
+                        notice?.let { text ->
+                            Text(
+                                text, fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray,
+                                modifier = Modifier.padding(top = 4.dp).semantics { liveRegion = LiveRegionMode.Polite }
+                            )
+                        }
                     }
                 }
             }

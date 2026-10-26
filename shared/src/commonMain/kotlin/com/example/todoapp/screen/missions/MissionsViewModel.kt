@@ -2,11 +2,13 @@ package com.example.todoapp.screen.missions
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import co.touchlab.kermit.Logger
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.repo.MilestoneRepository
 import com.example.todoapp.repo.MissionRepository
 import com.example.todoapp.repo.PlanRepository
 import com.example.todoapp.repo.TodayTaskRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -62,8 +64,22 @@ class MissionsViewModel(
         _editor.value = null
     }
 
+    private val _notice = MutableStateFlow<String?>(null)
+    /** A short message under the free-time chip when a save didn't go through; cleared by the next save. */
+    val notice: StateFlow<String?> = _notice
+
     /** The write itself can't be cancelled (PlanRepository.write), so leaving the tab doesn't lose it. */
     fun saveFreeTime(minutesByWeekday: Map<Int, Int>) {
-        viewModelScope.launch { planRepository.saveSettings(minutesByWeekday) }
+        _notice.value = null
+        viewModelScope.launch {
+            try {
+                planRepository.saveSettings(minutesByWeekday)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Logger.w(e) { "Free time didn't save." }
+                _notice.value = "That didn't save. Try again."
+            }
+        }
     }
 }

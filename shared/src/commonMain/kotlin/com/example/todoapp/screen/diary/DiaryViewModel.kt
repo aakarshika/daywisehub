@@ -2,6 +2,7 @@ package com.example.todoapp.screen.diary
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.mission.milestone.Milestone
 import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
 import com.example.todoapp.db.models.MyDate
@@ -22,6 +23,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
@@ -84,7 +86,10 @@ class DiaryViewModel(
         if (isToday) weekRepository.observeOffers(WeekMath.weekStart(today)) else flowOf(emptyList()),
     ) { plans, settings, summary, offers -> DiaryExtras(plans, settings, summary, offers) }
 
-    /** Archived missions come in too, only so their points earned this week still count in the bars. */
+    /**
+     * Archived missions come in too, only so their points earned this week still count in the bars.
+     * A builder failure keeps what's on screen instead of closing the app, as on the Metrics tab.
+     */
     val state: StateFlow<DiaryUiState?> = combine(
         missionRepository.observeActive(),
         missionRepository.observeAll(),
@@ -99,17 +104,29 @@ class DiaryViewModel(
                 tasks = tasks, extras = extras,
             )
         } else null
-    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    }
+        .flowOn(Dispatchers.Default)
+        .catch { e ->
+            if (e is CancellationException) throw e
+            Logger.w(e) { "The diary couldn't be built; it keeps what it showed." }
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val milestones: StateFlow<List<MilestoneWithDetails>> = milestoneRepository
         .observeInRange(MyDate.fromLocalDate(currentDate).subtractDays(7), MyDate.fromLocalDate(currentDate).addDays(7))
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     init {
+        // A failed build still shows the diary, with what's stored, so the app always opens.
         viewModelScope.launch {
             try {
                 if (isToday) planRepository.ensurePlanned(currentDate)
                 if (startedInEvening) planRepository.tickFixedBlocks(currentDate)   // past days too; it does nothing without a plan
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Logger.w(e) { "The day couldn't be planned or closed; the next open tries again." }
+                if (isToday) _notice.value = "Today's list couldn't be built. Reopen the app to try again."
             } finally {
                 planReady.value = true
             }
@@ -167,6 +184,7 @@ class DiaryViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                Logger.w(e) { "The pencil's list didn't load." }
                 _notice.value = "The list didn't load. Tap the pencil to try again."
             }
         }
@@ -196,10 +214,19 @@ class DiaryViewModel(
         milestoneRepository.updateMilestone(updated)
     }
 
-    /** Every action clears the last notice first; swap may set a new one. */
+    /** Every action clears the last notice first; swap may set a new one, and so does a write that fails. */
     private fun act(block: suspend () -> Unit) {
         _notice.value = null
-        viewModelScope.launch { block() }
+        viewModelScope.launch {
+            try {
+                block()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Logger.w(e) { "A diary write failed." }
+                _notice.value = "That didn't save. Try again."
+            }
+        }
     }
 
     companion object {

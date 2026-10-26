@@ -2,8 +2,10 @@ package com.example.todoapp.screen.diary.diaryitem.components.waterintake
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.water.WaterIntake
 import com.example.todoapp.repo.WaterIntakeRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,9 +30,16 @@ class WaterIntakeViewModel(
                 }
         }
     }
+    /** A failed save is logged, not thrown, so it can't close the app. */
     fun upsertWaterIntake(waterIntake: WaterIntake) {
         viewModelScope.launch {
-            withContext(NonCancellable) { waterIntakeRepository.upsertWaterIntake(waterIntake) }
+            try {
+                withContext(NonCancellable) { waterIntakeRepository.upsertWaterIntake(waterIntake) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Logger.w(e) { "The water intake didn't save." }
+            }
         }
     }
 }
