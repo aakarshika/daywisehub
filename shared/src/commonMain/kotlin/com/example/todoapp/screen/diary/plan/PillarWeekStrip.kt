@@ -24,11 +24,14 @@ import com.example.todoapp.screen.basicutils.pillarInk
 import com.example.todoapp.screen.basicutils.pillarStrong
 import com.example.todoapp.screen.diary.PillarProgress
 
-/** "This week" bars under the date: points earned against each pillar's target. */
+/**
+ * The page's week as bars under the date: points earned against each pillar's target. [label] names
+ * the week ("THIS WEEK", "LAST WEEK", …); [freshStart] adds "A FRESH START", on today's page only.
+ */
 @Composable
-fun PillarWeekStrip(pillars: List<PillarProgress>, freshStart: Boolean = false) {
+fun PillarWeekStrip(pillars: List<PillarProgress>, label: String, freshStart: Boolean = false) {
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)) {
-        Text(if (freshStart) "THIS WEEK · A FRESH START" else "THIS WEEK", fontSize = 11.sp, letterSpacing = 1.2.sp, color = InkGray)
+        Text(if (freshStart) "$label · A FRESH START" else label, fontSize = 11.sp, letterSpacing = 1.2.sp, color = InkGray)
         Spacer(Modifier.height(6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             pillars.forEach { progress ->

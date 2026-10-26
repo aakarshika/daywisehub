@@ -77,14 +77,18 @@ class DiaryViewModel(
         if (DiaryStateBuilder.namesMoves(currentDate, today)) maxOf(currentDate, today).plus(7, DateTimeUnit.DAY)
         else currentDate.plus(7, DateTimeUnit.DAY)
 
+    private val pageWeek = WeekMath.weekStart(currentDate)
+
     private val diaryExtras = combine(
         // The week's earlier plans decide whether this day opens the week; later ones give the room ahead.
-        planRepository.observePlans(WeekMath.weekStart(currentDate), lookAhead),
+        planRepository.observePlans(pageWeek, lookAhead),
         planRepository.observeSettings(),
-        weekRepository.observeSummary(WeekMath.weekStart(currentDate).minus(7, DateTimeUnit.DAY)),
+        weekRepository.observeSummary(pageWeek.minus(7, DateTimeUnit.DAY)),
+        // Only a finished week has a summary; the strip reads its stored targets.
+        if (pageWeek < WeekMath.weekStart(today)) weekRepository.observeSummary(pageWeek) else flowOf(null),
         // Offers show only on today's page.
         if (isToday) weekRepository.observeOffers(WeekMath.weekStart(today)) else flowOf(emptyList()),
-    ) { plans, settings, summary, offers -> DiaryExtras(plans, settings, summary, offers) }
+    ) { plans, settings, lastWeek, thisPageWeek, offers -> DiaryExtras(plans, settings, lastWeek, thisPageWeek, offers) }
 
     /**
      * Archived missions come in too, only so their points earned this week still count in the bars.

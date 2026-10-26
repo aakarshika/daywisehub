@@ -19,11 +19,12 @@ import com.example.todoapp.domain.WeekHighlightsBuilder
 import com.example.todoapp.domain.WeekMath
 import com.example.todoapp.domain.WeekScore
 import com.example.todoapp.domain.WeekScores
+import com.example.todoapp.domain.labelFrom
 import com.example.todoapp.domain.shortLabel
 import com.example.todoapp.domain.weekStartDate
+import com.example.todoapp.domain.weekTitle
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
 /** Everything the Metrics tab reads. */
@@ -78,13 +79,13 @@ object MetricsStateBuilder {
         // The weeks the diary was opened in, once for every section: the rest of the finished weeks are away.
         val opened = PaceOffers.openedWeeks(input.tasks)
         val score = WeekScores.forWeek(week, thisWeek, byWeek[week], missions, input.allMissions, days, history, opened)
-        val title = title(week, thisWeek)
+        val title = weekTitle(week, thisWeek)
         val end = week.plus(6, DateTimeUnit.DAY)
         return MetricsUiState(
             weekStart = week,
             title = title,
             // The year goes once, on the end, unless the week spans two years.
-            range = "${if (week.year == end.year) week.shortLabel() else label(week, thisWeek)} to ${label(end, thisWeek)}",
+            range = "${if (week.year == end.year) week.shortLabel() else week.labelFrom(thisWeek)} to ${end.labelFrom(thisWeek)}",
             isThisWeek = week == thisWeek,
             canGoBack = week > earliest(input.summaries, thisWeek),
             canGoForward = week < thisWeek,
@@ -102,13 +103,4 @@ object MetricsStateBuilder {
     fun earliest(summaries: List<WeekSummary>, thisWeek: LocalDate): LocalDate =
         summaries.firstOrNull()?.weekStartDate?.let { minOf(it, thisWeek) } ?: thisWeek
 
-    private fun title(week: LocalDate, thisWeek: LocalDate): String = when (week) {
-        thisWeek -> "This week"
-        thisWeek.minus(7, DateTimeUnit.DAY) -> "Last week"
-        else -> "Week of ${label(week, thisWeek)}"
-    }
-
-    /** "Oct 12", or "Oct 12, 2025" in another year than this week's. */
-    private fun label(date: LocalDate, thisWeek: LocalDate): String =
-        if (date.year == thisWeek.year) date.shortLabel() else "${date.shortLabel()}, ${date.year}"
 }

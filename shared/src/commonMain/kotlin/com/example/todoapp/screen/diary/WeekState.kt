@@ -32,10 +32,17 @@ import kotlinx.datetime.plus
 data class LastWeekState(
     /** "Oct 26 to Nov 1" */
     val range: String,
-    /** "54 of 62 points", with " · +4 extra" when a pillar went past its target; just "+4 extra" when no pillar had a target. */
+    /**
+     * "54 of 62 points", with " · +4 extra" when a pillar went past its target; just "+4 extra" when no pillar
+     * had a target, and "No points to count." when the diary wasn't opened that week.
+     */
     val points: String,
-    /** "3 of 4 pillars full", or "All 4 pillars full · a balanced week". */
+    /**
+     * "3 of 4 pillars full", "All 4 pillars full · a balanced week", "Nothing was due that week.", or
+     * "The diary wasn't opened that week.", as on the Metrics tab.
+     */
     val pillars: String,
+    /** Shows the crown on the pillars line; never on a week the diary wasn't opened in. */
     val balanced: Boolean,
     /**
      * What the app adjusted, each line naming its mission on a chip. Never empty on today's page. Empty on
@@ -56,6 +63,8 @@ data class DiaryExtras(
     val settings: List<DaySettings>,
     /** The summary of the week before this day's week. */
     val lastWeek: WeekSummary?,
+    /** The summary of this day's week, once that week is over; null for this week and later ones. */
+    val pageWeek: WeekSummary?,
     /** Offers made for the week that has today in it; empty on any page but today's. */
     val offers: List<PaceOffer>,
 )
@@ -75,10 +84,12 @@ object WeekStateBuilder {
     }
 
     /**
-     * Null without a summary, or when last week had nothing due and nothing done. [withAdjusted] is false
-     * on an earlier day's page: what the app adjusted reads today's missions, so that page leaves it out.
+     * Null without a summary, or when last week had nothing due and nothing done. [away] is true when the
+     * diary wasn't opened that week (WeekScores.isAway): its zeros aren't misses, so the card shows no
+     * numbers and no crown, as the Metrics tab does; the adjusted lines stay. [withAdjusted] is false on
+     * an earlier day's page: what the app adjusted reads today's missions, so that page leaves it out.
      */
-    fun lastWeek(summary: WeekSummary?, missions: List<Mission>, history: History, withAdjusted: Boolean): LastWeekState? {
+    fun lastWeek(summary: WeekSummary?, away: Boolean, missions: List<Mission>, history: History, withAdjusted: Boolean): LastWeekState? {
         summary ?: return null
         val pillars = PillarType.scoredPillars
         val target = pillars.sumOf { summary.target(it) }
@@ -90,17 +101,19 @@ object WeekStateBuilder {
         val start = summary.weekStartDate
         return LastWeekState(
             range = "${start.shortLabel()} to ${start.plus(6, DateTimeUnit.DAY).shortLabel()}",
-            points = if (target == 0) {
-                "+$extra extra"
-            } else {
-                "$counted of ${MissionWords.pointsPhrase(target)}" + if (extra > 0) " · +$extra extra" else ""
+            points = when {
+                away -> "No points to count."
+                target == 0 -> "+$extra extra"
+                else -> "$counted of ${MissionWords.pointsPhrase(target)}" + if (extra > 0) " · +$extra extra" else ""
             },
-            pillars = if (summary.balanced) {
-                "All ${pillars.size} pillars full · a balanced week"
-            } else {
-                "${summary.pillarsFull()} of ${pillars.size} pillars full"
+            // The same lines as the Metrics tab's highlights card (WeekHighlightsBuilder).
+            pillars = when {
+                away -> "The diary wasn't opened that week."
+                target == 0 -> "Nothing was due that week."
+                summary.balanced -> "All ${pillars.size} pillars full · a balanced week"
+                else -> "${summary.pillarsFull()} of ${pillars.size} pillars full"
             },
-            balanced = summary.balanced,
+            balanced = summary.balanced && !away,
             adjusted = if (withAdjusted) adjusted(start, missions, history) else emptyList(),
         )
     }

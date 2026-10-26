@@ -131,7 +131,7 @@ fun DiaryScreen(
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             DateHeaderItem(selection, changeDate = changeDate)
             state?.let { s ->
-                item(key = "week-strip") { PillarWeekStrip(s.pillars, freshStart = s.freshStart) }
+                item(key = "week-strip") { PillarWeekStrip(s.pillars, label = s.weekLabel, freshStart = s.freshStart) }
                 s.lastWeek?.let { card -> item(key = "last-week") { LastWeekCard(card) } }
                 s.offers.forEach { note ->
                     item(key = "offer-${note.offerId}") {

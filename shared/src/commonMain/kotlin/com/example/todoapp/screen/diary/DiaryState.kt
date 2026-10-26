@@ -8,21 +8,26 @@ import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.domain.Energy
 import com.example.todoapp.domain.History
 import com.example.todoapp.domain.Moves
+import com.example.todoapp.domain.PaceOffers
 import com.example.todoapp.domain.Pick
 import com.example.todoapp.domain.PillarType
 import com.example.todoapp.domain.Points
 import com.example.todoapp.domain.ReasonLines
 import com.example.todoapp.domain.TaskState
 import com.example.todoapp.domain.WeekMath
+import com.example.todoapp.domain.WeekScores
 import com.example.todoapp.domain.date
 import com.example.todoapp.domain.pillarType
 import com.example.todoapp.domain.scored
 import com.example.todoapp.domain.shortLabel
+import com.example.todoapp.domain.target
 import com.example.todoapp.domain.taskState
+import com.example.todoapp.domain.weekTitle
 import com.example.todoapp.domain.weekdayName
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.isoDayNumber
+import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
 data class PillarProgress(val pillar: PillarType, val earned: Int, val target: Int) {
@@ -99,7 +104,12 @@ data class DiaryUiState(
     val lastWeek: LastWeekState?,
     /** Pace offers, on today's page when it opens the week. */
     val offers: List<OfferNote>,
-    /** The week has just begun: the strip reads "THIS WEEK · A FRESH START". */
+    /**
+     * The strip's label for this day's week: "THIS WEEK", "LAST WEEK", "NEXT WEEK" or "WEEK OF OCT 12"
+     * (with the year in another year than this week's), as the Metrics tab names weeks.
+     */
+    val weekLabel: String,
+    /** Today's week has just begun: the strip reads "THIS WEEK · A FRESH START". Only on today's page. */
     val freshStart: Boolean,
 ) {
     /** Every open scored pick resolved as done or did-some; drives the confetti. */
@@ -125,15 +135,23 @@ object DiaryStateBuilder {
         val plan = extras.plans.firstOrNull { it.date == dateKey }
         val history = History(tasks)
         val opensWeek = WeekStateBuilder.opensWeek(date, extras.plans)
-        // The adjusted lines read today's missions, so only today's page says them. Nor is an earlier page a fresh start.
-        val lastWeek = if (opensWeek) WeekStateBuilder.lastWeek(extras.lastWeek, missions, history, withAdjusted = date == today) else null
-        val byId = missions.associateBy { it.missionId }
         val weekStart = WeekMath.weekStart(date)
+        val thisWeek = WeekMath.weekStart(today)
+        // The adjusted lines read today's missions, so only today's page says them. Nor is an earlier page a fresh start.
+        val lastWeek = if (opensWeek) {
+            // Away by the Metrics tab's rule, from the tasks the diary already reads; they start months before last week.
+            val away = WeekScores.isAway(weekStart.minus(7, DateTimeUnit.DAY), PaceOffers.openedWeeks(tasks))
+            WeekStateBuilder.lastWeek(extras.lastWeek, away, missions, history, withAdjusted = date == today)
+        } else null
+        val byId = missions.associateBy { it.missionId }
+        // A finished week's targets are the ones stored at its close-out, as on the Metrics tab. Its points
+        // stay live, so a tick on an earlier day shows at once.
+        val stored = extras.pageWeek?.takeIf { weekStart < thisWeek }
         val pillars = PillarType.scoredPillars.map { pillar ->
             PillarProgress(
                 pillar = pillar,
                 earned = Points.earnedInWeek(allMissions, tasks, pillar, weekStart),
-                target = Points.weeklyTarget(missions, pillar, weekStart, history),
+                target = stored?.target(pillar) ?: Points.weeklyTarget(missions, pillar, weekStart, history),
             )
         }
         val todayTasks = tasks.filter { it.date == date }.sortedWith(compareBy({ it.sortOrder }, { it.todayTaskId }))
@@ -177,6 +195,7 @@ object DiaryStateBuilder {
             hasMissions = missions.isNotEmpty(),
             lastWeek = lastWeek,
             offers = if (date == today && opensWeek) WeekStateBuilder.offers(extras.offers, missions, today) else emptyList(),
+            weekLabel = weekTitle(weekStart, thisWeek).uppercase(),
             freshStart = date == today && lastWeek != null && pillars.all { it.earned == 0 },
         )
     }
