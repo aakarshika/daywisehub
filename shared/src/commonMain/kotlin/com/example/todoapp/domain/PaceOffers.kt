@@ -1,6 +1,7 @@
 package com.example.todoapp.domain
 
 import com.example.todoapp.db.data.mission.Mission
+import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.week.PaceOffer
 import com.example.todoapp.db.models.MyDate
 import kotlinx.datetime.DateTimeUnit
@@ -76,9 +77,8 @@ object PaceOffers {
     ): List<OfferFound> {
         val found = mutableListOf<OfferFound>()
         val weekEnd = weekStart.plus(6, DateTimeUnit.DAY)
-        // Weeks with an item of their own. A week the app wasn't opened in breaks a run, so a holiday isn't three
-        // slipped weeks. Items moved in don't count: a move can land in a week the app then never opens.
-        val opened = history.all.filter { it.movedFromDate == null }.map { WeekMath.weekStart(it.date) }.toSet()
+        // A week the app wasn't opened in breaks a run, so a holiday isn't three slipped weeks.
+        val opened = openedWeeks(history.all)
         var freeLeft = freeMinutesLeft
         for (type in OfferType.entries) {
             for (mission in missions) {
@@ -129,6 +129,14 @@ object PaceOffers {
             }
         }
     }
+
+    /**
+     * The Mondays of the weeks with an item of their own: the weeks the app was opened in. Items moved in
+     * don't count, since a move can land in a week the app is then never opened in. Offers read it to break
+     * a run; the Metrics tab reads it for away weeks.
+     */
+    internal fun openedWeeks(tasks: List<TodayTask>): Set<LocalDate> =
+        tasks.filter { it.movedFromDate == null }.mapTo(mutableSetOf()) { WeekMath.weekStart(it.date) }
 
     /** "Pause a month": back on the same date next month. */
     fun paused(mission: Mission, today: LocalDate): Mission =

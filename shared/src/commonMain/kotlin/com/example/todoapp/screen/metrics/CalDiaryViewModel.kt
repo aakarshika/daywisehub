@@ -9,12 +9,16 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 
-/** The date the diary is showing, shared across tabs. Moves to the new day at midnight if it was showing today. */
+/**
+ * The date the diary is showing, shared across tabs. Moves to the new day at midnight if it was showing today.
+ * [today] follows the date too, so the Metrics tab can start again on a new day.
+ */
 class CalDiaryViewModel : ViewModel() {
 
-    private var today: LocalDate = MyDate.now().toLocalDate()
+    private val _today = MutableStateFlow(MyDate.now().toLocalDate())
+    val today: StateFlow<LocalDate> get() = _today
 
-    private val _currentDate = MutableStateFlow(today)
+    private val _currentDate = MutableStateFlow(_today.value)
     val currentDate: StateFlow<LocalDate> get() = _currentDate
 
     init {
@@ -22,9 +26,9 @@ class CalDiaryViewModel : ViewModel() {
             while (true) {
                 delay(DAY_CHECK_MILLIS)
                 val now = MyDate.now().toLocalDate()
-                if (now != today) {
-                    if (_currentDate.value == today) _currentDate.value = now
-                    today = now
+                if (now != _today.value) {
+                    if (_currentDate.value == _today.value) _currentDate.value = now
+                    _today.value = now
                 }
             }
         }

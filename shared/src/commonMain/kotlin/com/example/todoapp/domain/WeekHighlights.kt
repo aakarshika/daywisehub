@@ -9,9 +9,15 @@ import kotlinx.datetime.minus
 data class WeekHighlights(
     /** "THIS WEEK", "LAST WEEK" or "WEEK OF OCT 12" */
     val header: String,
-    /** "54 of 62 points", with " · +4 extra" when a pillar went past its target. */
+    /**
+     * "54 of 62 points", with " · +4 extra" when a pillar went past its target; just "+4 extra" when nothing
+     * was due, and "No points to count." for an away week or one with nothing due and nothing done.
+     */
     val points: String,
-    /** "3 of 4 pillars full", "All 4 pillars full so far", or "All 4 pillars full · a balanced week" once it's over. */
+    /**
+     * "3 of 4 pillars full", "All 4 pillars full · a balanced week" once it's over, "… so far" before then,
+     * or "Nothing was due that week."
+     */
     val pillars: String,
     /** Shows the crown on the pillars line. */
     val balanced: Boolean,
@@ -24,14 +30,14 @@ object WeekHighlightsBuilder {
     /** The crown line looks at this many finished weeks: up to the week on screen, or before this week. */
     const val LOOK_BACK_WEEKS = 4
 
-    /** [byWeek] holds the finished weeks by their Monday; [week] is the one on screen. */
+    /** [byWeek] holds the finished weeks by their Monday; [week] is the one on screen. [opened] is PaceOffers.openedWeeks. */
     fun build(
         header: String,
         week: LocalDate,
         thisWeek: LocalDate,
         score: WeekScore,
         byWeek: Map<LocalDate, WeekSummary>,
-        days: DayTasks,
+        opened: Set<LocalDate>,
     ): WeekHighlights {
         val pillarCount = score.pillars.size
         // Finished weeks only, since this week can still change, so this week looks at the 4 before it.
@@ -39,14 +45,17 @@ object WeekHighlightsBuilder {
         val last = if (week < thisWeek) week else week.minus(7, DateTimeUnit.DAY)
         val counted = (0 until LOOK_BACK_WEEKS)
             .map { last.minus(7 * it, DateTimeUnit.DAY) }
-            .filter { !WeekScores.isAway(it, days) }
+            .filter { !WeekScores.isAway(it, opened) }
             .mapNotNull { byWeek[it] }
+        // This week can still change, so its counts are "so far".
+        val soFar = if (score.finished) "" else " so far"
         return WeekHighlights(
             header = header,
-            points = points(score.pillars),
+            points = if (score.away) "No points to count." else points(score.pillars),
             pillars = when {
                 score.away -> "The diary wasn't opened that week."
-                !score.balanced -> "${score.pillars.count { it.full }} of $pillarCount pillars full"
+                score.pillars.all { it.target == 0 } -> if (score.finished) "Nothing was due that week." else "Nothing is due this week."
+                !score.balanced -> "${score.pillars.count { it.full }} of $pillarCount pillars full$soFar"
                 score.finished -> "All $pillarCount pillars full · a balanced week"
                 else -> "All $pillarCount pillars full so far"
             },
@@ -55,11 +64,14 @@ object WeekHighlightsBuilder {
         )
     }
 
-    /** Each pillar counts up to its target; anything past it is extra, which never fills another pillar (spec 5). */
+    /**
+     * Each pillar counts up to its target; anything past it is extra, which never fills another pillar (spec 5).
+     * With nothing due it's all extra, as on the diary's Last week card.
+     */
     fun points(scores: List<PillarScore>): String {
         val target = scores.sumOf { it.target }
         val earned = scores.sumOf { it.earned }
-        if (target == 0) return MissionWords.pointsPhrase(earned)
+        if (target == 0) return if (earned == 0) "No points to count." else "+$earned extra"
         val counted = scores.sumOf { minOf(it.earned, it.target) }
         val extra = earned - counted
         return "$counted of ${MissionWords.pointsPhrase(target)}" + if (extra > 0) " · +$extra extra" else ""
@@ -68,6 +80,7 @@ object WeekHighlightsBuilder {
     private fun balancedWeeks(balanced: Int, weeks: Int): String = when {
         weeks == 0 -> "No weeks to count yet."
         weeks == 1 -> if (balanced == 1) "1 balanced week so far" else "No balanced week yet"
+        balanced == 0 -> "No balanced week in the last $weeks"
         else -> "$balanced balanced ${if (balanced == 1) "week" else "weeks"} out of the last $weeks"
     }
 }

@@ -48,6 +48,7 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
     val navigator = rememberNavigator()
     val backStackEntry by navigator.currentEntry.collectAsState(null)
     val currentDate by calDateViewModel.currentDate.collectAsState()
+    val today by calDateViewModel.today.collectAsState()
 
     val currentScreen = MyScreen.valueOf(
         backStackEntry?.route?.route ?: MyScreen.Diary.name
@@ -145,8 +146,9 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                     )
                 }
                 scene(route = MyScreen.Calendar.name) {
-                    val metricsViewModel = remember { KoinF.di!!.get<MetricsViewModel>() }
-                    // Nothing owns this view model either, so stop its work when the tab leaves the screen.
+                    // A new one after midnight, so its "today" and "this week" follow the date.
+                    val metricsViewModel = remember(today) { KoinF.di!!.get<MetricsViewModel>() }
+                    // Nothing owns this view model either, so stop its work when the date changes or the tab leaves the screen.
                     DisposableEffect(metricsViewModel) {
                         onDispose { metricsViewModel.viewModelScope.cancel() }
                     }

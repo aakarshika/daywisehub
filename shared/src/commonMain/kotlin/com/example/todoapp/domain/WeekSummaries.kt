@@ -80,8 +80,13 @@ object WeekSummaries {
         return updated.copy(balanced = balanced(updated))
     }
 
-    /** Every pillar full, with something due: a week with no target at all earns no crown. */
-    private fun balanced(summary: WeekSummary): Boolean =
-        PillarType.scoredPillars.sumOf { summary.target(it) } > 0 &&
-            PillarType.scoredPillars.all { Points.isFull(summary.earned(it), summary.target(it)) }
+    private fun balanced(summary: WeekSummary): Boolean = balanced(summary::earned, summary::target)
+
+    /**
+     * Every pillar full, with something due: a week with no target at all earns no crown. [earned] and
+     * [target] give a pillar's points. The Metrics tab uses it for this week, which has no row yet.
+     */
+    fun balanced(earned: (PillarType) -> Int, target: (PillarType) -> Int): Boolean =
+        PillarType.scoredPillars.sumOf { target(it) } > 0 &&
+            PillarType.scoredPillars.all { Points.isFull(earned(it), target(it)) }
 }

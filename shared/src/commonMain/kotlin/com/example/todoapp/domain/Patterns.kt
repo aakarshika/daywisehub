@@ -27,25 +27,31 @@ object Patterns {
     const val WEEKDAY_MIN_DONE = 6
     /**
      * Runs look back at most this far. That stays inside MetricsViewModel's year of tasks, which is what
-     * tells an away week (no tasks) from a week that simply wasn't loaded.
+     * tells an away week (no items of its own) from a week that simply wasn't loaded.
      */
     const val MAX_RUN_WEEKS = 51
 
     private val pluralDays = listOf("Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays", "Sundays")
 
     /**
-     * As of [today], whatever week is on screen. [byWeek] holds the finished weeks by their Monday.
-     * Ticks of archived missions count too: they happened.
+     * As of [today], whatever week is on screen. [byWeek] holds the finished weeks by their Monday, and
+     * [opened] is PaceOffers.openedWeeks of the tasks read. Ticks of archived missions count too: they happened.
      */
-    fun lines(today: LocalDate, byWeek: Map<LocalDate, WeekSummary>, allMissions: List<Mission>, days: DayTasks): List<String> {
+    fun lines(
+        today: LocalDate,
+        byWeek: Map<LocalDate, WeekSummary>,
+        allMissions: List<Mission>,
+        days: DayTasks,
+        opened: Set<LocalDate>,
+    ): List<String> {
         val thisWeek = WeekMath.weekStart(today)
         val lines = mutableListOf<String>()
-        val balancedRun = runBack(thisWeek, byWeek, days) { it.balanced }
+        val balancedRun = runBack(thisWeek, byWeek, opened) { it.balanced }
         if (balancedRun >= BALANCED_RUN) lines += "$balancedRun balanced weeks in a row."
         // A pillar with nothing due isn't a full week here. A balanced run already covers a shorter pillar run.
         PillarType.scoredPillars
             .map { pillar ->
-                pillar to runBack(thisWeek, byWeek, days) { it.target(pillar) > 0 && Points.isFull(it.earned(pillar), it.target(pillar)) }
+                pillar to runBack(thisWeek, byWeek, opened) { it.target(pillar) > 0 && Points.isFull(it.earned(pillar), it.target(pillar)) }
             }
             .filter { (_, run) -> run >= FULL_RUN && run > balancedRun }
             .sortedByDescending { it.second }
@@ -59,12 +65,12 @@ object Patterns {
      * Finished weeks in a row, back from last week, that pass [test]. A week without a row ends the run.
      * An away week (WeekScores.isAway) neither counts nor ends it: its zeros aren't misses.
      */
-    private fun runBack(thisWeek: LocalDate, byWeek: Map<LocalDate, WeekSummary>, days: DayTasks, test: (WeekSummary) -> Boolean): Int {
+    private fun runBack(thisWeek: LocalDate, byWeek: Map<LocalDate, WeekSummary>, opened: Set<LocalDate>, test: (WeekSummary) -> Boolean): Int {
         var week = thisWeek.minus(7, DateTimeUnit.DAY)
         var run = 0
         repeat(MAX_RUN_WEEKS) {
             val summary = byWeek[week] ?: return run
-            if (!WeekScores.isAway(week, days)) {
+            if (!WeekScores.isAway(week, opened)) {
                 if (!test(summary)) return run
                 run++
             }

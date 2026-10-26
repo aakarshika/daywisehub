@@ -35,7 +35,7 @@ object MissionProgress {
         missions: List<Mission>,
         history: History,
         milestones: List<Milestone>,
-        days: DayTasks,
+        opened: Set<LocalDate>,
     ): List<MissionLine> {
         val thisWeek = WeekMath.weekStart(today)
         val milestonesById = milestones.groupBy { it.missionId }
@@ -53,7 +53,7 @@ object MissionProgress {
                     title = mission.title,
                     pillar = mission.pillarType,
                     finishLine = mission.missionKind == MissionKind.FINISH_LINE,
-                    detail = detail(mission, done, today, thisWeek, history, milestonesById[mission.missionId].orEmpty(), days),
+                    detail = detail(mission, done, today, thisWeek, history, milestonesById[mission.missionId].orEmpty(), opened),
                 )
             }
     }
@@ -65,7 +65,7 @@ object MissionProgress {
         thisWeek: LocalDate,
         history: History,
         milestones: List<Milestone>,
-        days: DayTasks,
+        opened: Set<LocalDate>,
     ): String {
         notLive(mission, today)?.let { return it }
         val weekEnd = thisWeek.plus(6, DateTimeUnit.DAY)
@@ -79,7 +79,7 @@ object MissionProgress {
             mission.periodUnit == Period.DAY -> daily(mission, done, today)
             mission.periodUnit == Period.MONTH ->
                 "${count(done, LocalDate(today.year, today.month, 1), today)} of ${mission.count} this month"
-            else -> weekly(mission, done, thisWeek, history, days)
+            else -> weekly(mission, done, thisWeek, history, opened)
         }
     }
 
@@ -133,7 +133,7 @@ object MissionProgress {
     }
 
     /** "2 of 3 this week", then the gentle pace or a run of full weeks. */
-    private fun weekly(mission: Mission, done: List<LocalDate>, thisWeek: LocalDate, history: History, days: DayTasks): String {
+    private fun weekly(mission: Mission, done: List<LocalDate>, thisWeek: LocalDate, history: History, opened: Set<LocalDate>): String {
         val target = Points.occurrencesInWeek(mission, thisWeek, history)
         if (target == 0) return "Nothing due this week"
         val base = "${count(done, thisWeek, thisWeek.plus(6, DateTimeUnit.DAY))} of $target this week"
@@ -141,19 +141,19 @@ object MissionProgress {
         if (goal != null && goal > mission.count) {
             return "$base · ${if (mission.count == 1) "once a week" else "${mission.count}× a week"} for now"
         }
-        val run = fullWeeks(mission, done, thisWeek, history, days)
+        val run = fullWeeks(mission, done, thisWeek, history, opened)
         return if (run >= 2) "$base · $run full weeks in a row" else base
     }
 
     /**
      * Finished weeks in a row, back from last week, in which it was done as often as it was due. A week
-     * it wasn't due ends the run; an away week (no tasks at all) neither counts nor ends it.
+     * it wasn't due ends the run; an away week (no items of its own) neither counts nor ends it.
      */
-    private fun fullWeeks(mission: Mission, done: List<LocalDate>, thisWeek: LocalDate, history: History, days: DayTasks): Int {
+    private fun fullWeeks(mission: Mission, done: List<LocalDate>, thisWeek: LocalDate, history: History, opened: Set<LocalDate>): Int {
         var week = thisWeek.minus(7, DateTimeUnit.DAY)
         var run = 0
         repeat(MAX_RUN_WEEKS) {
-            if (!WeekScores.isAway(week, days)) {
+            if (!WeekScores.isAway(week, opened)) {
                 val due = Points.occurrencesInWeek(mission, week, history)
                 if (due == 0 || count(done, week, week.plus(6, DateTimeUnit.DAY)) < due) return run
                 run++

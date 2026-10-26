@@ -65,6 +65,32 @@ val LineBlueBorder = Color(0xFFCFE3F7)
 val ChipBorder = Color(0xFFD9CDB8)
 val CardBorder = Color(0xFFEDE6D6)
 
+// The Metrics tab (plan 4)
+/** Card headings, the icons in a card's rows and the ring numbers, as on the diary's highlights card. */
+val CardHeadInk = Color(0xFF3A3A3A)
+/** The icon in a card's corner, and the wand. */
+val IconInk = Color(0xFF6B6B6B)
+/** The line under a card's heading. */
+val CardRule = Color(0xFFDDD6C2)
+/** The rows of a highlights card. */
+val CardRow = Color(0xFFFDFAF1)
+/** Sentences in the diary's hand, and the calendar's day numbers. */
+val NoteInk = Color(0xFF2A2A2A)
+/** A mission line's progress text. */
+val DetailInk = Color(0xFF5A5A5A)
+/** The MISSIONS heading's marker, from the mockup. */
+val MissionsMarker = Color(0xFFE8DEF8)
+/** The month calendar's flat tints (spec 9.1): the card, and the week on screen. */
+val CalendarTint = Color(0xFFF4F0FA)
+val SelectedWeekTint = Color(0xFFE9E1F6)
+val CalendarTitleInk = Color(0xFF4A4A4A)
+/** The edge of a day ring with points or with nothing done: about 3:1 on both tints and on white. */
+val DayRingEdge = Color(0xFF887CA1)
+/** A past day with nothing on it: one thin line, plainer than an edged ring but visible on the week on screen. */
+val EmptyDayRing = Color(0xFFB3A6C8)
+/** The outline around today on the calendar, at least 3:1 on both tints. */
+val TodayOutline = Color(0xFF7A6E94)
+
 /** Headings, chips and highlights. */
 fun pillarLight(pillar: PillarType): Color = when (pillar) {
     PillarType.HEALTH -> Color(0xFFF6D3FF)

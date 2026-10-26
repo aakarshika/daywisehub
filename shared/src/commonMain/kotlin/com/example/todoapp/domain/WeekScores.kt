@@ -24,8 +24,8 @@ data class WeekScore(
     /** The week is over. */
     val finished: Boolean,
     /**
-     * A finished week without a single task: the diary wasn't opened that week. Its stored summary has
-     * 0 points against targets, which isn't a miss, so it never counts as a light week.
+     * A finished week without an item of its own: the diary wasn't opened that week. Its stored summary
+     * has 0 points against targets, which isn't a miss, so it shows no numbers and never counts as light.
      */
     val away: Boolean,
 )
@@ -36,6 +36,7 @@ object WeekScores {
      * A finished week as stored at close-out, or a week without a row worked out live as the diary's
      * bars are: points from [allMissions] (archived too), targets from the active [missions]. Only this
      * week lacks a row normally; a past week can for a moment, before the diary's close-out runs.
+     * [opened] is PaceOffers.openedWeeks of the same tasks.
      */
     fun forWeek(
         weekStart: LocalDate,
@@ -45,9 +46,10 @@ object WeekScores {
         allMissions: List<Mission>,
         days: DayTasks,
         history: History,
+        opened: Set<LocalDate>,
     ): WeekScore {
         val finished = weekStart < thisWeek
-        val away = finished && isAway(weekStart, days)
+        val away = finished && isAway(weekStart, opened)
         if (summary != null) return WeekScore(stored(summary), summary.balanced, finished, away)
         val weekTasks = days.between(weekStart, weekStart.plus(6, DateTimeUnit.DAY))
         val pillars = PillarType.scoredPillars.map { pillar ->
@@ -63,10 +65,15 @@ object WeekScores {
     fun stored(summary: WeekSummary): List<PillarScore> =
         PillarType.scoredPillars.map { PillarScore(it, summary.earned(it), summary.target(it)) }
 
-    /** WeekSummary.balanced's rule, for a week with no row yet: every pillar full (spec 5), and something was due. */
-    fun balanced(pillars: List<PillarScore>): Boolean = pillars.all { it.full } && pillars.any { it.target > 0 }
+    /** WeekSummary.balanced's rule (WeekSummaries.balanced), for a week with no row yet. */
+    fun balanced(pillars: List<PillarScore>): Boolean {
+        val byPillar = pillars.associateBy { it.pillar }
+        return WeekSummaries.balanced({ byPillar[it]?.earned ?: 0 }, { byPillar[it]?.target ?: 0 })
+    }
 
-    /** No task at all in the week starting [weekStart]: the diary wasn't opened in it. */
-    fun isAway(weekStart: LocalDate, days: DayTasks): Boolean =
-        days.between(weekStart, weekStart.plus(6, DateTimeUnit.DAY)).isEmpty()
+    /**
+     * No item of its own in the finished week starting [weekStart] (items moved in don't count): the diary
+     * wasn't opened in it. [opened] is PaceOffers.openedWeeks of the tasks read, worked out once per build.
+     */
+    fun isAway(weekStart: LocalDate, opened: Set<LocalDate>): Boolean = weekStart !in opened
 }

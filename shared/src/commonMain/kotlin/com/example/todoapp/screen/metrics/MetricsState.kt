@@ -11,6 +11,7 @@ import com.example.todoapp.domain.MissionLine
 import com.example.todoapp.domain.MissionProgress
 import com.example.todoapp.domain.MonthCalendar
 import com.example.todoapp.domain.MonthGrid
+import com.example.todoapp.domain.PaceOffers
 import com.example.todoapp.domain.Patterns
 import com.example.todoapp.domain.WeekAhead
 import com.example.todoapp.domain.WeekHighlights
@@ -42,9 +43,9 @@ data class MetricsInput(
 
 data class MetricsUiState(
     val weekStart: LocalDate,
-    /** "This week", "Last week" or "Week of Oct 12". */
+    /** "This week", "Last week" or "Week of Oct 12" ("Week of Dec 22, 2025" in another year than this week's). */
     val title: String,
-    /** "Oct 26 to Nov 1" */
+    /** "Oct 26 to Nov 1", with the year on a date in another year than this week's. */
     val range: String,
     val isThisWeek: Boolean,
     val canGoBack: Boolean,
@@ -74,30 +75,40 @@ object MetricsStateBuilder {
         val days = DayTasks(input.tasks)
         val history = History(input.tasks)
         val byWeek = input.summaries.associateBy { it.weekStartDate }
-        // Stored weeks start at the week of the first task, so nothing comes before the first one.
-        val earliest = input.summaries.firstOrNull()?.weekStartDate?.let { minOf(it, thisWeek) } ?: thisWeek
-        val score = WeekScores.forWeek(week, thisWeek, byWeek[week], missions, input.allMissions, days, history)
+        // The weeks the diary was opened in, once for every section: the rest of the finished weeks are away.
+        val opened = PaceOffers.openedWeeks(input.tasks)
+        val score = WeekScores.forWeek(week, thisWeek, byWeek[week], missions, input.allMissions, days, history, opened)
         val title = title(week, thisWeek)
+        val end = week.plus(6, DateTimeUnit.DAY)
         return MetricsUiState(
             weekStart = week,
             title = title,
-            range = "${week.shortLabel()} to ${week.plus(6, DateTimeUnit.DAY).shortLabel()}",
+            // The year goes once, on the end, unless the week spans two years.
+            range = "${if (week.year == end.year) week.shortLabel() else label(week, thisWeek)} to ${label(end, thisWeek)}",
             isThisWeek = week == thisWeek,
-            canGoBack = week > earliest,
+            canGoBack = week > earliest(input.summaries, thisWeek),
             canGoForward = week < thisWeek,
             score = score,
-            highlights = WeekHighlightsBuilder.build(title.uppercase(), week, thisWeek, score, byWeek, days),
+            highlights = WeekHighlightsBuilder.build(title.uppercase(), week, thisWeek, score, byWeek, opened),
             aheadTitle = if (week < thisWeek) "THE WEEK AFTER" else "NEXT WEEK",
             ahead = WeekAhead.lines(week, thisWeek, missions, days, history),
-            patterns = Patterns.lines(input.today, byWeek, input.allMissions, days),
+            patterns = Patterns.lines(input.today, byWeek, input.allMissions, days, opened),
             calendar = MonthGrid.build(week, input.today, input.allMissions, days, byWeek),
-            missions = MissionProgress.lines(input.today, missions, history, input.milestones, days),
+            missions = MissionProgress.lines(input.today, missions, history, input.milestones, opened),
         )
     }
+
+    /** The left arrow stops here. Stored weeks start at the week of the first task, so nothing comes before the first one. */
+    fun earliest(summaries: List<WeekSummary>, thisWeek: LocalDate): LocalDate =
+        summaries.firstOrNull()?.weekStartDate?.let { minOf(it, thisWeek) } ?: thisWeek
 
     private fun title(week: LocalDate, thisWeek: LocalDate): String = when (week) {
         thisWeek -> "This week"
         thisWeek.minus(7, DateTimeUnit.DAY) -> "Last week"
-        else -> "Week of ${week.shortLabel()}"
+        else -> "Week of ${label(week, thisWeek)}"
     }
+
+    /** "Oct 12", or "Oct 12, 2025" in another year than this week's. */
+    private fun label(date: LocalDate, thisWeek: LocalDate): String =
+        if (date.year == thisWeek.year) date.shortLabel() else "${date.shortLabel()}, ${date.year}"
 }

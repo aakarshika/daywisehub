@@ -17,7 +17,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -26,6 +25,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.todoapp.domain.WeekHighlights
 import com.example.todoapp.screen.basicutils.CardCream
+import com.example.todoapp.screen.basicutils.CardHeadInk
+import com.example.todoapp.screen.basicutils.CardRow
+import com.example.todoapp.screen.basicutils.CardRule
+import com.example.todoapp.screen.basicutils.IconInk
 import com.example.todoapp.screen.basicutils.InkBlack
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -48,15 +51,15 @@ fun WeekHighlightsCard(state: WeekHighlights) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 state.header,
-                fontSize = 20.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.3.sp, color = Color(0xFF3A3A3A),
+                fontSize = 20.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.3.sp, color = CardHeadInk,
                 modifier = Modifier.weight(1f).semantics { heading() }
             )
             Image(
                 painterResource(Res.drawable.metrics_calendar), contentDescription = null,
-                colorFilter = ColorFilter.tint(Color(0xFF6B6B6B)), modifier = Modifier.size(30.dp)
+                colorFilter = ColorFilter.tint(IconInk), modifier = Modifier.size(30.dp)
             )
         }
-        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).height(1.dp).background(Color(0xFFDDD6C2)))
+        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).height(1.dp).background(CardRule))
         HighlightLine(Res.drawable.star_filled, state.points)
         HighlightLine(if (state.balanced) Res.drawable.crown_a else Res.drawable.heart_filled, state.pillars)
         HighlightLine(Res.drawable.crown_a, state.balancedWeeks)
@@ -68,13 +71,13 @@ fun WeekHighlightsCard(state: WeekHighlights) {
 private fun HighlightLine(icon: DrawableResource, text: String) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)
-            .background(Color(0xFFFDFAF1), RoundedCornerShape(8.dp))
+            .background(CardRow, RoundedCornerShape(8.dp))
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(
             painterResource(icon), contentDescription = null,
-            colorFilter = ColorFilter.tint(Color(0xFF3A3A3A)), modifier = Modifier.size(22.dp)
+            colorFilter = ColorFilter.tint(CardHeadInk), modifier = Modifier.size(22.dp)
         )
         Spacer(Modifier.width(14.dp))
         Text(text, fontSize = 15.sp, color = InkBlack)
