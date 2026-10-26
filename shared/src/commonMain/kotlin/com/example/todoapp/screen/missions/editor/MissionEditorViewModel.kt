@@ -20,6 +20,7 @@ import com.example.todoapp.repo.MilestoneRepository
 import com.example.todoapp.repo.MissionRepository
 import com.example.todoapp.repo.PlanRepository
 import com.example.todoapp.repo.TodayTaskRepository
+import co.touchlab.kermit.Logger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -293,6 +294,7 @@ class MissionEditorViewModel(
                     savedId = missionRepository.saveWithMilestones(mission, milestones)
                     // The mission is saved by now; a failed re-pick of today mustn't make it look unsaved.
                     runCatching { planRepository.missionSaved(savedId, paceChanged) }
+                        .onFailure { Logger.w(it) { "Today's re-pick after a save failed; today's list stays as it was." } }
                 }
                 _state.value = _state.value?.let { it.copy(draft = it.draft.copy(missionId = savedId)) }
                 _finished.value = true

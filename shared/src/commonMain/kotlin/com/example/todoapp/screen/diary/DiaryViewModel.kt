@@ -94,6 +94,8 @@ class DiaryViewModel(
      * Archived missions come in too, only so their points earned this week still count in the bars.
      * A builder failure keeps what's on screen instead of closing the app, as on the Metrics tab.
      */
+    private var lastState: DiaryUiState? = null
+
     val state: StateFlow<DiaryUiState?> = combine(
         missionRepository.observeActive(),
         missionRepository.observeAll(),
@@ -101,18 +103,25 @@ class DiaryViewModel(
         diaryExtras,
         planReady,
     ) { missions, allMissions, tasks, extras, ready ->
-        if (ready) {
+        if (!ready) return@combine null
+        // One bad build keeps the last screen and the next change of data builds again.
+        try {
             DiaryStateBuilder.build(
                 date = currentDate, today = today,
                 missions = missions, allMissions = allMissions,
                 tasks = tasks, extras = extras,
-            )
-        } else null
+            ).also { lastState = it }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Logger.w(e) { "The diary couldn't be built; it keeps what it showed." }
+            lastState
+        }
     }
         .flowOn(Dispatchers.Default)
         .catch { e ->
             if (e is CancellationException) throw e
-            Logger.w(e) { "The diary couldn't be built; it keeps what it showed." }
+            Logger.w(e) { "The diary's data stopped loading; it keeps what it showed." }
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
@@ -125,7 +134,6 @@ class DiaryViewModel(
         viewModelScope.launch {
             try {
                 if (isToday) planRepository.ensurePlanned(currentDate)
-                if (startedInEvening) planRepository.tickFixedBlocks(currentDate)   // past days too; it does nothing without a plan
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -133,6 +141,16 @@ class DiaryViewModel(
                 if (isToday) _notice.value = "Today's list couldn't be built. Reopen the app to try again."
             } finally {
                 planReady.value = true
+            }
+            // Past days too; it does nothing without a plan. A failure here leaves the list as built.
+            if (startedInEvening) {
+                try {
+                    planRepository.tickFixedBlocks(currentDate)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Logger.w(e) { "Fixed blocks couldn't be ticked for the evening check." }
+                }
             }
         }
         if (isToday && !startedInEvening) viewModelScope.launch { openEveningAtSix() }

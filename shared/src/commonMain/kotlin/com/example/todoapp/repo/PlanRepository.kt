@@ -223,6 +223,7 @@ class PlanRepository(
         missionRepository.setInactive(missionId)
         todayTaskRepository.deletePlannedFrom(missionId, today())
         runCatching { refreshTodayIfOpen() }
+            .onFailure { Logger.w(it) { "Today's re-pick failed; today's list stays as it was." } }
     }
 
     /**
@@ -256,6 +257,7 @@ class PlanRepository(
         weekRepository.answerOffer(answered, changed, pausedFrom = if (response == OfferResponse.PAUSED) today else null)
         // As in archiveMission: a failed re-pick doesn't undo the answer.
         runCatching { refreshTodayIfOpen() }
+            .onFailure { Logger.w(it) { "Today's re-pick failed; today's list stays as it was." } }
     }
 
     /** All writes: one at a time, finished even if the caller's screen goes away, and off the main thread. */
