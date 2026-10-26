@@ -355,6 +355,20 @@ These change from the current app:
 - **The metrics calendar** starts on Monday to match the week cycle and uses flat tints instead of a gradient.
 - **Tap targets** are at least 44 px.
 
+### 9.2 Metrics, as built in plan 4
+
+- **One week at a time.** Arrows step back to the first stored week and forward to this week, and "Back to this week" returns. The tab opens on this week, and starts again after midnight. A date in another year than this week's carries its year.
+- **Rings.** A finished week shows its stored summary. This week is worked out live, as the diary's bars are. Each ring reads "full" or "light" at the 80% rule, and a pillar with nothing due is drawn full. A finished week without an item of its own (items moved in don't count) reads "away", with no numbers and no arc: the diary wasn't opened, so its zeros aren't misses.
+- **What next week adjusts.** Only what the app knows, at most 3 lines: items "move it" carried into the week after, and every-so-often missions due and not done, by the same rule as the diary's "Last week" card. For this week it also lists longer rhythms coming due and pauses ending next week. Titles sit on chips. Only a line about something the app adjusted has the wand; the others, here and on the "Last week" card, have a quiet dot. With nothing to list it says "Nothing to catch up on."
+- **Highlights card.** Points (each pillar counted up to its target, the rest as "+N extra"), pillars full ("so far" for this week, "Nothing was due that week." when nothing was), and balanced weeks out of the last 4 finished weeks. Away weeks aren't counted.
+- **Patterns.** As of today, at most 3 lines, each shown only when the data holds it up:
+  - balanced weeks in a row (2 or more);
+  - a pillar full 3 or more weeks running (at most 2 pillars), or "for a year or more";
+  - the weekday a pillar's ticks mostly land on: 8 or more ticks in 8 weeks, more than half of them on one day, from missions free to land on any day (not fixed blocks, daily missions or missions with set days). It always keeps a slot.
+  Away weeks neither count nor break a run. With none: "Nothing stands out yet."
+- **Calendar.** The month of the shown week's Monday, Monday first. Day rings are split by points per pillar, inside a thin edge. White is skipped or moved items, the missing half of a did-some, and anything left planned on an earlier day. A day with nothing on it is one plain thin ring; away weeks have no rings. Only finished weeks get a crown. Today has an outline. Tapping a day opens it in the diary.
+- **Mission lines.** One per active mission, as of today: a daily habit's days this month and best streak, a rhythm's average gap against its aim, a finish line's next milestone, a weekly count with a gentle pace or a run of full weeks (80% of its own points, as for pace offers, since its last pace change). Archived missions aren't listed, but their points still count in every week and day ring.
+
 ## 10. Data model changes
 
 The database is Room, version 6. Version 5 replaced the old schema and wiped anything older (destructive migration), with no data migration. **From version 5 on, data is kept.** Version 6 (plan 2) adds the two week tables, `Mission.paceSince` and `TodayTask.autoTicked` through `@AutoMigration(from = 5, to = 6)`, and each later version adds an auto migration from the one before. Installing an older build over a newer database wipes it.
