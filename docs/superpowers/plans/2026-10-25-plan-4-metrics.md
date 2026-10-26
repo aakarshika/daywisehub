@@ -16,7 +16,7 @@ A seed option fills in five weeks of history, so all of it can be tried by hand 
 - **The view model.** `MetricsViewModel` combines all missions, a window of tasks, the stored week summaries (Plan 2's `WeekRepository.observeSummaries()`) and the milestones. It builds one `MetricsUiState` with `flowOn(Dispatchers.Default)`.
 - **The rules.** Each section's rules are plain Kotlin in `domain`: `DayTasks`, `WeekScores`, `WeekHighlights`, `WeekAhead`, `Patterns`, `MonthGrid` and `MissionProgress`.
 - **The builder.** `MetricsStateBuilder` (`screen/metrics/MetricsState.kt`) reads the inputs once and hands them to each of those.
-- **The composables.** They live in `screen/metrics/`. `NavScreens` makes the view model with `remember` and cancels it on dispose, like the other tabs.
+- **The composables.** They live in `screen/metrics/`. `NavScreens` makes the view model with `remember`, keyed on the day (`CalDiaryViewModel.today`), and cancels it on dispose, like the other tabs.
 
 There's no schema change.
 
@@ -37,7 +37,7 @@ There's no schema change.
 - **Paths** are relative to `shared/src/commonMain/kotlin/com/example/todoapp/` unless they start with `shared/` or `docs/`.
 - **Commits** stage files by path, never `git add -A`. No task changes the schema. If a build rewrites anything under `shared/schemas`, restore it with `git checkout` (builds have rewritten `4.json` before). This plan doesn't depend on the v6 identity hash, which Plan 2's review changes.
 - **Every task builds on its own, in order.** Each task was checked this way: Plan 2's tasks were applied as written to a scratch checkout of `2be586e`, then Plan 4's Tasks 1..N on top, then a build. The code was then parsed back out of this document and compared with what compiled.
-- **Find/replace edits** quote the current text exactly. Each "Replace" block appears once in its file at that point. Most of them edit files this plan creates. The only files from earlier plans that it edits are `di/DI.kt`, `screen/NavScreens.kt`, `screen/init/InitViewModel.kt` and the spec. None of the lines it quotes were changed by Plan 2.
+- **Find/replace edits** quote the current text exactly. Each "Replace" block appears once in its file at that point. Most of them edit files this plan creates. The only files from earlier plans that Tasks 1 to 9 edit are `di/DI.kt`, `screen/NavScreens.kt`, `screen/init/InitViewModel.kt` and the spec. None of the lines it quotes were changed by Plan 2. The review fixes after Task 8 edit a few more (see "Review fixes after Task 8").
 - **Reads only.** The tab never writes. If a later change adds a write here, it goes through `PlanRepository`'s `write` helper (`NonCancellable` on `Dispatchers.Default`, behind its Mutex), as every other write does.
 
 ## What Plan 4 takes from Plan 2
@@ -50,17 +50,19 @@ Plan 4 uses only these Plan 2 pieces. If Plan 2's review renames one, adjust the
 | `WeekSummary` and its `balanced` column | `db/data/week/WeekSummary.kt` | The crown on a finished week |
 | `WeekSummary.weekStartDate`, `.earned(pillar)`, `.target(pillar)` | `domain/WeekSummaries.kt` | Reading the pillar columns |
 | `LinePart(text, pillar)` | `domain/PaceOffers.kt` | "What next week adjusts" lines with title chips |
+| `PaceOffers.openedWeeks(tasks)` and `PaceOffers.full(mission, week, history)`, `internal` since the review fixes | `domain/PaceOffers.kt` | Away weeks (no items of its own), and "full weeks in a row" on mission lines |
+| `WeekSummaries.balanced(earned, target)`, shared since the review fixes | `domain/WeekSummaries.kt` | This week's crown, by the stored rule |
 | `ChipText(parts, fontSize, color, italic)` | `screen/diary/plan/WeekNotes.kt` | Drawing those chips (spec 7.1) |
 | The close-out in `PlanRepository.ensurePlanned` | `repo/PlanRepository.kt` | It writes the summaries when the diary first opens in a new week, before the Metrics tab can be opened |
 
-Plan 4 doesn't use `pace_offer`, `WeekStateBuilder`, `DiaryExtras`, `HighlightRow`, `PillarProgress` or `WeekSummary.pillarsFull()`. It doesn't edit any file Plan 2 created.
+Plan 4 doesn't use `pace_offer`, `DiaryExtras`, `PillarProgress` or `WeekSummary.pillarsFull()`. Tasks 1 to 8 edit no file Plan 2 created. The review fixes after Task 8 do, keeping the diary as it was apart from two changes (M17, M18): `WeekStateBuilder.adjusted` now reads Metrics' `WeekAhead.carried`, and the Last week card's `HighlightRow` draws a quiet dot instead of the wand on "Nothing to catch up on.".
 
 **Plan 2's review fixes.** Plan 4 was written against Plan 2 as it stands at `2be586e`. It fits the fixes in review:
 1. **`WeekSummary.balanced` requires a total target above 0.** Plan 4 reads `summary.balanced` as the crown, with no check of its own. For this week, which has no row yet, `WeekScores.balanced` follows the same rule.
-2. **Summaries of weeks the app wasn't opened show 0 points against today's targets.** Plan 4 calls a finished week with no `today_task` rows at all an **away** week (`WeekScores.isAway`). Away weeks aren't counted as light. See decision 5.
+2. **Summaries of weeks the app wasn't opened show 0 points against today's targets.** Plan 4 calls a finished week with no items of its own an **away** week (`WeekScores.isAway`). That's Plan 2's rule for an opened week (its C4: items moved in don't count), shared as `PaceOffers.openedWeeks` since the review fixes. Away weeks aren't counted as light. See decision 5.
 3. **`pace_offer.response` gains `WITHDRAWN`.** Plan 4 doesn't read `pace_offer`.
 4. **`Mission.paceSince` and `TodayTask.autoTicked`** (new last parameters with defaults) and the unique index on `pace_offer`. Plan 4 builds `TodayTask` with named arguments only (in the seed) and never builds a `Mission`. It also doesn't read the v6 identity hash.
-5. **`WeekStateBuilder.opensWeek` and the diary's "adjusted" lines change.** Metrics has its own rules for next week (`domain/WeekAhead.kt`) and doesn't call either.
+5. **`WeekStateBuilder.opensWeek` and the diary's "adjusted" lines change.** Metrics doesn't call `opensWeek`. Since the review fixes, the diary's adjusted lines and Metrics' finished weeks share one rule, `WeekAhead.carried` (decision 7).
 
 ## Decisions this plan makes
 
@@ -74,72 +76,92 @@ The spec leaves these open. Each is easy to change later.
    - The rings, "what next week adjusts", the highlights card and the calendar follow the week on screen.
    - Patterns and mission lines are as of today, whatever week is shown.
 3. **Moving between weeks.**
-   - The left arrow goes back to the first stored week; the right arrow goes forward to this week. "Back to this week" shows whenever another week is on screen.
-   - A 44dp arrow fades and stops at either end. Steps are taken from the week on screen, so quick taps can't pass the first week.
-   - The tab opens on this week each time. Its "today" is fixed while it stays open, as on the Missions tab.
+   - The left arrow goes back to the first stored week; the right arrow goes forward to this week. "Back to this week" shows whenever another week is on screen. Its room is kept on this week too, so the header doesn't jump.
+   - A 44dp arrow fades and stops at either end. Steps are taken from the week asked for, not the one last built, so two quick taps move two weeks and never pass either end (changed after review).
+   - A week older than the tasks read waits for its own window: the last state stays until the window arrives, so the week never shows "away" for a moment.
+   - The title and dates read as one polite live region, with the title a heading. A date in another year than this week's carries its year: "Week of Dec 22, 2025", "Dec 22 to Dec 28, 2025".
+   - The tab opens on this week each time. After midnight it starts again on the new day: `NavScreens` keys it on `CalDiaryViewModel.today`, which the diary's midnight check sets.
+   - If building the state fails, the tab keeps what it showed and logs the error.
 4. **Rings.**
    - A finished week shows its stored summary.
    - This week is worked out live, as the diary's bars are: points from all missions, targets from active ones. A past week without a row is also worked out live; that happens only for a moment, before the diary's close-out has run.
    - Each ring reads "full" or "light" at the 80% rule (`Points.isFull`).
    - A pillar with nothing due counts as full (spec 5), so it reads "0/0 full" with its ring drawn full.
    - Points past the target show as "+N extra" under the label.
-5. **Away weeks.** A finished week with no `today_task` rows at all: the diary wasn't opened that week.
-   - Every ring reads "away" in grey, and the card says "The diary wasn't opened that week."
+   - Rings are 72dp at most and stay round on a narrow screen. At a large font size the numbers shrink to fit inside.
+   - A screen reader hears "Health, 14 of 14 points, full" ("1 point" for one).
+5. **Away weeks.** A finished week with no items of its own: the diary wasn't opened that week. Items moved in don't count, since a move can land in a week the app is then never opened in. That's Plan 2's rule for an opened week, shared as `PaceOffers.openedWeeks` and worked out once per build (changed after review).
+   - Every ring reads "away" in grey, with "–" in place of its numbers and no arc. A screen reader hears "Health, away".
+   - The card says "No points to count." and "The diary wasn't opened that week."
+   - The calendar draws no rings in it, nor in the weeks before the first item.
    - It isn't counted in "balanced weeks out of the last 4".
    - It neither counts toward nor breaks a run (patterns, and "full weeks in a row" on mission lines).
-   - Telling "away" from "not loaded" needs the week's tasks, so runs look back at most 51 weeks, inside the view model's year of tasks.
+   - Telling "away" from "not loaded" needs the week's tasks, so runs look back at most 51 weeks, inside the year of tasks the view model always reads.
 6. **Crowns.**
    - A finished week's crown is its stored `WeekSummary.balanced`.
-   - This week gets no crown on the calendar until it ends. The highlights card says "All 4 pillars full so far" with a crown icon.
-7. **What next week adjusts.** Only what the app actually knows, at most 4 lines. Each line names its mission on a chip, and the words around the chip never depend on the title (spec 7.1):
-   - "⟨Guitar⟩ moved to Monday.": a "move it" item already carried from this week into next week.
-   - "⟨Call Grandma⟩ is still due. If it waits, it moves into next week.": an every-so-often mission (or a monthly habit) due this week and not done yet (spec 5.1). For a finished week: "… stayed due, so it moved into the next week."
+   - This week gets no crown on the calendar until it ends. The highlights card says "All 4 pillars full so far" with a crown icon. Its rule is the stored one, `WeekSummaries.balanced` (shared after review).
+7. **What next week adjusts.** Only what the app actually knows, at most 3 lines. Each line names its mission on a chip, and the words around the chip never depend on the title (spec 7.1).
+   - **One rule with the diary** (changed after review). `WeekAhead.carried` finds what a week carried into the week after: "move it" items that landed there, then every-so-often missions (and monthly habits) due that week and not done, short rhythms included (spec 5.1). One line per mission, at most 3. The diary's Last week card reads it too, so the two never disagree about a week; only the words differ.
+   - A finished week, under "THE WEEK AFTER":
+     - "⟨Guitar⟩ moved to Monday."
+     - "⟨Call Grandma⟩ stayed due, so it moved into the week after."
+   - This week, under "NEXT WEEK", the same rule words what's happening so far:
+     - "⟨Guitar⟩ moved to Monday.": already carried into next week.
+     - "⟨Call Grandma⟩ is due this week. If it waits, it moves into next week.", or "is still due. …" once its due date has passed.
    - This week only:
      - "⟨Plan winter trip⟩ comes due next week.": its last done date plus its interval falls next week. This is only shown for intervals longer than a week, since a weekly rhythm comes due every week.
      - "⟨New ideas⟩ is back next week.": its pause ends next week.
    - Otherwise "Nothing to catch up on."
+   - The wand means the app adjusted something (spec 9.1), so only "moved to" and "stayed due" lines have it, here and on the diary's Last week card. Every other line has a quiet dot (changed after review).
    - Never a reason: the mockup's "Love was light. Next week makes room for ⟨Call sister⟩" isn't used, because the app doesn't know why.
-   - Rhythms shorter than a week are left out: they're due every week anyway.
-   - Plan 2's private `WeekStateBuilder.adjusted` isn't moved or reused. It only looks back, and the Metrics rules live in their own file so no Plan 2 file is edited. Merging the two is a follow-up.
 8. **Highlights card.**
-   - Points: each pillar is counted up to its target, and the rest shows as "+N extra", as on the "Last week" card.
-   - Pillars full.
+   - Points: each pillar is counted up to its target, and the rest shows as "+N extra", as on the "Last week" card. With nothing due it reads just "+N extra", as that card does, or "No points to count." when nothing was done either. An away week reads "No points to count."
+   - Pillars full: "3 of 4 pillars full", or "All 4 pillars full · a balanced week" with a crown. This week, still open, says "so far" either way. A week with nothing due reads "Nothing was due that week." ("Nothing is due this week." for this one).
    - "2 balanced weeks out of the last 4": the 4 finished weeks ending with the week on screen. When this week is shown, it's the 4 weeks before it, as in the mockup. Away weeks aren't counted.
-   - With fewer weeks: "1 balanced week so far", "No balanced week yet" or "No weeks to count yet."
+   - With fewer weeks, or none balanced: "1 balanced week so far", "No balanced week yet", "No balanced week in the last 3" or "No weeks to count yet."
 9. **Patterns.** At most 3 lines, each shown only when the data holds it up:
    - "3 balanced weeks in a row.": 2 or more, back from last week.
    - "Health has been full 5 weeks running.": 3 or more weeks with something due, for at most 2 pillars. Only longer than the balanced run, which already says it.
-   - "Love mostly happens on Mondays.": in the last 8 weeks the pillar has 6 or more ticks (done or did-some, not fixed blocks). One weekday has at least 40% of them and more than any other day.
-   - When none hold: "Patterns show up after a few weeks."
+   - A run that reaches the 51-week cap reads "for a year or more": "Health has been full for a year or more."
+   - "Love mostly happens on Mondays.": in the last 8 weeks the pillar has 8 or more ticks (done or did-some), and more than half fall on one weekday, so "mostly" holds and no other day ties it. Only missions free to land on any day count: fixed blocks, daily missions and missions with preferred days are left out, since their days are set (changed after review). A weekday line keeps a slot, so run lines can't crowd it out.
+   - When none hold: "Nothing stands out yet."
+   - On any week but this one, a quiet "As of today" sits under the heading.
    - The mockup's "Your best weeks had 3 or more recharge breaks" is left out. It reads like a cause.
 10. **Calendar.**
     - It shows the month of the shown week's Monday, in whole weeks from Monday to Sunday. Days of the next or previous month are greyed.
     - A day's ring is split by points per pillar, in pillar order, sized by points.
     - White is what didn't happen: skipped or moved items, the missing half of a did-some, and anything still planned on an earlier day. Today's planned items can still happen, so they aren't white.
-    - Recharge has no slice. Days after today have no ring, and an empty past day has a faint ring.
-    - The shown week's row is tinted. The tints are flat, not the old gradient (spec 9.1).
+    - A ring with points, or with nothing done (all white), has a 1dp edge outside and inside its band, about 3:1 on both tints (`DayRingEdge`). A past day with nothing on it is one thin plain line, still visible on the tinted row (changed after review).
+    - Recharge has no slice. Days after today have no ring, nor do the days of an away week or of the weeks before the first item.
+    - The shown week's row is tinted. The tints are flat, not the old gradient (spec 9.1). Today has an outline as well as a bold number.
     - Tapping a day opens it in the diary: `CalDiaryViewModel.selectDate`, then the Diary tab.
-    - Each day cell is a 44dp-tall button that reads, for example, "Tuesday, October 6. 8 points: Health 2, Wealth 6. 2 points didn't happen".
+    - Each day cell is a button at least 44dp tall that reads, for example, "Tuesday, October 6. 8 points: Health 2, Wealth 6. 2 points didn't happen". Today with nothing yet reads "No points yet". A crown reads "Balanced week of Oct 12".
+    - The card has the highlights card's inset.
 11. **Mission lines.** One per active mission, as of today, in pillar order (Recharge last), with a pillar dot and the title as typed:
 
     | Mission | Line |
     |---|---|
     | Paused, not started, or past its end | "Paused until Dec 2", "Starts Nov 3", "Ended Oct 20" |
-    | Fixed block | "4 of 5 this week" |
+    | Fixed block | "4 of 5 this week", or "Nothing due this week" |
     | Recharge | "1 this week · about twice a week" |
     | Every so often | "Every 14 days on average · you aim for every 2 weeks" (2 or more ticks in the last year), "Last done 5 days ago · …", "Not done yet · …" |
-    | Finish line with milestones (flag) | "Milestone 2 of 3 · due Dec 20", "All 3 milestones done". Milestone texts aren't shown. |
+    | Finish line with milestones (flag) | "Milestone 2 of 3 · due Dec 20", "All 3 milestones done" ("All 1 milestone done"). Milestone texts aren't shown. |
     | Every day | "26 of 30 days this month · best streak 14". Today counts once it's done. On the 1st: "Every day · best streak 14" |
     | N× a month | "1 of 2 this month" |
     | N× a week (habits, finish lines without milestones) | "2 of 3 this week", plus "· 2× a week for now" for a gentle start, or "· 4 full weeks in a row" |
+
+    - **Full weeks in a row** use the pace offers' meaning of full (`PaceOffers.full`, changed after review): 80% of the mission's own points that week, a did-some earning half. The run stops at the mission's last pace change (`paceSince`), skips away weeks, and reads "· full every week for a year or more" at the 51-week cap.
+    - Lines as of today leave out ticks dated after today: a daily habit's count and best streak, a rhythm's last done and average. "This week" counts keep the rest of the week.
+    - Done days count only within the one-year look-back, so browsing an older month, which reads further back, doesn't change a line.
+    - Titles are Medium weight, as on the Missions tab.
 12. **How much is read.**
     - Tasks come from a year before today, or from 120 days before the shown month's first row if that's earlier, through the end of next week.
     - The window only moves when a week that old is shown: `distinctUntilChanged` before `flatMapLatest`.
-    - Rhythm averages and best streaks look back over that year (`MetricsViewModel.LOOK_BACK_DAYS`).
+    - Patterns and mission lines look back over that year, with one constant for both (`Patterns.LOOK_BACK_DAYS`): runs, best streaks and average gaps.
 13. **A seed for trying it.** `SEED_METRICS_HISTORY` in the new `db/MetricsSample.kt` adds five weeks of history on top of SampleData's missions, and runs only with `SEED_SAMPLE_MISSIONS`. Both are off. The seed gives:
     - two balanced weeks;
     - a skipped block, a moved call and a skipped call, as white slices;
-    - Monday calls, for the weekday pattern;
+    - Monday calls. Since the review fixes they don't make a weekday line: Call Mom has a set day, so the pattern leaves it out;
     - a 2-week rhythm kept on time.
     The two pace offers in Plan 2's seed checklist (D) were checked to stay the same with both flags on.
 
@@ -150,6 +172,7 @@ Months of tasks go through the builder on every change, so:
 - **No date parsing per day.** `DayTasks` groups tasks by their stored `yyyy-MM-dd` text without reading any date. The calendar's 42 days and the pattern's 8 weeks are looked up by key, so nothing is O(days × tasks).
 - **Each task's date is read once** for the mission lines, per mission.
 - **`Points` runs per mission per week,** never per day. This week's points are added up from that week's tasks only.
+- **Away weeks once.** The weeks with items of their own are worked out once per build (`PaceOffers.openedWeeks`) and handed to every section.
 
 ## File map
 
@@ -166,7 +189,7 @@ Months of tasks go through the builder on every change, so:
 | `domain/WeekHighlights.kt` | The highlights card's lines |
 | `screen/metrics/WeekHighlightsCard.kt` | The card |
 | `domain/WeekAhead.kt` | What next week adjusts |
-| `screen/metrics/WeekAheadNotes.kt` | Its wand lines with chips |
+| `screen/metrics/WeekAheadNotes.kt` | Its lines with chips: the wand on adjustments, a quiet dot otherwise |
 | `domain/Patterns.kt` | The pattern lines |
 | `domain/MonthGrid.kt` | The month's rows, day slices, white, crowns, descriptions |
 | `screen/metrics/MonthCalendar.kt` | The calendar card |
@@ -176,10 +199,12 @@ Months of tasks go through the builder on every change, so:
 
 **Edited:** `di/DI.kt`, `screen/NavScreens.kt`, `screen/init/InitViewModel.kt`, `docs/superpowers/specs/2026-10-25-daywisehub-redesign-design.md`.
 
+**Edited by the review fixes after Task 8:** `domain/PaceOffers.kt`, `domain/WeekSummaries.kt`, `domain/MissionWords.kt`, `screen/metrics/CalDiaryViewModel.kt`, `screen/NavScreens.kt`, `screen/basicutils/AppColors.kt`, `screen/diary/WeekState.kt`, `screen/diary/plan/WeekNotes.kt`, `screen/diary/plan/PlanNotes.kt`.
+
 **Deleted:** `screen/placeholder/ComingNextScreen.kt` (only the Metrics tab used it).
 
 **Unchanged on purpose:**
-- Every Plan 2 file. See "What Plan 4 takes from Plan 2".
+- Every Plan 2 file in Tasks 1 to 9. See "What Plan 4 takes from Plan 2". The review fixes edit a few, keeping the diary as it was apart from M17 and M18.
 - `domain/Points.kt`.
 - The database: no new tables, columns or queries.
 
@@ -2840,6 +2865,34 @@ git commit -m "feat: optional seed with five weeks of metrics history"
 
 ---
 
+### Review fixes after Task 8
+
+Each task's review asked for fixes (M1 to M35). They were made after Task 8 and before Task 9. The decisions above, Task 9's spec text and the checklist below already describe the result. The checklist's seed numbers were then re-derived for every weekday by running the seed, the close-out's summaries and `MetricsStateBuilder` on the JVM, in a throwaway test that wasn't kept.
+
+- `50197a8`: week loading, midnight and away weeks. M1 to M15, M25, and M35 for the rings, the highlights card and `AppColors`.
+- `2275fba`: one rule for what a finished week carried (`WeekAhead.carried`, shared with the diary's Last week card), the wand only on adjustments, and stricter patterns. M16 to M24.
+- `0022821`: calendar ring edges, no rings in away weeks, and mission lines as of today. M26 to M34, and M35 for the calendar and mission rows.
+- The commit with this section: these notes, Task 9's spec text and the checklist.
+
+Files from earlier plans that the fixes edit. The diary stays as it was apart from M17 and M18:
+- `domain/PaceOffers.kt`: `openedWeeks`, Plan 2's opened-week rule, now shared; `full` is now `internal`.
+- `domain/WeekSummaries.kt`: `balanced(earned, target)`, now shared.
+- `domain/MissionWords.kt`: "All 1 milestone done" on the Missions tab too.
+- `screen/metrics/CalDiaryViewModel.kt` and `screen/NavScreens.kt`: `today` from the midnight check, and the Metrics view model keyed on it.
+- `screen/basicutils/AppColors.kt`: the Metrics tab's colors.
+- `screen/diary/WeekState.kt`: `adjusted` reads `WeekAhead.carried`, with the same inclusion rules and cap of 3 as before, and each line says whether it gets the wand.
+- `screen/diary/plan/WeekNotes.kt` and `screen/diary/plan/PlanNotes.kt`: `HighlightRow` draws a quiet dot when it has no icon, used for "Nothing to catch up on.".
+
+Left as they were, by choice:
+- An away week still lists what it carried, as the diary does.
+- Moves that move twice, and past weeks read with today's missions and limits.
+- One ruled line per pattern, not one per wrapped line.
+- Pastel arcs follow the spec's color table; the numbers carry the data.
+- Weights at the time of a tick, remembering the browsed week across tabs, and the diary's words for a future day.
+- How far back the arrows go still depends on the stored weeks.
+
+---
+
 ### Task 9: iOS compile, spec sync and hand-off
 
 **Files:**
@@ -2884,17 +2937,17 @@ with:
 
 ### 9.2 Metrics, as built in plan 4
 
-- **One week at a time.** Arrows step back to the first stored week and forward to this week, and "Back to this week" returns. The tab opens on this week.
-- **Rings.** A finished week shows its stored summary. This week is worked out live, as the diary's bars are. Each ring reads "full" or "light" at the 80% rule, and a pillar with nothing due is drawn full. A finished week without a single task reads "away": the diary wasn't opened, so its zeros aren't misses.
-- **What next week adjusts.** Only what the app knows: items "move it" carried into next week and every-so-often missions still due. For this week it also lists longer rhythms coming due and pauses ending next week. Titles sit on chips. With nothing to list it says "Nothing to catch up on."
-- **Highlights card.** Points (each pillar counted up to its target, the rest as "+N extra"), pillars full, and balanced weeks out of the last 4 finished weeks. Away weeks aren't counted.
-- **Patterns.** At most 3 lines, each shown only when the data holds it up:
+- **One week at a time.** Arrows step back to the first stored week and forward to this week, and "Back to this week" returns. The tab opens on this week, and starts again after midnight. A date in another year than this week's carries its year.
+- **Rings.** A finished week shows its stored summary. This week is worked out live, as the diary's bars are. Each ring reads "full" or "light" at the 80% rule, and a pillar with nothing due is drawn full. A finished week without an item of its own (items moved in don't count) reads "away", with no numbers and no arc: the diary wasn't opened, so its zeros aren't misses.
+- **What next week adjusts.** Only what the app knows, at most 3 lines: items "move it" carried into the week after, and every-so-often missions due and not done, by the same rule as the diary's "Last week" card. For this week it also lists longer rhythms coming due and pauses ending next week. Titles sit on chips. Only a line about something the app adjusted has the wand; the others, here and on the "Last week" card, have a quiet dot. With nothing to list it says "Nothing to catch up on."
+- **Highlights card.** Points (each pillar counted up to its target, the rest as "+N extra"), pillars full ("so far" for this week, "Nothing was due that week." when nothing was), and balanced weeks out of the last 4 finished weeks. Away weeks aren't counted.
+- **Patterns.** As of today, at most 3 lines, each shown only when the data holds it up:
   - balanced weeks in a row (2 or more);
-  - a pillar full 3 or more weeks running (at most 2 pillars);
-  - the weekday a pillar's ticks mostly land on: 6 or more ticks in 8 weeks, one day with at least 40% and more than any other, fixed blocks left out.
-  Away weeks neither count nor break a run.
-- **Calendar.** The month of the shown week's Monday, Monday first. Day rings are split by points per pillar. White is skipped or moved items, the missing half of a did-some, and anything left planned on an earlier day. Only finished weeks get a crown. Tapping a day opens it in the diary.
-- **Mission lines.** One per active mission, as of today: a daily habit's days this month and best streak, a rhythm's average gap against its aim, a finish line's next milestone, a weekly count with a gentle pace or a run of full weeks. Archived missions aren't listed, but their points still count in every week and day ring.
+  - a pillar full 3 or more weeks running (at most 2 pillars), or "for a year or more";
+  - the weekday a pillar's ticks mostly land on: 8 or more ticks in 8 weeks, more than half of them on one day, from missions free to land on any day (not fixed blocks, daily missions or missions with set days). It always keeps a slot.
+  Away weeks neither count nor break a run. With none: "Nothing stands out yet."
+- **Calendar.** The month of the shown week's Monday, Monday first. Day rings are split by points per pillar, inside a thin edge. White is skipped or moved items, the missing half of a did-some, and anything left planned on an earlier day. A day with nothing on it is one plain thin ring; away weeks have no rings. Only finished weeks get a crown. Today has an outline. Tapping a day opens it in the diary.
+- **Mission lines.** One per active mission, as of today: a daily habit's days this month and best streak, a rhythm's average gap against its aim, a finish line's next milestone, a weekly count with a gentle pace or a run of full weeks (80% of its own points, as for pace offers, since its last pace change). Archived missions aren't listed, but their points still count in every week and day ring.
 ```
 
 
@@ -2926,7 +2979,7 @@ Tell the owner the build is ready and point them to the checklist below.
   2. Build, clear the app's storage, and open the app. It opens on the Diary, which writes about 13 stored weeks and plans today.
   3. Then tap Metrics.
   4. Turn both flags off when done.
-  - Numbers below are for the morning right after seeding, before you tick anything. Some depend on the weekday you seed on; these are marked "(on a Sunday: …)".
+  - Numbers below are for the morning right after seeding, before you tick anything. Some depend on the weekday you seed on; these are marked "(on a Sunday: …)". They were re-derived after the review fixes by running the seed for every weekday.
   - "1 week back" is last week.
 - **Moving the date.** For sections C and H, change the device date, as in Plan 2's checklist:
   - **Android:** Settings → System → Date & time → turn off automatic time.
@@ -2935,12 +2988,14 @@ Tell the owner the build is ready and point them to the checklist below.
 - **A screen reader** (TalkBack or VoiceOver) is needed for the accessibility checks marked "Screen reader".
 
 ### A. The tab and its week arrows
-1. Metrics opens on "This week" with this week's dates ("Oct 26 to Nov 1"). The right arrow is faded and does nothing.
+1. Metrics opens on "This week" with this week's dates ("Oct 26 to Nov 1"). The right arrow is faded and does nothing. There's room under the dates for "Back to this week", so the page doesn't jump when the chip comes and goes.
 2. Tap the left arrow: "Last week", then "Week of …", with each week's dates. A "Back to this week" chip appears; tapping it returns.
-3. Keep going back until the left arrow fades. The first week is the one with SampleData's Plan winter trip tick, 12 or 13 weeks back.
-4. Tap the arrows quickly several times. It never goes past the first week or this week.
+3. Keep going back until the left arrow fades. The first week is the one with SampleData's Plan winter trip tick: 13 weeks back (12 on a Saturday or Sunday).
+4. Tap the left arrow twice quickly: it moves two weeks. Tap the arrows quickly several times: it never goes past the first week or this week.
 5. Switch to Missions or Diary and back. Metrics opens on this week again.
-6. Screen reader: the arrows read "Previous week" and "Next week" (and say when they're unavailable), and the title is a heading.
+6. Leave Metrics open across midnight (set the time to 23:59 and wait). Within a minute of midnight it starts again on this week as of the new day.
+7. With a long-used install, a week in another year shows its year: "Week of Dec 22, 2025", "Dec 22 to Dec 28, 2025".
+8. Screen reader: the arrows read "Previous week" and "Next week" (and say when they're unavailable). The title and dates read as one heading, and are read again when the week changes.
 
 ### B. Rings and the highlights card (seed)
 1. **This week.** Four rings with live numbers. Tick Gym in the diary and come back: Health goes up by 2.
@@ -2951,41 +3006,44 @@ Tell the owner the build is ready and point them to the checklist below.
 | 1 back | Health 14/14, Wealth 30/30, Love 4/4 (on a Sunday: 6/6), all full; Life 9/12 light | "57 of 60 points" (Sunday: "59 of 62"), "3 of 4 pillars full", "2 balanced weeks out of the last 4" |
 | 2 back | All four full, Life 10/12 | "60 of 62 points" (Sunday: "58 of 60"); a crown and "All 4 pillars full · a balanced week" |
 | 3 back | Wealth 27/30 full; Life 9/12 light | "54 of 60 points" (Sunday: "56 of 62"), "3 of 4 pillars full", "1 balanced week out of the last 4" (Sunday: "…of the last 3") |
-| 4 back | All four full | Crown, "a balanced week" |
-| 5 back | Health 12/14 full, Wealth full, Love and Life light | "0 balanced weeks out of the last 2" (Sunday: "No balanced week yet") |
+| 4 back | All four full | Crown, "a balanced week", "1 balanced week out of the last 3" (Sunday: "…of the last 2") |
+| 5 back | Health 12/14 full, Wealth full, Love and Life light | "2 of 4 pillars full", "No balanced week in the last 2" (Sunday: "No balanced week yet") |
 
-3. **This week's card.** "THIS WEEK" with the calendar icon. The star line reads "N of M points", the heart line "X of 4 pillars full", and the crown line "2 balanced weeks out of the last 4".
+3. **This week's card.** "THIS WEEK" with the calendar icon. The star line reads "N of M points", the heart line "X of 4 pillars full so far", and the crown line "2 balanced weeks out of the last 4".
 4. **Away weeks.** Step back past week 5 to a week with no ticks. On Monday to Saturday, week 6 back still has a Call Grandma tick, so go one further.
-   - Every ring reads "away" in grey, at 0 of its target.
-   - The card says "The diary wasn't opened that week." and shows no crown.
+   - Every ring reads "away" in grey, with "–" in place of its numbers and no colored arc.
+   - The card's star line says "No points to count." and its heart line "The diary wasn't opened that week.", with no crown.
    - Its crown line reads "No weeks to count yet." once only away weeks are left in its 4.
 5. **"full" and "light".** A ring reads "full" in its pillar's ink at 80% or more, otherwise "light" in grey. If a pillar passes its target (tick an extra item with the pencil), "+N extra" appears under it.
-6. **A pillar with nothing due** (optional: pause or archive every Love mission). Its ring is drawn full and reads "0/0 full".
-7. **Screen reader:** a ring reads as one item, for example "Health, 14 of 14 points, full" or "Love, 0 of 6 points, away".
+6. **A pillar with nothing due** (optional: pause or archive every Love mission). Its ring is drawn full and reads "0/0 full". With nothing due in any pillar, the card reads "Nothing is due this week.", and its star line "+N extra" once something is ticked.
+7. **Screen reader:** a ring reads as one item, for example "Health, 14 of 14 points, full" or, on an away week, "Love, away".
+8. **Large text.** At the largest font size the rings stay round and their numbers fit inside.
 
 ### C. What next week adjusts
-1. **This week, Monday to Saturday.** "NEXT WEEK" with two wand lines:
-   - "⟨Call Grandma⟩ is still due. If it waits, it moves into next week."
-   - "⟨Plan winter trip⟩ is still due. If it waits, it moves into next week."
-   On a Sunday both read "… comes due next week." instead. Titles sit on chips in their pillar's color.
+1. **This week, Monday to Saturday.** "NEXT WEEK" with two lines, each with a quiet dot, not the wand (nothing has been adjusted yet):
+   - "⟨Call Grandma⟩ is due this week. If it waits, it moves into next week."
+   - "⟨Plan winter trip⟩ is due this week. If it waits, it moves into next week."
+   On a Sunday both read "… comes due next week." instead, also with a dot. Titles sit on chips in their pillar's color.
 2. Tick Call Grandma in the diary (the pencil adds it if it isn't on today's list), then come back. Its line is gone.
-3. **Past weeks** read "THE WEEK AFTER". For the seeded weeks the line is "Nothing to catch up on." For an away week before Call Grandma's first tick, it includes "⟨Call Grandma⟩ stayed due, so it moved into the next week."
-4. **"moved to".** On a Saturday or Sunday evening, use the evening check's "Move to …" on an unticked pick, so it lands on next Monday. Back on Metrics: "⟨it⟩ moved to Monday."
-5. **"is back next week"** (optional, with Plan 2's seed offers). Answer "Pause a month" on New ideas. Move the date forward to the week before the pause ends. "⟨New ideas⟩ is back next week."
-6. No line ever gives a reason ("… was light, so …").
+3. Seeded on Monday to Thursday, move the date two days ahead and reopen. Plan winter trip's due date has passed, so its line reads "… is still due. If it waits, it moves into next week."
+4. **Past weeks** read "THE WEEK AFTER". For the seeded weeks the line is "Nothing to catch up on.", with a dot. For an away week before Call Grandma's first tick it reads "⟨Call Grandma⟩ stayed due, so it moved into the week after.", with the wand.
+5. **"moved to".** On a Saturday or Sunday evening, use the evening check's "Move to …" on an unticked pick, so it lands on next Monday. Back on Metrics: "⟨it⟩ moved to Monday.", with the wand. On that Monday, the diary's Last week card and Metrics' "Last week" name the same missions: one rule makes both.
+6. **The diary's Last week card.** Its "Nothing to catch up on." has a quiet dot instead of the wand; "moved to" and "is still due" lines keep the wand.
+7. **"is back next week"** (optional, with Plan 2's seed offers). Answer "Pause a month" on New ideas. Move the date forward to the week before the pause ends. "⟨New ideas⟩ is back next week.", with a dot.
+8. No line ever gives a reason ("… was light, so …").
 
 ### D. Patterns (seed)
 1. Under PATTERNS, on ruled lines, the same on every week:
    - "Health has been full 5 weeks running."
    - "Wealth has been full 5 weeks running."
-   - "Love mostly happens on Mondays."
-2. There's no "balanced weeks in a row" line: last week wasn't balanced. Life has no weekday line: Guitar's Mondays and Thursdays tie.
-3. A fresh install reads "Patterns show up after a few weeks."
+2. There's no "balanced weeks in a row" line: last week wasn't balanced. There's no weekday line either. Call Mom and Call sister have set days, Gym is daily and the work blocks are fixed, so they're left out. That leaves Love only Call Grandma's 3 ticks, and Life's 16 ticks spread over four days (Guitar's Mondays and Thursdays, Dance class, New ideas), none with more than half.
+3. On any week but this one, a quiet "As of today" sits under the heading.
+4. A fresh install reads "Nothing stands out yet."
 
 ### E. The calendar (seed)
 1. **Layout.**
    - Month title ("OCTOBER 2026"), then M T W T F S S, Monday first.
-   - Whole weeks, with the next or previous month's days greyed. Days after today have only their number. Today's number is bold.
+   - Whole weeks, with the next or previous month's days greyed. Days after today have only their number. Today's number is bold, and today has an outline.
    - The shown week's row is tinted. Stepping weeks moves the tint, and at a month boundary the calendar changes month.
 2. **Crowns.** Weeks 2 and 4 back have a gold crown in the left column. Step back a week or two if they fall in the previous month.
 3. **White slices.**
@@ -2993,17 +3051,18 @@ Tell the owner the build is ready and point them to the checklist below.
    - 3 weeks back, Wednesday: white (the skipped App block), plus a Love slice (Call sister done there).
    - 5 weeks back, Tuesday: white (Call sister skipped).
    - Other days are fully colored, split by pillar.
-4. **By hand.** "Did some" on today's item shows half its slice plus white, once the day is over. A ticked New episode adds no slice. A past day with nothing on it has a faint empty ring.
-5. **Taps.** Tap any day: the Diary opens on that date. Days are easy to hit on a small phone (each cell is 44dp tall).
-6. **Screen reader.**
-   - A day reads, for example, "Tuesday, October 6. 8 points: Health 2, Wealth 6. 2 points didn't happen", and "Open in the diary" as its action.
-   - A crown reads "Balanced week".
+4. **Edges.** Every ring with points, or with only white, has a thin darker edge outside and inside, so white reads as part of the ring on either tint. On Monday to Saturday, week 6 back's empty days are one thin plain line each, visible on the tinted row too. The away weeks before it have no rings.
+5. **By hand.** "Did some" on today's item shows half its slice plus white, once the day is over. A ticked New episode adds no slice.
+6. **Taps.** Tap any day: the Diary opens on that date. Days are easy to hit on a small phone (each cell is at least 44dp tall, and taller with large text).
+7. **Screen reader.**
+   - A day reads, for example, "Tuesday, October 6. 8 points: Health 2, Wealth 6. 2 points didn't happen", and "Open in the diary" as its action. Today, before anything is ticked, reads "Today, ‹weekday›, ‹date›. No points yet".
+   - A crown reads "Balanced week of Oct 12", with its own week's Monday.
    - The weekday letters aren't read.
 
 ### F. Mission lines (seed)
 1. **In order** (Health, Wealth, Love, Life, Recharge), each with a pillar dot:
    - Gym: "N of N days this month · best streak S". S is 32 on a Monday seed and one more for each later weekday. On the 1st of a month: "Every day · best streak S".
-   - Job and App: "D of 5 this week".
+   - Job and App: "D of 5 this week", D being the weekdays before today.
    - Call Mom: "0 of 1 this week · 5 full weeks in a row".
    - Call sister: "0 of 1 this week · 4 full weeks in a row".
    - Call Grandma: "Every 14 days on average · you aim for every 2 weeks".
@@ -3013,25 +3072,27 @@ Tell the owner the build is ready and point them to the checklist below.
    - Plan winter trip: "Last done 89 days ago · you aim for every 3 months".
    - New episode: "0 this week · about twice a week".
 2. Tick things in the diary. The "this week" counts go up, and Gym's month count and streak include today once it's ticked.
-3. **A finish line with milestones** (write one in Missions). "Milestone 1 of 3 · due ‹date›". After ticking all of them in the diary: "All 3 milestones done".
+3. **A finish line with milestones** (write one in Missions). "Milestone 1 of 3 · due ‹date›". After ticking all of them in the diary: "All 3 milestones done". With a single milestone: "All 1 milestone done", here and on the Missions tab.
 4. **Archive a mission** from its editor.
    - Its line goes.
    - Its earlier points stay: past weeks' rings, this week's ring and the day rings don't change.
 5. **Screen reader:** a row reads as one item: pillar, title, line.
+6. **Full weeks** mean 80% of the mission's own points, as for pace offers: a week with only a did-some of Call Mom isn't full. Changing a mission's pace or weight in the editor starts its run again from that day.
 
 ### G. Look and feel
 - The paper background, the marker headings (PATTERNS yellow, MISSIONS lilac) and the highlights card match the diary's evening card.
 - The calendar uses flat tints, not a gradient.
 - Nothing in the new copy uses "missed", "failed", "lagging" or an exclamation mark.
 - No title is ever put into a sentence except on a chip.
+- Mission titles on the rows are Medium weight, as on the Missions tab. The calendar card lines up with the highlights card.
 
 ### H. Away weeks without the seed (date travel)
 1. Use the app on some days of one week. Make sure no "Move it" item lands in the next week.
 2. Move the date two weeks ahead and open the app. The diary writes a summary for the skipped week.
 3. On Metrics, step back to the skipped week:
-   - Every ring reads "away".
-   - The card says "The diary wasn't opened that week."
-   - There's no crown on the calendar.
+   - Every ring reads "away", with "–" and no arc.
+   - The card says "No points to count." and "The diary wasn't opened that week."
+   - There's no crown on the calendar, and its days have no rings.
    - The crown line on the following weeks leaves it out.
    - A pattern run, or a mission's "full weeks in a row", continues across it rather than ending.
 
@@ -3050,11 +3111,11 @@ Tell the owner the build is ready and point them to the checklist below.
 - **`ideaId` on `Mission` is the next schema version: 7.** Version 6 is Plan 2's, including its review additions (`paceSince`, `autoTicked`, the `pace_offer` index). Add `AutoMigration(from = 6, to = 7)` and commit `7.json` beside `6.json`. Keep the destructive fallback limited to versions 1 to 4. Plan 4 changed no schema, so it adds nothing to that migration.
 - **Long rhythms from `ideas.json`** (6, 12 and 24 months): cap them at 3 months when importing, as Plans 1 and 3 note. If they're allowed instead, widen these windows past the longest interval:
   - `PlanRepository.HISTORY_DAYS`, which Metrics reads too;
-  - `MetricsViewModel.LOOK_BACK_DAYS` (a year), which bounds a rhythm's average gap and a best streak.
+  - `Patterns.LOOK_BACK_DAYS` (a year), which bounds a rhythm's average gap, a best streak and every run.
 - **Small follow-ups, not scheduled:**
-  - Plan 2's `WeekStateBuilder.adjusted` (the diary's "Last week" card) and Metrics' `WeekAhead` overlap on "moved" and "still due". Merge them into one `domain` rule once Plan 2's review has settled.
   - There's no archived-missions list or restore. Archived missions only lose their Metrics line; their points stay.
-  - The tab's "today" stays fixed while it's open across midnight, as on Missions.
+  - The seed shows no weekday line since the review fixes: its Monday calls have a set day. A seeded mission without set days, ticked mostly on one weekday, would show one.
+  - Plan 2's checklist (C3, C7, D2) still says the Last week card's "Nothing to catch up on." has the wand. Since Plan 4's review it has a quiet dot.
   - The calendar has no month arrows of its own; it follows the shown week.
   - Mission rows don't open the editor when tapped.
   - The weekday pattern counts did-some like done.
