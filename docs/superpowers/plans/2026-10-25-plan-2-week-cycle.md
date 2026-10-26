@@ -3849,7 +3849,7 @@ Do this on a Tuesday to Saturday, so tomorrow is in the same week.
    - **Yellow, wand, "A SMALL CHANGE?":** "⟨New ideas⟩ has slipped 3 weeks in a row. That's fine. Want to make it 2× a week for now? You can step back up anytime." Buttons: "Make it 2×" (filled), "Keep 3×", "Pause a month".
    - **Blue, flag, "GOING WELL":** "⟨Guitar⟩ has gone well 3 weeks running. Ready for 3× a week?" Buttons: "Step up" (filled), "Not yet".
    - Both titles are on light blue Life chips.
-   - The card's wand line reads "Nothing to catch up on."
+   - The card's last line reads "Nothing to catch up on.", next to a small dot rather than the wand (plan 4 keeps the wand for lines where the app adjusted something)
 3. Tap "Not yet" on Guitar. The sticky goes, and Missions still shows Guitar as "2× a week, up to 3× · big".
 4. Tap "Make it 2×" twice, fast. The sticky goes, and Missions shows New ideas as "2× a week · small", lowered once, not to 1×. Today's list was re-picked, unless you'd tapped Looks good.
 5. Reopen the app: no offers come back today.
