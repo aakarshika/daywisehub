@@ -33,7 +33,7 @@ Paths under `shared/src/commonMain/kotlin/com/example/todoapp/`.
 | 2 | `domain/WeekScores.kt` | `PillarScore.items`, `.done`, `.closed`, `.nearly` |
 | 2 | `domain/MonthGrid.kt` | `CalendarDay.missed` (per pillar), `.closed`; the description says "ring closed" |
 | 2 | `screen/metrics/PillarRings.kt`, `MonthCalendar.kt` | Light remainder on closed rings; "nearly" |
-| 3 | `domain/Patterns.kt` | Lines become `List<LinePart>`; five new kinds; no line cap (the screen folds them) |
+| 3 | `domain/Patterns.kt` | Lines become `List<LinePart>`; six new kinds of line; no line cap (the screen folds them) |
 | 3 | `domain/MissionProgress.kt`, `domain/DayBadges.kt` | Share the mission full-week run; `DayBadgeBook.counts(date)` |
 | 3 | `screen/metrics/MetricsState.kt`, `MetricsScreen.kt` | Patterns as chip lines; the first 4, then "More patterns" |
 | 4 | `domain/CalendarFilter.kt` | New: the filter, the item rule and the summary line |
@@ -50,19 +50,19 @@ Paths under `shared/src/commonMain/kotlin/com/example/todoapp/`.
 1. **Opening at the top.** The cause was the list's keyed bottom spacer. Before the state is built, it was the only item, so when the cards arrived above it, the list kept it in view. Now the list is drawn only once the state exists. A new view model (after midnight, or on reopening the tab) starts at the top too.
 2. **Sticker sizes.** In the calendar cell, 26dp centred for any earned badge (the icon scales with it), with the day number hidden and still in the description. "Recharging day" stays 20dp at `offset(11.dp, 11.dp)` with the number showing. Today keeps its outline either way.
 3. **The close rule is one function.** `Points.closes(earned, target, items, done)` is `(target > 0 && isFull(earned, target)) || (items >= 6 && done >= items - 2)`.
-   - **Items** are rows that didn't move away (`state != MOVED`), of scored missions, in that pillar and week (or on that day).
+   - **Items** are rows that didn't move away (`state != MOVED`), of scored missions, in that pillar and week (or on that day). For a pillar's week, items are the larger of those rows and the times its active missions were due that week at their current pace (`Points.occurrencesInWeek`), so a ring can't close on the few rows that exist mid-week.
    - **Done** is `countsAsDone`.
-   - A week's items come from its stored rows, finished or not.
+   - A week's rows are its stored rows, finished or not.
    - An away week never closes.
    - A pillar with target 0 is already drawn full, so it isn't affected.
 4. **"Nearly"** is `closed && !full`. A pillar ring's state word is "away", "full", "nearly" or "light", and its description uses the same word.
-5. **Closed day rings** are for finished days only (`date < today`, with a ring). The rule runs over the day's earned points against earned plus missed, and its scored items. `notDone` stays as the total. `missed` splits it by pillar, so a closed ring draws each pillar's missed part in its light color, in pillar order after the earned slices. An open ring keeps white.
+5. **Closed day rings** are for finished days only (`date < today`, with a ring). The rule runs over the day's earned points against earned plus missed, less what moved away (moved items went to another day, so they don't hold the day back), and its scored items. `notDone` stays as the total. `missed` splits it by pillar, so a closed ring draws each pillar's missed part in its light color, in pillar order after the earned slices. An open ring keeps white.
 6. **Patterns.**
    - **Lines.** Each line is a `List<LinePart>`; titles sit on chips (spec 7.1). Order, rules and wording are as in spec 9.2.
    - **Families.**
      - **Missions going well:** reuses the mission lines' full-week run (`PaceOffers.full`, since `paceSince`, away weeks skipped). It's shared rather than copied: the mission lines' run is the source.
      - **Strong** and **picking up:** each is one line naming every pillar that qualifies ("⟨Life⟩ and ⟨Health⟩ have been strong this past month."). Strong leaves out a pillar that has a run line, and is dropped entirely while the balanced run is 3 or more, since every pillar would then be strong.
-     - **Best week:** "in N weeks" counts calendar weeks from the nearest earlier week with as many points or more to last week, so away weeks inside the span are included. It needs 4 or more counted weeks beaten. It reads "yet" when the walk reaches the first stored week or the run cap without finding one.
+     - **Best week:** "in N weeks" counts calendar weeks from the nearest earlier week with as many points or more to last week, so away weeks inside the span are included. It needs 4 or more counted weeks beaten. When the walk reaches the run cap, the older stored weeks are checked too; it reads "yet" only when no stored week has as many points.
      - **Badge run:** uses `DayBadgeBook.counts(date)`, which is true when the day has something done by hand, a did-some, or a milestone (the fallback's own test), so no badges are worked out for it. The Metrics book's range grows to cover `today − HISTORY_DAYS` up to today. A run at the look-back's edge just stops there.
    - **Folding.** The tab shows the first 4 lines and a "More patterns" chip that shows the rest ("Fewer patterns" folds them again). The weekday line no longer keeps a reserved slot, since nothing is dropped.
 7. **The All months filter.** `CalendarFilter(pillars, missionIds)`. An item counts when its mission's pillar is picked or its mission is picked; both empty means the filter is off.
@@ -113,7 +113,7 @@ Each task ends with `:androidApp:assembleDebug` and `:shared:compileKotlinIosSim
 - `MonthCalendarCard` takes an optional `onAllMonths` (the chip in the title row; tapping the title does the same) and an optional caption.
 - `AllMonthsScreen` has three parts:
   - the top bar, with a back arrow "Back to Metrics" and "ALL MONTHS";
-  - the filter chips, pinned (`SmallChip` with `selected`), then the summary line and the caption once;
+  - the filter chips, pinned (`SmallChip` with `selected`); the summary line and the caption are the months list's first items, so they sit just under this month;
   - the months.
 - `MissionFilterDialog`: missions grouped by pillar in pillar order, active first, then archived marked "archived". Each row is a 44dp checkbox row, with "Clear" and "Done".
 - Commit: `feat: All months: every month on one screen, filtered by pillars or missions`.
@@ -148,24 +148,24 @@ Each task ends with `:androidApp:assembleDebug` and `:shared:compileKotlinIosSim
 2. A finished week where a pillar had 6 or more items due, all but 2 done, under 80% of its points: the ring closes in the light color and reads "nearly". 5 due with 3 done: it doesn't close. Mid-week, the ring doesn't close on the few items done so far: "all but 2" counts what's due this week.
 3. An away week's rings stay empty, with "–".
 4. A finished day with most of its points done: the missed part shows in light pillar colors instead of white. A day below the rule keeps white. Today never closes. A day where everything left was done and one item moved away closes.
-5. Screen reader: the ring says "nearly" where it shows; a closed day ends with "Ring closed."
+5. Screen reader: the ring says "nearly" where it shows; a closed day's description includes "Ring closed.", before its badges.
 
 ### D. Patterns
 1. Only lines the data holds up appear, in spec 9.2's order. With more than 4, "More patterns" shows the rest and "Fewer patterns" folds them.
 2. Missions and pillars sit on chips in their pillar's color.
-3. Tick Call mom (or any weekly mission) fully for 3 finished weeks: "⟨Call mom⟩ … are going well." appears. A fixed block never does.
-4. Do 2 or more things by hand on each of the last two weekends: "2 weekends in a row with 2 or more things done."
-5. Do something by hand for 5 days running up to today: "5 days running with a badge besides Recharging day."
+3. With the seed, Gym (ticked every day) reads "⟨Gym⟩ is going well.", or "… are going well." with another. A mission becomes eligible once it's been full 3 finished weeks running since its start or last pace change. A fixed block never does.
+4. "N weekends in a row with 2 or more things done." shows once 2 or more weekends in a row each had 2 or more things done by hand. The seed already gives several, so expect a number above 2 there.
+5. "N days running with a badge besides Recharging day." shows once 5 or more days in a row, up to today (or yesterday), had something done by hand. With the seed's daily Gym, N is about a month.
 6. An empty install reads "Nothing stands out yet."
 
 ### E. All months
 1. The calendar card has an "All months" chip. It, and the month title, open a full screen with this month at the bottom and older months above, back to the first month with data.
 2. Days look as on the Metrics calendar: rings, closed rings, crowns, stickers. No week is tinted.
-3. Back arrow and system back return to Metrics, where you left it.
+3. The back arrow (and Android's system back) returns to Metrics, where you left it.
 4. On opening, this month shows whole at the bottom, with "Everything counts." and the caption under it. Pick Health: rings show only Health items, sized by items, and stickers and crowns go. The line reads "⟨Health⟩: done N times, M in part".
 5. Pick Recharge: Recharge items show as grey slices.
 6. Missions → pick two from different pillars → Done. The chip reads "2 missions", the rings show only those missions' items, and the line names both. With Health on too, Health's items count as well and the line reads "⟨Health⟩ and 2 missions: …".
-7. At the largest font size, the chips wrap but the months still have most of the screen.
+7. At the largest font size, the chips wrap but the months still have most of the screen. On the Metrics card the month title and the "All months" chip don't overlap.
 8. An archived mission is in the list, marked "archived", and its old days show.
 9. With a filter on, tapping a day opens it in the diary. With none, a day with badges opens the badge list.
 10. Clear every filter: stickers, crowns and point-sized rings come back.
@@ -175,10 +175,10 @@ Each task ends with `:androidApp:assembleDebug` and `:shared:compileKotlinIosSim
 2. Let go at 40%. The subline reads "Did some · 40%", the pill "+1 of 2" (for a 2-point mission), and the line stays. The box stays open, with no strike-through.
 3. Drag it on to the end. It ticks, strikes through and earns full points. The line goes.
 4. Drag a ticked item back to 0. It's unticked (on an earlier day, skipped). Drag back up to 30% and it's a did-some again.
-5. Tick the box: 100%. Untick: 0%. Evening check's "Did some": 50%. Tapping a did-some's box ticks it (100%).
+5. The evening check's "Did some" shows the line at 50% ("Did some · 50%"). Tapping a did-some's box ticks it. Ticked and unticked rows show no line; a screen reader reads them as 100% and 0%.
 6. A moved item doesn't drag. In swap mode, rows don't drag.
 7. A fixed block "Ticked for you", dragged to 60%: "Ticked for you" goes, and it's a did-some.
-8. The list still scrolls up and down normally, and long-press still crowns. Watch for slips: a slightly sideways scroll that starts a drag would save the finger's spot. A press held still before sliding crowns instead of dragging.
+8. The list still scrolls up and down normally, and long-press still crowns. A short sideways slip (under about 24dp) saves nothing. A press held still before sliding crowns instead of dragging.
 9. Week bars, rings and badges count a dragged did-some as half points.
 10. Screen reader: the row reads as one item with its percent. TalkBack adjusts it up and down in 5% steps; on both, the "5% more" and "5% less" actions work, and "Crown" crowns it. VoiceOver reads the percent too.
 
@@ -192,8 +192,9 @@ Each task had its own review, and the fixes changed some of the decisions above.
 | `66679ed` | **Task 5.**<br>• The line ends under the finger, so one stroke fills the row.<br>• A did-some looks open (no tick, no strike-through), and tapping its box ticks it.<br>• VoiceOver hears the percent, and "5% more", "5% less" and "Crown" actions work on both platforms.<br>• A retry after a failed save isn't dropped.<br>• The row is one screen-reader item in every mode. |
 | `7f47d91` | **Task 3.**<br>• Each mission's full-week run is worked out once per build, and `PaceOffers.full` reads only its week through a per-mission index in `History`.<br>• "Strong" looks at the last 6 weeks and "picking up" at the last 8, so a monthly pillar can't read "strong this past month" from a season of weeks.<br>• One line per pillar.<br>• A missing summary row ends the walk.<br>• "Going well" needs the mission live today.<br>• "Best yet" checks every stored week.<br>• Mission runs stop at the mission's start and the first stored week; before, a two-week-old install read "full every week for a year or more".<br>• Shared wording helpers are in `domain/LineWords.kt`.<br>• One failed build no longer freezes Metrics or All months. |
 | `972c52b` | **Task 4.**<br>• Only the back arrow and the chips are pinned; the summary and caption sit under this month, and the bottom padding is 16dp, so this month fits on opening.<br>• New summary naming rule (decision 7), with "Everything counts." when no filter is on.<br>• A filter toggle reuses the unfiltered months and the badge book.<br>• Away weeks stay out of the summary.<br>• The Metrics card's title is centred.<br>• Spoken dates carry the year when it isn't this year.<br>• Action chips aren't presented as selectable. |
+| `3ea1120` | **Final review.**<br>• A block done in part by hand earns "Did some", so `on()` and `counts()` agree, and a day like that is never "Recharging day".<br>• The Metrics card's title and "All months" chip can't overlap.<br>• Opening All months is announced, and "More patterns" says whether it's expanded.<br>• A sideways slip under 24dp saves nothing.<br>• Spoken dates follow the titles' year rule.<br>• Seeds store progress; Metrics' bottom spacer is 24dp. |
 
 Left for the hand test:
-- A slightly sideways scroll can start a drag.
+- A sideways slip of more than 24dp during a scroll still records a drag.
 - A press held still before sliding crowns instead.
 - The summary's live region is only read while it's on screen.
