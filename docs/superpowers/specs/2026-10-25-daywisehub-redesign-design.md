@@ -208,7 +208,7 @@ When a title appears inside a sentence, it's shown as a chip in its pillar's col
 | RHYTHM_FIRST | Every so often, never done yet | First one · you aim for every {interval} |
 | ADDED | Added by hand from the pencil | Added by you |
 
-Singular and edge forms: "last day" instead of "1 days left", "Last done yesterday", "Due yesterday", "Every day" when there's no streak yet, "You usually take one break a week.", and "Fixed block" when a block has no times. An unreadable stored reason renders as an empty line rather than an error.
+Singular and edge forms: "last day" instead of "1 days left", "Last done yesterday", "Due yesterday", "Every day" when there's no streak yet, "You usually take one break a week.", "Fixed block" when a block has no times, and "Moved from last {weekday}" when an item lands on the weekday it came from. An unreadable stored reason renders as an empty line rather than an error.
 
 `TodayTask` stores the code and its arguments, so the line can be redrawn in any language later.
 
