@@ -22,6 +22,7 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -36,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -44,6 +46,8 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewModelScope
+import com.example.todoapp.di.KoinF
 import com.example.todoapp.domain.CalendarDay
 import com.example.todoapp.domain.LinePart
 import com.example.todoapp.screen.basicutils.Blue80
@@ -55,7 +59,10 @@ import com.example.todoapp.screen.basicutils.Yellow180
 import com.example.todoapp.screen.basicutils.components.MarkerHeading
 import com.example.todoapp.screen.diary.plan.ChipText
 import com.example.todoapp.screen.diary.plan.SmallChip
+import com.example.todoapp.screen.metrics.allmonths.AllMonthsScreen
+import com.example.todoapp.screen.metrics.allmonths.AllMonthsViewModel
 import com.example.todoapp.screen.metrics.badges.DayBadgesDialog
+import kotlinx.coroutines.cancel
 import kotlinx.datetime.LocalDate
 
 /** Patterns shown before "More patterns". */
@@ -63,7 +70,9 @@ private const val FOLDED_PATTERNS = 4
 
 /**
  * Spec 9: the Metrics tab, one week at a time. [openDay] shows a date in the diary: a calendar day with
- * badges lists them first (spec 9.3), and its "Open this day" goes on to the diary.
+ * badges lists them first (spec 9.3), and its "Open this day" goes on to the diary. The calendar's title
+ * and its "All months" chip open All months over the tab (spec 9.4), with its own view model, made only
+ * while it's open.
  */
 @Composable
 fun MetricsScreen(viewModel: MetricsViewModel, openDay: (LocalDate) -> Unit) {
@@ -73,6 +82,8 @@ fun MetricsScreen(viewModel: MetricsViewModel, openDay: (LocalDate) -> Unit) {
     var badgeDay by remember(viewModel) { mutableStateOf<CalendarDay?>(null) }
     // Every pattern, or the first few. A new view model folds them again.
     var allPatterns by remember(viewModel) { mutableStateOf(false) }
+    // All months, open over the tab. A new view model after midnight closes it, since its "today" is fixed.
+    var allMonths by remember(viewModel) { mutableStateOf(false) }
     // A new view model (after midnight, or on reopening the tab) starts at the top too.
     val listState = key(viewModel) { rememberLazyListState() }
 
@@ -80,7 +91,11 @@ fun MetricsScreen(viewModel: MetricsViewModel, openDay: (LocalDate) -> Unit) {
         // Drawn only once the state is built, so it opens at the top. Drawn sooner, its bottom space would be its
         // only item, and the list would keep that in view as the cards arrived above it.
         if (s != null) {
-            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                state = listState,
+                // Under All months it keeps its place, but a screen reader doesn't reach it.
+                modifier = Modifier.fillMaxSize().then(if (allMonths) Modifier.clearAndSetSemantics {} else Modifier)
+            ) {
                 item(key = "header") {
                     WeekHeader(s, onPrevious = viewModel::previousWeek, onNext = viewModel::nextWeek, onThisWeek = viewModel::backToThisWeek)
                 }
@@ -112,7 +127,12 @@ fun MetricsScreen(viewModel: MetricsViewModel, openDay: (LocalDate) -> Unit) {
                     }
                 }
                 item(key = "calendar") {
-                    MonthCalendarCard(s.calendar, onDay = { day -> if (day.badges.isEmpty()) openDay(day.date) else badgeDay = day })
+                    MonthCalendarCard(
+                        s.calendar,
+                        onDay = { day -> if (day.badges.isEmpty()) openDay(day.date) else badgeDay = day },
+                        caption = POINTS_CAPTION,
+                        onAllMonths = { allMonths = true }
+                    )
                 }
                 item(key = "missions-heading") {
                     MarkerHeading("MISSIONS", MissionsMarker, Modifier.padding(top = 24.dp, bottom = 4.dp))
@@ -122,6 +142,18 @@ fun MetricsScreen(viewModel: MetricsViewModel, openDay: (LocalDate) -> Unit) {
                 }
                 s.missions.forEach { line -> item(key = "mission-${line.missionId}") { MissionProgressRow(line) } }
                 item(key = "bottom-space") { Spacer(Modifier.height(120.dp)) }
+            }
+        }
+        if (allMonths) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                // Made here, so it exists only while the screen is open. Nothing owns it, so its work stops
+                // when the screen closes or the tab leaves, as the Metrics view model's does.
+                val allMonthsViewModel = remember { KoinF.di!!.get<AllMonthsViewModel>() }
+                DisposableEffect(allMonthsViewModel) {
+                    onDispose { allMonthsViewModel.viewModelScope.cancel() }
+                }
+                // "Open this day" goes straight to the diary, which leaves the tab and closes everything.
+                AllMonthsScreen(allMonthsViewModel, openDay = openDay, onClose = { allMonths = false })
             }
         }
     }

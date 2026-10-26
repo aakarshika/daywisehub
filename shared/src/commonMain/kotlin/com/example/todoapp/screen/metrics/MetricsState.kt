@@ -123,7 +123,7 @@ object MetricsStateBuilder {
             aheadTitle = if (week < thisWeek) "THE WEEK AFTER" else "NEXT WEEK",
             ahead = WeekAhead.lines(week, input.today, missions, history),
             patterns = Patterns.lines(input.today, byWeek, input.allMissions, days, history, opened) { it >= badgeFloor && badges.counts(it) },
-            calendar = MonthGrid.build(week, input.today, input.allMissions, days, byWeek, opened, badges),
+            calendar = MonthGrid.build(week, input.today, input.allMissions, days, byWeek, opened, badges, selected = week),
             missions = MissionProgress.lines(input.today, missions, history, input.milestones, opened),
         )
     }

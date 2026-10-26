@@ -50,6 +50,7 @@ import com.example.todoapp.screen.basicutils.SelectedWeekTint
 import com.example.todoapp.screen.basicutils.TodayOutline
 import com.example.todoapp.screen.basicutils.pillarLight
 import com.example.todoapp.screen.basicutils.pillarStrong
+import com.example.todoapp.screen.diary.plan.SmallChip
 import com.example.todoapp.screen.metrics.badges.BadgeSticker
 import org.jetbrains.compose.resources.painterResource
 import todoapp.shared.generated.resources.Res
@@ -58,14 +59,28 @@ import todoapp.shared.generated.resources.crown_a
 private val CrownColumn = 20.dp
 private val weekLetters = listOf("M", "T", "W", "T", "F", "S", "S")
 
+/** Under the Metrics calendar, and once on All months while no filter is on. */
+const val POINTS_CAPTION = "Ring slices are sized by points. White is what didn't happen, or a light shade once the day was close enough."
+
+/** Once on All months while a filter is on (spec 9.4). */
+const val ITEMS_CAPTION = "Slices are the picked missions' items. White is what didn't happen."
+
 /**
  * Spec 9: the Monday-first month. Each day's ring is split by points per pillar, with white for what
  * didn't happen, or each pillar's light color once a finished day was close enough (spec 9.2), and each
- * balanced week has a crown. The week on screen is tinted, with flat tints instead of the old gradient
- * (spec 9.1). A day with badges wears its rarest as a sticker (spec 9.3). Tapping a day hands it to [onDay].
+ * balanced week has a crown. With a filter on (spec 9.4) rings count items instead, without crowns. The
+ * selected week is tinted, with flat tints instead of the old gradient (spec 9.1). A day with badges
+ * wears its rarest as a sticker (spec 9.3). Tapping a day hands it to [onDay]. With [onAllMonths], the
+ * title row has an "All months" chip, and tapping the title does the same. [caption] goes under the
+ * days; null leaves it out.
  */
 @Composable
-fun MonthCalendarCard(calendar: MonthCalendar, onDay: (CalendarDay) -> Unit) {
+fun MonthCalendarCard(
+    calendar: MonthCalendar,
+    onDay: (CalendarDay) -> Unit,
+    caption: String? = null,
+    onAllMonths: (() -> Unit)? = null,
+) {
     Column(
         // The same inset as the highlights card.
         modifier = Modifier.fillMaxWidth()
@@ -73,10 +88,20 @@ fun MonthCalendarCard(calendar: MonthCalendar, onDay: (CalendarDay) -> Unit) {
             .background(CalendarTint, RoundedCornerShape(12.dp))
             .padding(horizontal = 4.dp, vertical = 10.dp)
     ) {
-        Text(
-            calendar.title, fontSize = 13.sp, letterSpacing = 1.sp, color = CalendarTitleInk, textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().semantics { heading() }
-        )
+        if (onAllMonths == null) {
+            MonthTitle(calendar.title, Modifier.fillMaxWidth())
+        } else {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier.weight(1f).heightIn(min = 44.dp)
+                        .clickable(role = Role.Button, onClickLabel = "Open all months", onClick = onAllMonths),
+                    contentAlignment = Alignment.Center
+                ) {
+                    MonthTitle(calendar.title, Modifier)
+                }
+                SmallChip("All months", onClick = onAllMonths)
+            }
+        }
         // The letters are for the eye; each day tells a screen reader its own name.
         Row(modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 4.dp).clearAndSetSemantics {}) {
             Spacer(Modifier.width(CrownColumn))
@@ -101,12 +126,23 @@ fun MonthCalendarCard(calendar: MonthCalendar, onDay: (CalendarDay) -> Unit) {
                 week.days.forEach { day -> DayCell(day, Modifier.weight(1f)) { onDay(day) } }
             }
         }
-        Text(
-            "Ring slices are sized by points. White is what didn't happen, or a light shade once the day was close enough.",
-            fontSize = 12.sp, fontStyle = FontStyle.Italic, color = InkGray, textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
-        )
+        if (caption != null) CalendarCaption(caption, Modifier.fillMaxWidth().padding(top = 6.dp))
     }
+}
+
+/** "OCTOBER 2026", a heading. */
+@Composable
+private fun MonthTitle(title: String, modifier: Modifier) {
+    Text(
+        title, fontSize = 13.sp, letterSpacing = 1.sp, color = CalendarTitleInk, textAlign = TextAlign.Center,
+        modifier = modifier.semantics { heading() }
+    )
+}
+
+/** What the rings' slices and white mean, in small italics. */
+@Composable
+fun CalendarCaption(text: String, modifier: Modifier = Modifier) {
+    Text(text, fontSize = 12.sp, fontStyle = FontStyle.Italic, color = InkGray, textAlign = TextAlign.Center, modifier = modifier)
 }
 
 /**
@@ -150,10 +186,10 @@ private fun DayCell(day: CalendarDay, modifier: Modifier, onClick: () -> Unit) {
 }
 
 /**
- * Slices in pillar order from the top, sized by points, then white for what didn't happen, between two
- * thin edges, so a day with nothing done still reads as a ring. A closed day draws what didn't happen as
- * each pillar's light slice instead, in pillar order, so it reads as done. A day with nothing on it is one
- * plain line.
+ * Slices in pillar order from the top, sized by points (or by items, with a filter on), then white for
+ * what didn't happen, between two thin edges, so a day with nothing done still reads as a ring. A closed
+ * day draws what didn't happen as each pillar's light slice instead, in pillar order, so it reads as
+ * done. A day with nothing on it is one plain line.
  */
 @Composable
 private fun DayRing(day: CalendarDay) {

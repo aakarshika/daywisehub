@@ -13,6 +13,7 @@ import com.example.todoapp.screen.diary.diaryitem.components.waterintake.WaterIn
 import com.example.todoapp.screen.init.InitViewModel
 import com.example.todoapp.screen.metrics.CalDiaryViewModel
 import com.example.todoapp.screen.metrics.MetricsViewModel
+import com.example.todoapp.screen.metrics.allmonths.AllMonthsViewModel
 import com.example.todoapp.screen.missions.MissionsViewModel
 import com.example.todoapp.screen.missions.editor.MissionEditorViewModel
 import kotlinx.datetime.LocalDate
@@ -44,6 +45,7 @@ fun vmModule(): Module {
         factory { MissionsViewModel(get(), get(), get(), get()) }
         factory { (missionId: Long) -> MissionEditorViewModel(get(), get(), get(), get(), missionId) }
         factory { MetricsViewModel(get(), get(), get(), get(), get()) }
+        factory { AllMonthsViewModel(get(), get(), get(), get(), get()) }
     }
 }
 

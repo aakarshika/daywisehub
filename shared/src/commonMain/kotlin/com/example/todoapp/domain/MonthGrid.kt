@@ -8,7 +8,7 @@ import kotlinx.datetime.Month
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
-/** One pillar's points on one day. */
+/** One pillar's points on one day, or with a filter on, its counted items (CalendarDay.byItems). */
 data class DaySlice(val pillar: PillarType, val points: Int)
 
 /** One day of the month calendar. */
@@ -22,21 +22,33 @@ data class CalendarDay(
      * before the first item): such a day has no ring, so it doesn't look like a day with nothing done.
      */
     val hasRing: Boolean,
-    /** Points earned per pillar that day, in pillar order, without empty ones. */
+    /**
+     * Points earned per pillar that day, in pillar order, without empty ones. With [byItems], the counted
+     * items done or done in part per pillar instead, Recharge too.
+     */
     val slices: List<DaySlice>,
     /**
      * Points that didn't happen: skipped or moved items, the missing half of a did-some, and anything still
-     * planned on an earlier day. Today's planned items can still happen, so they aren't counted.
+     * planned on an earlier day. Today's planned items can still happen, so they aren't counted. With
+     * [byItems], the counted items that didn't happen: skipped, or still planned on an earlier day.
      */
     val notDone: Int,
-    /** [notDone] split by pillar, in pillar order, without empty ones: a closed ring draws each in its light color. */
+    /**
+     * [notDone] split by pillar, in pillar order, without empty ones: a closed ring draws each in its light
+     * color. Empty with [byItems].
+     */
     val missed: List<DaySlice>,
     /**
      * A finished day with a ring that's close enough (Points.closes, over its scored items and its earned
      * points against earned and missed, less what moved away): its missed points, moved ones too, are
-     * drawn in light colors instead of white.
+     * drawn in light colors instead of white. Never with [byItems].
      */
     val closed: Boolean,
+    /**
+     * A filter is on (spec 9.4): [slices] and [notDone] count items instead of points, one per item, and
+     * the day has no badges and never closes.
+     */
+    val byItems: Boolean,
     /** The day's badges, rarest first (spec 9.3). The cell shows the first; tapping the day lists them all. */
     val badges: List<EarnedBadge>,
     /** "Tuesday, Oct 20", with the year in another year than this week's: the badge list's title. */
@@ -51,6 +63,7 @@ data class CalendarWeek(
     val crowned: Boolean,
     /** What a screen reader says for the crown: "Balanced week of Oct 12". */
     val crownDescription: String,
+    /** The week on screen, tinted. */
     val selected: Boolean,
 )
 
@@ -60,7 +73,7 @@ data class MonthCalendar(
     val weeks: List<CalendarWeek>,
 )
 
-/** Spec 9: the Monday-first month calendar on the Metrics tab. */
+/** Spec 9: the Monday-first month calendar on the Metrics tab, and each month on All months (spec 9.4). */
 object MonthGrid {
 
     /** The days the month of [week]'s Monday shows: from the Monday of its first week to the Sunday of its last. */
@@ -71,23 +84,31 @@ object MonthGrid {
     }
 
     /**
-     * The month of [week]'s Monday, as rows of whole weeks from Monday to Sunday. [allMissions] include
+     * The month [month] falls in, as rows of whole weeks from Monday to Sunday. [allMissions] include
      * archived ones, so every tick keeps its pillar. Only finished weeks get a crown, and a finished week
      * that isn't in [opened] (PaceOffers.openedWeeks) gets no rings, though its days keep their badges.
-     * Each task is read once, through [days]; [badges] covers [span].
+     * Each task is read once, through [days]; [badges] covers [span], and null gives no badges. The week
+     * of [selected] is tinted; null tints none.
+     *
+     * With [filter] on (spec 9.4), rings count the counted items instead of points, and there are no
+     * badges, crowns or closed rings, since those speak for the whole day and week.
      */
     fun build(
-        week: LocalDate,
+        month: LocalDate,
         today: LocalDate,
         allMissions: List<Mission>,
         days: DayTasks,
         byWeek: Map<LocalDate, WeekSummary>,
         opened: Set<LocalDate>,
-        badges: DayBadgeBook,
+        badges: DayBadgeBook?,
+        selected: LocalDate?,
+        filter: CalendarFilter? = null,
     ): MonthCalendar {
-        val first = LocalDate(week.year, week.month, 1)
+        val first = LocalDate(month.year, month.month, 1)
         val last = first.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY)
         val thisWeek = WeekMath.weekStart(today)
+        val selectedWeek = selected?.let { WeekMath.weekStart(it) }
+        val counted = filter?.takeIf { it.isOn }
         val byId = allMissions.associateBy { it.missionId }
         val weeks = mutableListOf<CalendarWeek>()
         var monday = WeekMath.weekStart(first)
@@ -99,11 +120,12 @@ object MonthGrid {
                 weekStart = monday,
                 days = (0..6).map {
                     val date = monday.plus(it, DateTimeUnit.DAY)
-                    day(date, first.month, today, byId, days, ringed = !away, badges.on(date))
+                    if (counted != null) itemDay(date, first.month, today, byId, days, ringed = !away, counted)
+                    else day(date, first.month, today, byId, days, ringed = !away, badges?.on(date).orEmpty())
                 },
-                crowned = finished && summary?.balanced == true,
+                crowned = counted == null && finished && summary?.balanced == true,
                 crownDescription = "Balanced week of ${monday.shortLabel()}",
-                selected = monday == week,
+                selected = monday == selectedWeek,
             )
             monday = monday.plus(7, DateTimeUnit.DAY)
         }
@@ -166,11 +188,68 @@ object MonthGrid {
             notDone = notDone,
             missed = missedSlices,
             closed = closed,
+            byItems = false,
             badges = badges,
-            title = "${date.weekdayName()}, ${date.labelFrom(WeekMath.weekStart(today))}",
+            title = title(date, today),
             description = describe(date, today, slices, notDone, closed, badges),
         )
     }
+
+    /**
+     * [date] with [filter] on: one slice per counted item done or done in part, in its pillar (Recharge too),
+     * grouped in pillar order, then white for counted items that didn't happen: skipped, or left planned on
+     * an earlier day. Moved items are left out, and today's planned ones can still happen. No badges, and
+     * the ring never closes.
+     */
+    private fun itemDay(
+        date: LocalDate,
+        month: Month,
+        today: LocalDate,
+        byId: Map<Long, Mission>,
+        days: DayTasks,
+        ringed: Boolean,
+        filter: CalendarFilter,
+    ): CalendarDay {
+        val counted = mutableMapOf<PillarType, Int>()
+        var done = 0
+        var inPart = 0
+        var notDone = 0
+        // Today's planned items: in the description's count, not yet in the ring.
+        var open = 0
+        if (date <= today) {
+            for (task in days.on(date)) {
+                val mission = byId[task.missionId] ?: continue
+                if (!filter.counts(mission)) continue
+                val pillar = mission.pillarType
+                when (task.taskState) {
+                    TaskState.DONE, TaskState.PARTIAL -> {
+                        counted[pillar] = (counted[pillar] ?: 0) + 1
+                        if (task.taskState == TaskState.DONE) done++ else inPart++
+                    }
+                    TaskState.SKIPPED -> notDone++
+                    TaskState.PLANNED -> if (date < today) notDone++ else open++
+                    TaskState.MOVED -> Unit
+                }
+            }
+        }
+        return CalendarDay(
+            date = date,
+            inMonth = date.month == month,
+            isToday = date == today,
+            hasRing = ringed && date <= today,
+            slices = PillarType.entries.mapNotNull { pillar -> counted[pillar]?.let { DaySlice(pillar, it) } },
+            notDone = notDone,
+            missed = emptyList(),
+            closed = false,
+            byItems = true,
+            badges = emptyList(),
+            title = title(date, today),
+            description = describeItems(date, today, done, inPart, items = done + inPart + notDone + open),
+        )
+    }
+
+    /** "Tuesday, Oct 20", with the year in another year than this week's. */
+    private fun title(date: LocalDate, today: LocalDate): String = "${date.weekdayName()}, ${date.labelFrom(WeekMath.weekStart(today))}"
 
     /** Points per pillar, in pillar order, without empty ones. */
     private fun slicesOf(points: Map<PillarType, Int>): List<DaySlice> =
@@ -188,9 +267,7 @@ object MonthGrid {
         closed: Boolean,
         badges: List<EarnedBadge>,
     ): String {
-        val month = date.month.name.lowercase().replaceFirstChar { it.uppercase() }
-        val name = "${date.weekdayName()}, $month ${date.dayOfMonth}"
-        val parts = mutableListOf(if (date == today) "Today, $name" else name)
+        val parts = mutableListOf(spokenName(date, today))
         if (date <= today) {
             val total = slices.sumOf { it.points }
             parts += when {
@@ -204,5 +281,23 @@ object MonthGrid {
         }
         if (badges.isNotEmpty()) parts += (if (badges.size == 1) "Badge: " else "Badges: ") + badges.joinToString(", ") { it.badge.title }
         return parts.joinToString(". ")
+    }
+
+    /** "Monday, October 19. 2 of 3 picked items done, 1 in part": done counts DONE, and in part the did-somes. */
+    private fun describeItems(date: LocalDate, today: LocalDate, done: Int, inPart: Int, items: Int): String {
+        val parts = mutableListOf(spokenName(date, today))
+        if (date <= today) {
+            parts += if (items == 0) "No picked items" else {
+                "$done of $items picked ${if (items == 1) "item" else "items"} done" + if (inPart > 0) ", $inPart in part" else ""
+            }
+        }
+        return parts.joinToString(". ")
+    }
+
+    /** "Monday, October 19", or "Today, Monday, October 26". */
+    private fun spokenName(date: LocalDate, today: LocalDate): String {
+        val month = date.month.name.lowercase().replaceFirstChar { it.uppercase() }
+        val name = "${date.weekdayName()}, $month ${date.dayOfMonth}"
+        return if (date == today) "Today, $name" else name
     }
 }
