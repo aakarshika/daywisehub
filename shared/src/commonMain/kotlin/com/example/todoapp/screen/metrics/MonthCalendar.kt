@@ -3,13 +3,14 @@ package com.example.todoapp.screen.metrics
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -35,37 +36,40 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.todoapp.domain.CalendarDay
 import com.example.todoapp.domain.MonthCalendar
+import com.example.todoapp.screen.basicutils.CalendarTint
+import com.example.todoapp.screen.basicutils.CalendarTitleInk
 import com.example.todoapp.screen.basicutils.CrownGold
+import com.example.todoapp.screen.basicutils.DayRingEdge
+import com.example.todoapp.screen.basicutils.EmptyDayRing
 import com.example.todoapp.screen.basicutils.InkGray
+import com.example.todoapp.screen.basicutils.NoteInk
+import com.example.todoapp.screen.basicutils.SelectedWeekTint
+import com.example.todoapp.screen.basicutils.TodayOutline
 import com.example.todoapp.screen.basicutils.pillarStrong
 import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.painterResource
 import todoapp.shared.generated.resources.Res
 import todoapp.shared.generated.resources.crown_a
 
-// Flat tints instead of the old gradient (spec 9.1).
-private val CalendarTint = Color(0xFFF4F0FA)
-private val SelectedWeekTint = Color(0xFFE9E1F6)
-private val EmptyRing = Color(0xFFE4DDEC)
-private val DayInk = Color(0xFF2A2A2A)
 private val CrownColumn = 20.dp
 private val weekLetters = listOf("M", "T", "W", "T", "F", "S", "S")
 
 /**
  * Spec 9: the Monday-first month. Each day's ring is split by points per pillar, with white for what
- * didn't happen, and each balanced week has a crown. The week on screen is tinted. Tapping a day opens
- * it in the diary.
+ * didn't happen, and each balanced week has a crown. The week on screen is tinted, with flat tints
+ * instead of the old gradient (spec 9.1). Tapping a day opens it in the diary.
  */
 @Composable
 fun MonthCalendarCard(calendar: MonthCalendar, openDay: (LocalDate) -> Unit) {
     Column(
+        // The same inset as the highlights card.
         modifier = Modifier.fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 16.dp)
+            .padding(horizontal = 14.dp, vertical = 12.dp)
             .background(CalendarTint, RoundedCornerShape(12.dp))
             .padding(horizontal = 4.dp, vertical = 10.dp)
     ) {
         Text(
-            calendar.title, fontSize = 13.sp, letterSpacing = 1.sp, color = Color(0xFF4A4A4A), textAlign = TextAlign.Center,
+            calendar.title, fontSize = 13.sp, letterSpacing = 1.sp, color = CalendarTitleInk, textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().semantics { heading() }
         )
         // The letters are for the eye; each day tells a screen reader its own name.
@@ -84,7 +88,7 @@ fun MonthCalendarCard(calendar: MonthCalendar, openDay: (LocalDate) -> Unit) {
                 Box(modifier = Modifier.width(CrownColumn), contentAlignment = Alignment.Center) {
                     if (week.crowned) {
                         Image(
-                            painterResource(Res.drawable.crown_a), contentDescription = "Balanced week",
+                            painterResource(Res.drawable.crown_a), contentDescription = week.crownDescription,
                             colorFilter = ColorFilter.tint(CrownGold), modifier = Modifier.size(16.dp)
                         )
                     }
@@ -100,38 +104,45 @@ fun MonthCalendarCard(calendar: MonthCalendar, openDay: (LocalDate) -> Unit) {
     }
 }
 
-/** A 44dp tap target with the day's ring and number. */
+/** A tap target at least 44dp tall with the day's ring and number. Today has an outline as well as a bold number. */
 @Composable
 private fun DayCell(day: CalendarDay, modifier: Modifier, onClick: () -> Unit) {
     Box(
-        modifier = modifier.height(44.dp)
+        modifier = modifier.heightIn(min = 44.dp)
             .clickable(role = Role.Button, onClickLabel = "Open in the diary", onClick = onClick)
-            .semantics { contentDescription = day.description },
+            .semantics { contentDescription = day.description }
+            .then(if (day.isToday) Modifier.border(1.5.dp, TodayOutline, RoundedCornerShape(10.dp)) else Modifier),
         contentAlignment = Alignment.Center
     ) {
-        if (!day.isFuture) DayRing(day)
+        if (day.hasRing) DayRing(day)
         Text(
             "${day.date.dayOfMonth}",
             fontSize = 13.sp,
             fontWeight = if (day.isToday) FontWeight.Bold else FontWeight.Normal,
-            color = if (day.inMonth) DayInk else InkGray.copy(alpha = 0.6f),
+            color = if (day.inMonth) NoteInk else InkGray.copy(alpha = 0.6f),
             modifier = Modifier.clearAndSetSemantics {}
         )
     }
 }
 
-/** Slices in pillar order from the top, sized by points, then white for what didn't happen. */
+/**
+ * Slices in pillar order from the top, sized by points, then white for what didn't happen, between two
+ * thin edges, so a day with nothing done still reads as a ring. A day with nothing on it is one plain line.
+ */
 @Composable
 private fun DayRing(day: CalendarDay) {
     Canvas(modifier = Modifier.size(38.dp)) {
         val stroke = 6.dp.toPx()
-        val topLeft = Offset(stroke / 2, stroke / 2)
-        val arc = Size(size.width - stroke, size.height - stroke)
+        val edge = 1.dp.toPx()
+        val outer = size.minDimension / 2
+        val band = outer - edge - stroke / 2
         val total = day.slices.sumOf { it.points } + day.notDone
         if (total == 0) {
-            drawArc(EmptyRing, 0f, 360f, useCenter = false, topLeft = topLeft, size = arc, style = Stroke(stroke))
+            drawCircle(EmptyDayRing, radius = band, style = Stroke(1.5.dp.toPx()))
             return@Canvas
         }
+        val topLeft = Offset(center.x - band, center.y - band)
+        val arc = Size(band * 2, band * 2)
         var start = -90f
         day.slices.forEach { slice ->
             val sweep = 360f * slice.points / total
@@ -141,5 +152,7 @@ private fun DayRing(day: CalendarDay) {
         if (day.notDone > 0) {
             drawArc(Color.White, start, 360f * day.notDone / total, useCenter = false, topLeft = topLeft, size = arc, style = Stroke(stroke))
         }
+        drawCircle(DayRingEdge, radius = outer - edge / 2, style = Stroke(edge))
+        drawCircle(DayRingEdge, radius = band - stroke / 2 - edge / 2, style = Stroke(edge))
     }
 }

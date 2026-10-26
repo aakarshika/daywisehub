@@ -26,16 +26,22 @@ object Patterns {
     /** …and needs this many ticks in the pillar, more than half of them on one weekday. */
     const val WEEKDAY_MIN_DONE = 8
     /**
-     * Runs look back at most this far. That stays inside MetricsViewModel's year of tasks, which is what
-     * tells an away week (no items of its own) from a week that simply wasn't loaded.
+     * How far back the tab's as-of-today lines look: patterns, and the mission lines' counts, best streaks
+     * and average gaps. MetricsViewModel always reads at least this much, so browsing an older month
+     * doesn't change them.
      */
-    const val MAX_RUN_WEEKS = 51
+    const val LOOK_BACK_DAYS = 365
+    /**
+     * Runs look back at most this many weeks before this one, inside [LOOK_BACK_DAYS]. That's what tells an
+     * away week (no items of its own) from a week that simply wasn't loaded.
+     */
+    const val MAX_RUN_WEEKS = LOOK_BACK_DAYS / 7 - 1
 
     private val pluralDays = listOf("Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays", "Sundays")
 
     /**
      * A run of weeks back from last week. [capped] when it reached [MAX_RUN_WEEKS] without ending: it then
-     * reads "for a year or more".
+     * reads "for a year or more". The mission lines' "full weeks in a row" uses it too.
      */
     data class Run(val weeks: Int, val capped: Boolean)
 

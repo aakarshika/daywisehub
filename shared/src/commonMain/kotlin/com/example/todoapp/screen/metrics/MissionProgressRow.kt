@@ -18,14 +18,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.todoapp.domain.MissionLine
 import com.example.todoapp.screen.basicutils.Blue80
+import com.example.todoapp.screen.basicutils.DetailInk
 import com.example.todoapp.screen.basicutils.InkBlack
 import com.example.todoapp.screen.basicutils.pillarInk
 import com.example.todoapp.screen.basicutils.pillarStrong
@@ -53,7 +54,8 @@ fun MissionProgressRow(line: MissionLine) {
         )
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(line.title, fontSize = 15.sp, color = InkBlack)
+            // Medium, as on the Missions tab.
+            Text(line.title, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = InkBlack)
             Row(modifier = Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (line.finishLine) {
                     Image(
@@ -62,7 +64,7 @@ fun MissionProgressRow(line: MissionLine) {
                     )
                     Spacer(Modifier.width(6.dp))
                 }
-                Text(line.detail, fontSize = 13.sp, color = Color(0xFF5A5A5A))
+                Text(line.detail, fontSize = 13.sp, color = DetailInk)
             }
         }
     }

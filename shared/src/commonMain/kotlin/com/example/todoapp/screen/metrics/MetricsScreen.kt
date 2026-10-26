@@ -40,12 +40,11 @@ import com.example.todoapp.screen.basicutils.Blue80
 import com.example.todoapp.screen.basicutils.InkBlack
 import com.example.todoapp.screen.basicutils.InkGray
 import com.example.todoapp.screen.basicutils.Light_Yellowww
+import com.example.todoapp.screen.basicutils.MissionsMarker
 import com.example.todoapp.screen.basicutils.Yellow180
 import com.example.todoapp.screen.basicutils.components.MarkerHeading
 import com.example.todoapp.screen.diary.plan.SmallChip
 import kotlinx.datetime.LocalDate
-
-private val MissionsMarker = Color(0xFFE8DEF8)
 
 /** Spec 9: the Metrics tab, one week at a time. [openDay] shows a date in the diary. */
 @Composable

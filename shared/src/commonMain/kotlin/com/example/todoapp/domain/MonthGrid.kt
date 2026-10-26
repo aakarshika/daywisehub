@@ -17,8 +17,11 @@ data class CalendarDay(
     /** False for the days of the first and last rows that belong to the next or previous month. */
     val inMonth: Boolean,
     val isToday: Boolean,
-    /** Later than today: no ring yet. */
-    val isFuture: Boolean,
+    /**
+     * False after today, and in a finished week the diary wasn't opened in (which takes in every week
+     * before the first item): such a day has no ring, so it doesn't look like a day with nothing done.
+     */
+    val hasRing: Boolean,
     /** Points earned per pillar that day, in pillar order, without empty ones. */
     val slices: List<DaySlice>,
     /**
@@ -30,7 +33,14 @@ data class CalendarDay(
     val description: String,
 )
 
-data class CalendarWeek(val weekStart: LocalDate, val days: List<CalendarDay>, val crowned: Boolean, val selected: Boolean)
+data class CalendarWeek(
+    val weekStart: LocalDate,
+    val days: List<CalendarDay>,
+    val crowned: Boolean,
+    /** What a screen reader says for the crown: "Balanced week of Oct 12". */
+    val crownDescription: String,
+    val selected: Boolean,
+)
 
 data class MonthCalendar(
     /** "OCTOBER 2026" */
@@ -43,8 +53,8 @@ object MonthGrid {
 
     /**
      * The month of [week]'s Monday, as rows of whole weeks from Monday to Sunday. [allMissions] include
-     * archived ones, so every tick keeps its pillar. Only finished weeks get a crown. Each task is read once,
-     * through [days].
+     * archived ones, so every tick keeps its pillar. Only finished weeks get a crown, and a finished week
+     * that isn't in [opened] (PaceOffers.openedWeeks) gets no rings. Each task is read once, through [days].
      */
     fun build(
         week: LocalDate,
@@ -52,6 +62,7 @@ object MonthGrid {
         allMissions: List<Mission>,
         days: DayTasks,
         byWeek: Map<LocalDate, WeekSummary>,
+        opened: Set<LocalDate>,
     ): MonthCalendar {
         val first = LocalDate(week.year, week.month, 1)
         val last = first.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY)
@@ -61,10 +72,13 @@ object MonthGrid {
         var monday = WeekMath.weekStart(first)
         while (monday <= last) {
             val summary = byWeek[monday]
+            val finished = monday < thisWeek
+            val away = finished && WeekScores.isAway(monday, opened)
             weeks += CalendarWeek(
                 weekStart = monday,
-                days = (0..6).map { day(monday.plus(it, DateTimeUnit.DAY), first.month, today, byId, days) },
-                crowned = monday < thisWeek && summary?.balanced == true,
+                days = (0..6).map { day(monday.plus(it, DateTimeUnit.DAY), first.month, today, byId, days, ringed = !away) },
+                crowned = finished && summary?.balanced == true,
+                crownDescription = "Balanced week of ${monday.shortLabel()}",
                 selected = monday == week,
             )
             monday = monday.plus(7, DateTimeUnit.DAY)
@@ -72,7 +86,7 @@ object MonthGrid {
         return MonthCalendar("${first.month.name} ${first.year}", weeks)
     }
 
-    private fun day(date: LocalDate, month: Month, today: LocalDate, byId: Map<Long, Mission>, days: DayTasks): CalendarDay {
+    private fun day(date: LocalDate, month: Month, today: LocalDate, byId: Map<Long, Mission>, days: DayTasks, ringed: Boolean): CalendarDay {
         val earned = mutableMapOf<PillarType, Int>()
         var notDone = 0
         if (date <= today) {
@@ -97,7 +111,7 @@ object MonthGrid {
             date = date,
             inMonth = date.month == month,
             isToday = date == today,
-            isFuture = date > today,
+            hasRing = ringed && date <= today,
             slices = slices,
             notDone = notDone,
             description = describe(date, today, slices, notDone),
@@ -111,8 +125,11 @@ object MonthGrid {
         val parts = mutableListOf(if (date == today) "Today, $name" else name)
         if (date <= today) {
             val total = slices.sumOf { it.points }
-            parts += if (total == 0) "No points" else {
-                "${MissionWords.pointsPhrase(total)}: " + slices.joinToString(", ") { "${it.pillar.title} ${it.points}" }
+            parts += when {
+                total > 0 -> "${MissionWords.pointsPhrase(total)}: " + slices.joinToString(", ") { "${it.pillar.title} ${it.points}" }
+                // Today can still earn some.
+                date == today -> "No points yet"
+                else -> "No points"
             }
             if (notDone > 0) parts += "${MissionWords.pointsPhrase(notDone)} didn't happen"
         }

@@ -2,6 +2,7 @@ package com.example.todoapp.domain
 
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.mission.milestone.Milestone
+import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.db.models.TaskStatus
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
@@ -27,9 +28,10 @@ data class MissionLine(
  */
 object MissionProgress {
 
-    /** "K full weeks in a row" looks back at most this far, inside MetricsViewModel's year of tasks. */
-    const val MAX_RUN_WEEKS = 51
-
+    /**
+     * [opened] is PaceOffers.openedWeeks of the tasks read. Only done days in the last
+     * Patterns.LOOK_BACK_DAYS count, so browsing an older month (which reads further back) changes nothing.
+     */
     fun lines(
         today: LocalDate,
         missions: List<Mission>,
@@ -38,6 +40,7 @@ object MissionProgress {
         opened: Set<LocalDate>,
     ): List<MissionLine> {
         val thisWeek = WeekMath.weekStart(today)
+        val since = today.minus(Patterns.LOOK_BACK_DAYS, DateTimeUnit.DAY)
         val milestonesById = milestones.groupBy { it.missionId }
         return missions
             .sortedWith(compareBy({ it.pillarType.ordinal }, { it.missionId }))
@@ -46,6 +49,7 @@ object MissionProgress {
                 val done = history.tasksFor(mission.missionId)
                     .filter { it.taskState.countsAsDone }
                     .map { it.date }
+                    .filter { it >= since }
                     .distinct()
                     .sorted()
                 MissionLine(
@@ -69,14 +73,18 @@ object MissionProgress {
     ): String {
         notLive(mission, today)?.let { return it }
         val weekEnd = thisWeek.plus(6, DateTimeUnit.DAY)
+        // "This week" counts keep later days of the week; lines as of today leave out anything after it.
+        val untilToday = done.takeWhile { it <= today }
         return when {
-            mission.missionKind == MissionKind.BLOCK ->
-                "${count(done, thisWeek, weekEnd)} of ${Points.occurrencesInWeek(mission, thisWeek, history)} this week"
+            mission.missionKind == MissionKind.BLOCK -> {
+                val due = Points.occurrencesInWeek(mission, thisWeek, history)
+                if (due == 0) "Nothing due this week" else "${count(done, thisWeek, weekEnd)} of $due this week"
+            }
             mission.missionKind == MissionKind.RECHARGE ->
                 "${count(done, thisWeek, weekEnd)} this week · about ${MissionWords.times(mission.count)} a week"
-            mission.missionKind == MissionKind.RHYTHM -> rhythm(mission, done, today)
+            mission.missionKind == MissionKind.RHYTHM -> rhythm(mission, untilToday, today)
             mission.missionKind == MissionKind.FINISH_LINE && milestones.isNotEmpty() -> milestone(milestones)
-            mission.periodUnit == Period.DAY -> daily(mission, done, today)
+            mission.periodUnit == Period.DAY -> daily(mission, untilToday, today)
             mission.periodUnit == Period.MONTH ->
                 "${count(done, LocalDate(today.year, today.month, 1), today)} of ${mission.count} this month"
             else -> weekly(mission, done, thisWeek, history, opened)
@@ -92,7 +100,10 @@ object MissionProgress {
         return null
     }
 
-    /** "26 of 30 days this month · best streak 14". Today counts once it's done, so a morning isn't a day missed. */
+    /**
+     * "26 of 30 days this month · best streak 14". Today counts once it's done, so a morning isn't a day
+     * missed. [done] stops at today.
+     */
     private fun daily(mission: Mission, done: List<LocalDate>, today: LocalDate): String {
         val from = maxOf(LocalDate(today.year, today.month, 1), mission.startDate.toLocalDate())
         val through = if (done.lastOrNull() == today) today else today.minus(1, DateTimeUnit.DAY)
@@ -103,7 +114,7 @@ object MissionProgress {
         return "${count(done, from, through)} of $dayCount ${if (dayCount == 1) "day" else "days"} this month$streak"
     }
 
-    /** "Every 12 days on average · you aim for every 2 weeks" */
+    /** "Every 12 days on average · you aim for every 2 weeks". [done] stops at today. */
     private fun rhythm(mission: Mission, done: List<LocalDate>, today: LocalDate): String {
         val aim = "you aim for every ${mission.intervalLabel()}"
         return when (done.size) {
@@ -128,7 +139,7 @@ object MissionProgress {
     private fun milestone(milestones: List<Milestone>): String {
         val mine = milestones.sortedBy { it.milestoneOrder }
         val next = mine.indexOfFirst { it.status != TaskStatus.COMPLETED.value }
-        if (next < 0) return "All ${mine.size} milestones done"
+        if (next < 0) return MissionWords.allMilestonesDone(mine.size)
         return "Milestone ${next + 1} of ${mine.size} · due ${mine[next].expectedCompletionDate.toLocalDate().shortLabel()}"
     }
 
@@ -141,26 +152,33 @@ object MissionProgress {
         if (goal != null && goal > mission.count) {
             return "$base · ${if (mission.count == 1) "once a week" else "${mission.count}× a week"} for now"
         }
-        val run = fullWeeks(mission, done, thisWeek, history, opened)
-        return if (run >= 2) "$base · $run full weeks in a row" else base
+        val run = fullWeeks(mission, thisWeek, history, opened)
+        return when {
+            run.weeks < 2 -> base
+            run.capped -> "$base · full every week for a year or more"
+            else -> "$base · ${run.weeks} full weeks in a row"
+        }
     }
 
     /**
-     * Finished weeks in a row, back from last week, in which it was done as often as it was due. A week
-     * it wasn't due ends the run; an away week (no items of its own) neither counts nor ends it.
+     * Finished weeks in a row, back from last week, that were full the way pace offers judge it
+     * (PaceOffers.full): 80% of the mission's own points, a did-some earning half. A week it wasn't due
+     * ends the run, and so does its last pace change (Mission.paceSince): only weeks starting on or after
+     * it count. An away week (no items of its own) neither counts nor ends it.
      */
-    private fun fullWeeks(mission: Mission, done: List<LocalDate>, thisWeek: LocalDate, history: History, opened: Set<LocalDate>): Int {
+    private fun fullWeeks(mission: Mission, thisWeek: LocalDate, history: History, opened: Set<LocalDate>): Patterns.Run {
+        val since = mission.paceSince?.let { MyDate(it).toLocalDate() }
         var week = thisWeek.minus(7, DateTimeUnit.DAY)
         var run = 0
-        repeat(MAX_RUN_WEEKS) {
+        repeat(Patterns.MAX_RUN_WEEKS) {
+            if (since != null && week < since) return Patterns.Run(run, capped = false)
             if (!WeekScores.isAway(week, opened)) {
-                val due = Points.occurrencesInWeek(mission, week, history)
-                if (due == 0 || count(done, week, week.plus(6, DateTimeUnit.DAY)) < due) return run
+                if (!PaceOffers.full(mission, week, history)) return Patterns.Run(run, capped = false)
                 run++
             }
             week = week.minus(7, DateTimeUnit.DAY)
         }
-        return run
+        return Patterns.Run(run, capped = true)
     }
 
     /** Longest run of consecutive done days in [done], which is sorted and has no repeats. */

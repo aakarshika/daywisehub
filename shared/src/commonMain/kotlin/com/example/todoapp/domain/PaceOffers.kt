@@ -273,9 +273,9 @@ object PaceOffers {
     /**
      * At 80% of its own points that week, the way a pillar counts as full. Points are worked out from what
      * was done, at today's weight, so a week stored at an older weight is judged like the rest.
-     * A week it wasn't due doesn't count.
+     * A week it wasn't due doesn't count. The Metrics tab's "full weeks in a row" uses it too.
      */
-    private fun full(mission: Mission, week: LocalDate, history: History): Boolean {
+    internal fun full(mission: Mission, week: LocalDate, history: History): Boolean {
         val due = Points.occurrencesInWeek(mission, week, history)
         if (due == 0) return false
         val end = week.plus(6, DateTimeUnit.DAY)

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.models.MyDate
+import com.example.todoapp.domain.Patterns
 import com.example.todoapp.domain.WeekMath
 import com.example.todoapp.repo.MilestoneRepository
 import com.example.todoapp.repo.MissionRepository
@@ -107,14 +108,12 @@ class MetricsViewModel(
         week.value = thisWeek
     }
 
-    /** A year back, or the history the week's month grid needs for due dates, whichever is earlier. */
+    /**
+     * The look-back of patterns and mission lines (a year), or the history the week's month grid needs for
+     * due dates, whichever is earlier.
+     */
     private fun firstDay(week: LocalDate): LocalDate {
         val gridStart = WeekMath.weekStart(LocalDate(week.year, week.month, 1))
-        return minOf(today.minus(LOOK_BACK_DAYS, DateTimeUnit.DAY), gridStart.minus(PlanRepository.HISTORY_DAYS, DateTimeUnit.DAY))
-    }
-
-    companion object {
-        /** How far back patterns and per-mission lines look (best streaks, average gaps). */
-        const val LOOK_BACK_DAYS = 365
+        return minOf(today.minus(Patterns.LOOK_BACK_DAYS, DateTimeUnit.DAY), gridStart.minus(PlanRepository.HISTORY_DAYS, DateTimeUnit.DAY))
     }
 }

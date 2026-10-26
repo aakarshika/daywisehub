@@ -92,6 +92,9 @@ object MissionWords {
     /** "1 point", "6 points". */
     fun pointsPhrase(points: Int): String = if (points == 1) "1 point" else "$points points"
 
+    /** "All 3 milestones done", "All 1 milestone done". */
+    fun allMilestonesDone(count: Int): String = "All $count ${if (count == 1) "milestone" else "milestones"} done"
+
     /** 45 → "45 min", 60 → "1 hour", 90 → "1½ hours", 135 → "2 h 15 min". */
     fun hoursPhrase(minutes: Int): String = when {
         minutes < 60 -> "$minutes min"
@@ -189,7 +192,7 @@ object MissionWords {
             val mine = milestones.filter { it.missionId == mission.missionId }.sortedBy { it.milestoneOrder }
             if (mine.isNotEmpty()) {
                 val next = mine.indexOfFirst { it.status != TaskStatus.COMPLETED.value }
-                return if (next < 0) "All ${mine.size} milestones done" else "Milestone ${next + 1} of ${mine.size}"
+                return if (next < 0) allMilestonesDone(mine.size) else "Milestone ${next + 1} of ${mine.size}"
             }
         }
         if (mission.periodUnit == Period.DAY) {
