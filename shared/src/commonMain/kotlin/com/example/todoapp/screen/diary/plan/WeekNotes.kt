@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -96,7 +97,10 @@ fun ChipText(parts: List<LinePart>, fontSize: TextUnit, color: Color, italic: Bo
         text,
         fontSize = fontSize,
         lineHeight = fontSize * 1.6f,
-        style = TextStyle(lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None)),
+        // Merged into the theme's style, so its letter spacing and font stay.
+        style = LocalTextStyle.current.merge(
+            TextStyle(lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None))
+        ),
         fontStyle = if (italic) FontStyle.Italic else FontStyle.Normal,
         color = color,
         onTextLayout = { layout = it },

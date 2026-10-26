@@ -33,7 +33,7 @@ import kotlinx.datetime.plus
 data class LastWeekState(
     /** "Oct 26 to Nov 1" */
     val range: String,
-    /** "54 of 62 points", with " · +4 extra" when a pillar went past its target. */
+    /** "54 of 62 points", with " · +4 extra" when a pillar went past its target; just "+4 extra" when no pillar had a target. */
     val points: String,
     /** "3 of 4 pillars full", or "All 4 pillars full · a balanced week". */
     val pillars: String,

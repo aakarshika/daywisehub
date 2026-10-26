@@ -103,13 +103,17 @@ fun AddMissionDialog(
         title = { Text(if (isToday) "Add to today" else "Add to this day") },
         text = {
             Column {
-                if (tapped.isNotEmpty()) {
-                    Text(
-                        if (tapped.size == 1) "Added" else "Added · ${tapped.size} so far",
-                        fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray,
-                        modifier = Modifier.padding(bottom = 4.dp).semantics { liveRegion = LiveRegionMode.Polite }
-                    )
-                }
+                // Always composed, so the first "Added" is a change a screen reader announces, and the list never shifts.
+                // It keeps its line while empty: a node with no height is left out of the accessibility tree.
+                Text(
+                    when (tapped.size) {
+                        0 -> ""
+                        1 -> "Added"
+                        else -> "Added · ${tapped.size} so far"
+                    },
+                    fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray,
+                    modifier = Modifier.padding(bottom = 4.dp).semantics { liveRegion = LiveRegionMode.Polite }
+                )
                 if (available.isEmpty()) {
                     Text(
                         when {

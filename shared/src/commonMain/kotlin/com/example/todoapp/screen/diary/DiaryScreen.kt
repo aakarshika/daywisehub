@@ -20,6 +20,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -167,6 +170,7 @@ fun DiaryScreen(
                             text,
                             fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray,
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp)
+                                .semantics { liveRegion = LiveRegionMode.Polite }
                         )
                     }
                 }
@@ -203,7 +207,7 @@ fun DiaryScreen(
             }
             HeadingText("NOTES", Yellow180)
             Notes(waterIntake, selection, upsertWaterIntake = { waterIntakeViewModel.upsertWaterIntake(it) })
-            item { Spacer(Modifier.height(120.dp)) }
+            item(key = "bottom-space") { Spacer(Modifier.height(120.dp)) }
         }
         if (confettiPlaying) AnimationConfetti(confetti, confettiState)
         if (waterPlaying) AnimationWater(water, waterState)

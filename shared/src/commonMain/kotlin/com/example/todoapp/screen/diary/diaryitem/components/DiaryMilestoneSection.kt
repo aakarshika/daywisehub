@@ -34,7 +34,7 @@ fun LazyListScope.DiaryMilestoneSection(
     onMilestoneChecked: (MilestoneWithDetails, Boolean) -> Unit
 ) {
     if (milestones.isEmpty()) return
-    item {
+    item(key = "milestones") {
         DiaryMilestoneSectionContent(
             milestones = milestones,
             onMilestoneChecked = onMilestoneChecked

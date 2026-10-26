@@ -59,9 +59,9 @@ object Moves {
             .maxByOrNull { it.todayTaskId }
 
     /**
-     * Ticking moved [task] takes the move back while its copy is still planned (PlanRepository.toggleDone).
-     * Once the copy is ticked, skipped or moved on, the moved item stays as it is.
+     * Ticking moved [task] takes the move back while [copy], its [copyOf], is still planned
+     * (PlanRepository.toggleDone). Once the copy is ticked, skipped or moved on, the moved item stays as it is.
      */
-    fun canTakeBack(task: TodayTask, tasks: List<TodayTask>): Boolean =
-        task.taskState == TaskState.MOVED && copyOf(task, tasks)?.taskState == TaskState.PLANNED
+    fun canTakeBack(task: TodayTask, copy: TodayTask?): Boolean =
+        task.taskState == TaskState.MOVED && copy?.taskState == TaskState.PLANNED
 }

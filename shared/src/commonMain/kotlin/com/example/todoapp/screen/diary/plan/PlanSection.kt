@@ -169,8 +169,10 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
             .padding(vertical = 9.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.Top
     ) {
-        // A moved item can't be ticked, unless its copy is still planned: then ticking takes the move back.
+        // A moved item can't be ticked, unless its copy is still planned: then ticking takes the move back,
+        // and the box is less faded, so it doesn't look off.
         val moved = row.state == TaskState.MOVED
+        val boxAlpha = if (moved && row.canTakeBack) 0.7f else if (closed) 0.4f else 1f
         Box(
             modifier = Modifier.size(44.dp)
                 .clickable(enabled = !moved || row.canTakeBack, role = Role.Checkbox) { actions.onToggle(row.taskId) },
@@ -180,11 +182,12 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
                 painter = painterResource(if (done) Res.drawable.check_square else Res.drawable.square_b),
                 contentDescription = when {
                     moved && row.canTakeBack -> "Take back the move of ${row.title}"
+                    moved -> "${row.title}, moved"
                     done -> "Untick ${row.title}"
                     else -> "Tick ${row.title}"
                 },
                 colorFilter = ColorFilter.tint(strong),
-                modifier = Modifier.size(24.dp).alpha(if (closed) 0.4f else 1f)
+                modifier = Modifier.size(24.dp).alpha(boxAlpha)
             )
             if (row.crowned) {
                 Image(
@@ -259,7 +262,7 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
 }
 
 private fun subline(row: PlanRow): String = when (row.state) {
-    TaskState.MOVED -> "Moved to ${row.movedTo ?: "another day"}"
+    TaskState.MOVED -> "Moved to ${row.movedTo ?: "another day"}" + if (row.canTakeBack) " · tick to take it back" else ""
     TaskState.SKIPPED -> "Skipped today"
     TaskState.PARTIAL -> "Did some · half points"
     else -> {

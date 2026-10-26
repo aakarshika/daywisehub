@@ -44,7 +44,7 @@ import todoapp.shared.generated.resources.pencil
 fun LazyListScope.MoodHeaderItem(todayMoodList: List<TodayMoodWithDetails>?,
                                  selection: LocalDate,
                                  upsertMood : (TodayMood) -> Unit) {
-    item {
+    item(key = "mood") {
         MoodHeader(
             todayMoodList,
             selection,
@@ -55,7 +55,7 @@ fun LazyListScope.MoodHeaderItem(todayMoodList: List<TodayMoodWithDetails>?,
 
 fun LazyListScope.DateHeaderItem(cDate: LocalDate,
                                  changeDate: (LocalDate) -> Unit) {
-    item {
+    item(key = "date-header") {
         DateHeader(cDate, changeDate = { changeDate ( it ) })
     }
 }
@@ -64,7 +64,7 @@ fun LazyListScope.WaterIntakeHeaderItem(waterIntake: WaterIntake?,
                                         selection: LocalDate,
                                         upsertWaterIntake : (WaterIntake) -> Unit,
                                         waterIntakeCompleted : (Boolean) -> Unit) {
-    item {
+    item(key = "water") {
         WaterIntakeHeader(waterIntake?.waterIntakeProgress?:0.0, selection, upsertWaterIntake = {progress->
             upsertWaterIntake((waterIntake ?: WaterIntake(
                 waterIntakeId = 0,
@@ -79,7 +79,7 @@ fun LazyListScope.WaterIntakeHeaderItem(waterIntake: WaterIntake?,
 fun LazyListScope.Notes(waterIntake: WaterIntake?,
                         selection: LocalDate,
                         upsertWaterIntake : (WaterIntake) -> Unit) {
-    item {
+    item(key = "notes") {
         val rowHeight = remember { mutableStateOf(52) }
 
         NotesItem(rowHeight.value,waterIntake, selection,textArranged = { lineCount ->
@@ -95,7 +95,7 @@ fun LazyListScope.Notes(waterIntake: WaterIntake?,
 }
 
 fun LazyListScope.ToDoListHeader(headingtext: String, color: Color, addLabel: String, editClicked: () -> Unit) {
-    item {
+    item(key = "heading-$headingtext") {
         Box(modifier = Modifier.fillMaxWidth()) {
             Box(modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) { HeadingBanner(color, headingtext) }
             // A 44dp target around the 31dp pencil, lifted so the pencil sits about where it did.
@@ -123,8 +123,9 @@ fun LazyListScope.ToDoListHeader(headingtext: String, color: Color, addLabel: St
     }
 }
 
+/** A section heading. Keyed by its text, so each one on a screen needs its own. */
 fun LazyListScope.HeadingText(headingtext: String, color: Color) {
-    item {
+    item(key = "heading-$headingtext") {
         Box(modifier = Modifier.fillMaxWidth().padding(top = 20.dp)) {
             HeadingBanner(color, headingtext)
         }

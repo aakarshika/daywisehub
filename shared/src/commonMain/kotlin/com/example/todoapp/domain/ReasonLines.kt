@@ -1,5 +1,7 @@
 package com.example.todoapp.domain
 
+import kotlinx.datetime.LocalDate
+
 /**
  * Spec section 7. Lines are built only from stored data, never from what a title means.
  * Code names are stored in the database: add new codes, but never rename or remove one.
@@ -28,10 +30,14 @@ data class Reason(val code: ReasonCode, val args: List<String> = emptyList()) {
 object ReasonLines {
 
     /** Renders a stored reason. An unreadable row gives an empty line instead of crashing the diary. */
-    fun render(code: String, args: String): String =
-        Reason.decode(code, args)?.let { render(it) }.orEmpty()
+    fun render(code: String, args: String, on: LocalDate? = null): String =
+        Reason.decode(code, args)?.let { render(it, on) }.orEmpty()
 
-    fun render(reason: Reason): String {
+    /**
+     * [on] is the day of the item the reason belongs to, when there is one. A move that lands on the
+     * weekday it came from reads "Moved from last Tuesday", so it isn't taken for the item's own day.
+     */
+    fun render(reason: Reason, on: LocalDate? = null): String {
         fun arg(i: Int): String = reason.args.getOrNull(i).orEmpty()
         return when (reason.code) {
             ReasonCode.STREAK -> {
@@ -44,7 +50,8 @@ object ReasonLines {
                 (if (arg(0) == "1") "Last done yesterday" else "Last done ${arg(0)} days ago") + " · you aim for every ${arg(1)}"
             ReasonCode.RHYTHM_FIRST -> "First one · you aim for every ${arg(0)}"
             ReasonCode.RHYTHM_OVERDUE -> if (arg(0) == "1") "Due yesterday" else "Due ${arg(0)} days ago"
-            ReasonCode.MOVED -> "Moved from ${arg(0)}"
+            ReasonCode.MOVED ->
+                if (on != null && arg(0) == on.weekdayName()) "Moved from last ${arg(0)}" else "Moved from ${arg(0)}"
             ReasonCode.MILESTONE -> "Milestone ${arg(0)} of ${arg(1)} · due ${arg(2)}"
             ReasonCode.RECHARGE_HEAVY -> "${arg(0)} hours of fixed blocks today. This counts too."
             ReasonCode.RECHARGE_USUAL ->

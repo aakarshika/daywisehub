@@ -125,7 +125,7 @@ object DiaryStateBuilder {
         val plan = extras.plans.firstOrNull { it.date == dateKey }
         val history = History(tasks)
         val opensWeek = WeekStateBuilder.opensWeek(date, extras.plans)
-        // The adjusted lines and the fresh start read today's missions, so only today's page says them.
+        // The adjusted lines read today's missions, so only today's page says them. Nor is an earlier page a fresh start.
         val lastWeek = if (opensWeek) WeekStateBuilder.lastWeek(extras.lastWeek, missions, history, withAdjusted = date == today) else null
         val byId = missions.associateBy { it.missionId }
         val weekStart = WeekMath.weekStart(date)
@@ -141,7 +141,10 @@ object DiaryStateBuilder {
         // are sliced out once, and only when a planned flexible row needs them.
         val anchor = Moves.anchor(date, today)
         val naming = namesMoves(date, today) && todayTasks.any { it.taskState == TaskState.PLANNED && !it.isFixedBlock }
-        val ahead = if (naming) tasks.filter { it.date > anchor && it.date <= anchor.plus(7, DateTimeUnit.DAY) } else emptyList()
+        val ahead = if (naming) {
+            val last = anchor.plus(7, DateTimeUnit.DAY)
+            tasks.filter { task -> task.date.let { it > anchor && it <= last } }
+        } else emptyList()
         val room = if (naming) {
             Moves.roomByDay(anchor, missions.associate { it.missionId to it.durationMinutes }, ahead) { day -> freeOn(day, extras) }
         } else emptyMap()
@@ -193,8 +196,8 @@ object DiaryStateBuilder {
     }
 
     private fun toRow(task: TodayTask, mission: Mission, history: History, moveTo: String?): PlanRow {
-        val mine = history.tasksFor(task.missionId)
         val moved = task.taskState == TaskState.MOVED
+        val copy = if (moved) Moves.copyOf(task, history.tasksFor(task.missionId)) else null
         return PlanRow(
             taskId = task.todayTaskId,
             title = mission.title,
@@ -202,15 +205,15 @@ object DiaryStateBuilder {
             minutes = mission.durationMinutes,
             points = if (mission.scored) mission.weight else 0,
             pointsEarned = task.pointsEarned,
-            reason = ReasonLines.render(task.reasonCode, task.reasonArgs),
+            reason = ReasonLines.render(task.reasonCode, task.reasonArgs, on = task.date),
             state = task.taskState,
             crowned = task.crowned,
             isFixedBlock = task.isFixedBlock,
-            movedTo = if (moved) Moves.copyOf(task, mine)?.date?.dayWord(task.date) else null,
+            movedTo = copy?.date?.dayWord(task.date),
             movedIn = task.movedFromDate != null,
             moveTo = moveTo,
             tickedForYou = task.isFixedBlock && task.taskState == TaskState.DONE && task.autoTicked,
-            canTakeBack = moved && Moves.canTakeBack(task, mine),
+            canTakeBack = Moves.canTakeBack(task, copy),
         )
     }
 
