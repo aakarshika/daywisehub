@@ -3809,7 +3809,6 @@ Tell the owner the build is ready and point them to the checklist below.
 - **Best on a weekday morning, before 18:00.** Steps A.2, B.7–B.12, C.5–C.6, F and I assume a Monday.
 - **After 18:00 the Diary opens on the evening check.** The label reads TODAY, and there's no "Picked for you" line, no Swap one, no Lighter day and no Looks good. Tap "Back to the plan" to get the morning view. You'll need to tap it again each time you return to the Diary.
 - **On a Saturday or Sunday:** today's free time is 10 h, a Mon–Fri block doesn't come up, and weekly habits count only the days left (once, on a Sunday).
-- **Don't rotate the phone mid-edit.** Rotating recreates the screen and drops an unsaved draft.
 
 ### A. Empty install
 1. Diary → TO DO LIST says "No missions yet. Add a few on the Missions tab, and each morning the diary picks from them." with a "Go to Missions" chip.

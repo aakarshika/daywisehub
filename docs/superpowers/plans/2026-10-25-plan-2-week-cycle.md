@@ -3788,7 +3788,7 @@ Tell the owner the build is ready and point them to the checklist below.
 **Install over the Plan 3 build, without clearing storage.** Section A checks that your missions and history survive the move to version 6. If a Plan 2 build from before the review fixes was ever installed, clear storage first: its version 6 isn't the final one, so Room would stop on launch.
 
 **Moving the date.** Most of these checks need a new day or a new week. Change the date on the device instead of waiting:
-- **Android:** Settings → System → Date & time → turn off "Set time automatically", then set the date (and the time for section H). Then swipe the app away and open it again. While it's open, the diary also moves to the new day within a minute, but reopening is quicker and certain.
+- **Android:** Settings → System → Date & time → turn off "Set time automatically", then set the date (and the time for section H). Then swipe the app away and open it again. While it's open, the diary also moves to the new day as soon as the app comes back to the front, and within a few seconds if it stays on screen, but reopening is certain.
 - **iOS simulator:** it follows the Mac's clock. Go to System Settings → General → Date & Time, turn off "Set time and date automatically", set the date, then relaunch the app.
 - **Only move forward.** Moving back leaves plans, moved items and week summaries dated "in the future", which then look odd. When you're done, clear the app's storage and turn automatic time back on.
 - **"Opens the week"** means Monday, or the first day of the week you open the diary on. The "Last week" card shows on that day's page, and the offers only on that day, while it's today. A day you never opened doesn't open the week, so the card isn't repeated there.
@@ -3838,10 +3838,11 @@ Do this on a Tuesday to Saturday, so tomorrow is in the same week.
    - Wand: "⟨Learn guitar⟩ moved to Monday." and "⟨‹the every-week mission›⟩ is still due, so it moved into this week." Titles sit on chips in their pillar's color.
 4. Today's list has the carried item ("Moved from …"), and the every-week mission reads "Due N days ago".
 5. Move the date to Tuesday. Tuesday's page has no card; Monday's page (week strip) still shows it, with the points and pillars lines only: no wand lines, and its strip reads "THIS WEEK", not "A FRESH START". A later day of that week that you never opened has no card either.
-6. Go to last week's Friday and tick something you'd skipped, then back to Monday. The card's points went up; its targets didn't change.
+6. Go to last week's Friday and tick something you'd skipped, then back to Monday. The card's points went up; its targets didn't change. On Friday's page the strip reads "LAST WEEK", its bars count against the targets the card uses, and the tick moves its bar at once. A page in an older week reads "WEEK OF ‹its Monday›", with the year if it's another year's.
 7. A week with nothing to report reads "Nothing to catch up on." A week you didn't open on Monday shows the card on the first day you did open.
 8. A week where no pillar had a target but you ticked something (an every-so-often mission added with the pencil) reads "+N extra" on the star line, not "0 of 0".
-9. That same week gets no crown: with nothing due it isn't a balanced week, so the line has the heart and no "a balanced week".
+9. That same week gets no crown: with nothing due it isn't a balanced week. The heart line reads "Nothing was due that week.", as on the Metrics tab, not "4 of 4 pillars full".
+10. A week you didn't open at all. Use the app on a few days of one week, then move the date two weeks ahead and reopen. The card for the week you skipped reads "No points to count." on the star line and "The diary wasn't opened that week." on the heart line, with no crown. Its last lines are as usual: what was adjusted, with the wand, or "Nothing to catch up on.", with a dot.
 
 ### D. Pace offers, quickly, with the seed
 1. In `db/SampleData.kt` set `SEED_SAMPLE_MISSIONS = true` (don't commit this), build, clear the app's storage, and open the app.
@@ -3938,6 +3939,6 @@ Find a pillar whose bar reads 0/0 this week, for instance one whose only mission
   - Installing an older build wipes the data (`fallbackToDestructiveMigrationOnDowngrade`).
   - Earlier days' skipped items read "Skipped today"; "Skipped" would read better there.
   - Easing-off stickies have no "Not now". One that's ignored lapses, and can come back next Monday.
-  - If you close the evening check and then switch tabs or turn the phone, it opens again, because the new screen starts in the evening.
+  - If you close the evening check and then switch tabs, it opens again, because the new screen starts in the evening.
   - "Moved to" in the Last week card's adjusted lines includes moves tapped in the evening check.
   - A page older than yesterday doesn't name where "Move it" would go. Its "Moved to" line reads "another day" if the copy landed more than a week after that page's day.

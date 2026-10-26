@@ -3263,7 +3263,7 @@ git commit -m "feat: diary builds and shows today's list with reasons, points an
 
 - [ ] **Step 4: Hand over for manual testing**
 
-Tell the owner the build is ready, and that the first launch wipes the old database and seeds the sample missions relative to that day. These lists come from running the compiled planner on the seed (before 18:00, default free time, normal energy).
+Tell the owner the build is ready, and that the first launch wipes the old database. It doesn't seed the sample missions: the seed is off (`SEED_SAMPLE_MISSIONS = false` since Plan 3). To see the lists below, set it to `true` in `db/SampleData.kt` (don't commit this), clear the app's storage and open the app; the seed is relative to that day. These lists come from running the compiled planner on the seed (before 18:00, default free time, normal energy).
 
 **A Wednesday** (180 free minutes):
 - **Already in your day:** Job ("9:00 to 1:00") and App ("2:00 to 5:00").

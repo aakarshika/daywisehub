@@ -2974,6 +2974,7 @@ Tell the owner the build is ready and point them to the checklist below.
 ### Before you start
 
 - **Install over the Plan 2 build without clearing storage.** Plan 4 changes no schema, so missions, ticks and stored weeks stay. Open the Diary first: on the first open of a new week, it writes the summaries the Metrics tab reads.
+- **A device that ever ran a Plan 2 build from before its review fixes must clear storage first,** as Plan 2's checklist says: that build's version 6 isn't the final one, so Room would stop on launch.
 - **Several weeks of data quickly (the seed).**
   1. In `db/SampleData.kt` set `SEED_SAMPLE_MISSIONS = true`, and in `db/MetricsSample.kt` set `SEED_METRICS_HISTORY = true`. Don't commit these.
   2. Build, clear the app's storage, and open the app. It opens on the Diary, which writes about 13 stored weeks and plans today.
@@ -2993,7 +2994,7 @@ Tell the owner the build is ready and point them to the checklist below.
 3. Keep going back until the left arrow fades. The first week is the one with SampleData's Plan winter trip tick: 13 weeks back (12 on a Saturday or Sunday).
 4. Tap the left arrow twice quickly: it moves two weeks. Tap the arrows quickly several times: it never goes past the first week or this week.
 5. Switch to Missions or Diary and back. Metrics opens on this week again.
-6. Leave Metrics open across midnight (set the time to 23:59 and wait). Within a minute of midnight it starts again on this week as of the new day.
+6. Leave Metrics open across midnight (set the time to 23:59 and wait). Within a few seconds of midnight it starts again on this week as of the new day. Leaving the app before midnight and coming back after it does the same at once.
 7. With a long-used install, a week in another year shows its year: "Week of Dec 22, 2025", "Dec 22 to Dec 28, 2025".
 8. Screen reader: the arrows read "Previous week" and "Next week" (and say when they're unavailable). The title and dates read as one heading, and are read again when the week changes.
 
@@ -3095,6 +3096,8 @@ Tell the owner the build is ready and point them to the checklist below.
    - There's no crown on the calendar, and its days have no rings.
    - The crown line on the following weeks leaves it out.
    - A pattern run, or a mission's "full weeks in a row", continues across it rather than ending.
+4. The skipped week is now last week, so today's diary has a Last week card for it that says the same: "No points to count." and "The diary wasn't opened that week.", with no crown. Its adjusted lines stay.
+5. A finished week with nothing due (Plan 2's C8 sets one up) reads "Nothing was due that week." on both the Metrics card and the diary's Last week card.
 
 ### I. Speed
 - With the seed (about four months of ticks), the tab opens without a visible pause, and stepping weeks feels instant.
@@ -3115,7 +3118,6 @@ Tell the owner the build is ready and point them to the checklist below.
 - **Small follow-ups, not scheduled:**
   - There's no archived-missions list or restore. Archived missions only lose their Metrics line; their points stay.
   - The seed shows no weekday line since the review fixes: its Monday calls have a set day. A seeded mission without set days, ticked mostly on one weekday, would show one.
-  - Plan 2's checklist (C3, C7, D2) still says the Last week card's "Nothing to catch up on." has the wand. Since Plan 4's review it has a quiet dot.
   - The calendar has no month arrows of its own; it follows the shown week.
   - Mission rows don't open the editor when tapped.
   - The weekday pattern counts did-some like done.
