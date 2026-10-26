@@ -45,6 +45,7 @@ fun MetricsScreen(viewModel: MetricsViewModel) {
                 item(key = "header") {
                     WeekHeader(s, onPrevious = viewModel::previousWeek, onNext = viewModel::nextWeek, onThisWeek = viewModel::backToThisWeek)
                 }
+                item(key = "rings") { PillarRings(s.score) }
             }
             item(key = "bottom-space") { Spacer(Modifier.height(120.dp)) }
         }

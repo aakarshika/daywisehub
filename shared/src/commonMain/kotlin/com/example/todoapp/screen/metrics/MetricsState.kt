@@ -4,7 +4,11 @@ import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.mission.milestone.Milestone
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.week.WeekSummary
+import com.example.todoapp.domain.DayTasks
+import com.example.todoapp.domain.History
 import com.example.todoapp.domain.WeekMath
+import com.example.todoapp.domain.WeekScore
+import com.example.todoapp.domain.WeekScores
 import com.example.todoapp.domain.shortLabel
 import com.example.todoapp.domain.weekStartDate
 import kotlinx.datetime.DateTimeUnit
@@ -36,6 +40,8 @@ data class MetricsUiState(
     val isThisWeek: Boolean,
     val canGoBack: Boolean,
     val canGoForward: Boolean,
+    /** The week's pillar scores: stored for a finished week, live for this one. */
+    val score: WeekScore,
 )
 
 object MetricsStateBuilder {
@@ -43,8 +49,14 @@ object MetricsStateBuilder {
     fun build(input: MetricsInput): MetricsUiState {
         val week = input.week
         val thisWeek = WeekMath.weekStart(input.today)
+        // Read once here; every section below looks days and weeks up instead of re-reading dates.
+        val missions = input.allMissions.filter { it.active }
+        val days = DayTasks(input.tasks)
+        val history = History(input.tasks)
+        val byWeek = input.summaries.associateBy { it.weekStartDate }
         // Stored weeks start at the week of the first task, so nothing comes before the first one.
         val earliest = input.summaries.firstOrNull()?.weekStartDate?.let { minOf(it, thisWeek) } ?: thisWeek
+        val score = WeekScores.forWeek(week, thisWeek, byWeek[week], missions, input.allMissions, days, history)
         return MetricsUiState(
             weekStart = week,
             title = title(week, thisWeek),
@@ -52,6 +64,7 @@ object MetricsStateBuilder {
             isThisWeek = week == thisWeek,
             canGoBack = week > earliest,
             canGoForward = week < thisWeek,
+            score = score,
         )
     }
 
