@@ -25,11 +25,12 @@ import com.example.todoapp.screen.diary.DiaryViewModel
 import com.example.todoapp.screen.diary.diaryitem.components.diarymood.MoodViewModel
 import com.example.todoapp.screen.diary.diaryitem.components.waterintake.WaterIntakeViewModel
 import com.example.todoapp.screen.metrics.CalDiaryViewModel
+import com.example.todoapp.screen.metrics.MetricsScreen
+import com.example.todoapp.screen.metrics.MetricsViewModel
 import com.example.todoapp.screen.missions.MissionsScreen
 import com.example.todoapp.screen.missions.MissionsViewModel
 import com.example.todoapp.screen.missions.editor.MissionEditorScreen
 import com.example.todoapp.screen.missions.editor.MissionEditorViewModel
-import com.example.todoapp.screen.placeholder.ComingNextScreen
 import kotlinx.coroutines.cancel
 import moe.tlaster.precompose.navigation.NavHost
 import moe.tlaster.precompose.navigation.NavOptions
@@ -144,7 +145,12 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
                     )
                 }
                 scene(route = MyScreen.Calendar.name) {
-                    ComingNextScreen("Metrics come back after missions, with pillar rings and a week calendar.")
+                    val metricsViewModel = remember { KoinF.di!!.get<MetricsViewModel>() }
+                    // Nothing owns this view model either, so stop its work when the tab leaves the screen.
+                    DisposableEffect(metricsViewModel) {
+                        onDispose { metricsViewModel.viewModelScope.cancel() }
+                    }
+                    MetricsScreen(metricsViewModel)
                 }
             }
         }
