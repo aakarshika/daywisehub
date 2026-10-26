@@ -33,14 +33,16 @@ import com.example.todoapp.domain.WeekScore
 import com.example.todoapp.screen.basicutils.CardHeadInk
 import com.example.todoapp.screen.basicutils.InkGray
 import com.example.todoapp.screen.basicutils.pillarInk
+import com.example.todoapp.screen.basicutils.pillarLight
 import com.example.todoapp.screen.basicutils.pillarStrong
 
 private val RingStroke = 9.dp
 
 /**
  * Spec 9: the week's four pillar rings, each with its points of target and "full" or "light" at the
- * 80% rule. A week the diary wasn't opened in reads "away" instead, with no numbers and no arc, so its
- * zeros don't look like misses.
+ * 80% rule. A ring that's close enough closes (spec 9.2): the rest of it fills in the pillar's light
+ * color, and one closed by its item count under 80% reads "nearly". A week the diary wasn't opened in
+ * reads "away" instead, with no numbers and no arc, so its zeros don't look like misses.
  */
 @Composable
 fun PillarRings(week: WeekScore) {
@@ -57,6 +59,7 @@ private fun PillarRing(score: PillarScore, away: Boolean, modifier: Modifier) {
     val state = when {
         away -> "away"
         score.full -> "full"
+        score.nearly -> "nearly"
         else -> "light"
     }
     val extra = if (!away && score.extra > 0) ", +${score.extra} extra" else ""
@@ -80,6 +83,13 @@ private fun PillarRing(score: PillarScore, away: Boolean, modifier: Modifier) {
                 val topLeft = Offset(stroke / 2, stroke / 2)
                 val arc = Size(size.width - stroke, size.height - stroke)
                 drawArc(Color.White, 0f, 360f, useCenter = false, topLeft = topLeft, size = arc, style = Stroke(stroke))
+                // A closed ring's rest, from the arc's end round to the top, under the arc so its round end shows.
+                if (!away && score.closed && score.share < 1f) {
+                    drawArc(
+                        pillarLight(score.pillar), -90f + 360f * score.share, 360f * (1f - score.share), useCenter = false,
+                        topLeft = topLeft, size = arc, style = Stroke(stroke)
+                    )
+                }
                 if (!away && score.share > 0f) {
                     drawArc(
                         pillarStrong(score.pillar), -90f, 360f * score.share, useCenter = false,
@@ -91,7 +101,8 @@ private fun PillarRing(score: PillarScore, away: Boolean, modifier: Modifier) {
             Text(numbers, fontSize = ringFontSize(numbers, maxWidth), maxLines = 1, softWrap = false, color = CardHeadInk)
         }
         Text(score.pillar.title, fontSize = 13.sp, color = CardHeadInk, modifier = Modifier.padding(top = 4.dp))
-        Text(state, fontSize = 12.sp, fontStyle = FontStyle.Italic, color = if (score.full && !away) pillarInk(score.pillar) else InkGray)
+        // A closed ring's word is in the pillar's ink, as it reads done.
+        Text(state, fontSize = 12.sp, fontStyle = FontStyle.Italic, color = if ((score.full || score.nearly) && !away) pillarInk(score.pillar) else InkGray)
         if (!away && score.extra > 0) Text("+${score.extra} extra", fontSize = 11.sp, color = pillarInk(score.pillar))
     }
 }

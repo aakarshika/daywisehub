@@ -29,6 +29,13 @@ data class CalendarDay(
      * planned on an earlier day. Today's planned items can still happen, so they aren't counted.
      */
     val notDone: Int,
+    /** [notDone] split by pillar, in pillar order, without empty ones: a closed ring draws each in its light color. */
+    val missed: List<DaySlice>,
+    /**
+     * A finished day with a ring that's close enough (Points.closes, over its scored items and its earned
+     * points against earned and missed): its missed points are drawn in light colors instead of white.
+     */
+    val closed: Boolean,
     /** The day's badges, rarest first (spec 9.3). The cell shows the first; tapping the day lists them all. */
     val badges: List<EarnedBadge>,
     /** "Tuesday, Oct 20", with the year in another year than this week's: the badge list's title. */
@@ -112,7 +119,10 @@ object MonthGrid {
         badges: List<EarnedBadge>,
     ): CalendarDay {
         val earned = mutableMapOf<PillarType, Int>()
-        var notDone = 0
+        val missed = mutableMapOf<PillarType, Int>()
+        // The close rule's items: scored rows that didn't move away, and of those, the done and did-somes.
+        var items = 0
+        var done = 0
         if (date <= today) {
             for (task in days.on(date)) {
                 val mission = byId[task.missionId] ?: continue
@@ -123,14 +133,23 @@ object MonthGrid {
                     TaskState.DONE -> earned[pillar] = (earned[pillar] ?: 0) + task.pointsEarned
                     TaskState.PARTIAL -> {
                         earned[pillar] = (earned[pillar] ?: 0) + task.pointsEarned
-                        notDone += (mission.weight - task.pointsEarned).coerceAtLeast(0)
+                        missed[pillar] = (missed[pillar] ?: 0) + (mission.weight - task.pointsEarned).coerceAtLeast(0)
                     }
-                    TaskState.SKIPPED, TaskState.MOVED -> notDone += mission.weight
-                    TaskState.PLANNED -> if (date < today) notDone += mission.weight
+                    TaskState.SKIPPED, TaskState.MOVED -> missed[pillar] = (missed[pillar] ?: 0) + mission.weight
+                    TaskState.PLANNED -> if (date < today) missed[pillar] = (missed[pillar] ?: 0) + mission.weight
+                }
+                if (task.taskState != TaskState.MOVED) {
+                    items++
+                    if (task.taskState.countsAsDone) done++
                 }
             }
         }
-        val slices = PillarType.scoredPillars.mapNotNull { pillar -> earned[pillar]?.takeIf { it > 0 }?.let { DaySlice(pillar, it) } }
+        val slices = slicesOf(earned)
+        val missedSlices = slicesOf(missed)
+        val earnedTotal = slices.sumOf { it.points }
+        val notDone = missedSlices.sumOf { it.points }
+        // Finished days only: today's ring stays as it is.
+        val closed = ringed && date < today && Points.closes(earnedTotal, earnedTotal + notDone, items, done)
         return CalendarDay(
             date = date,
             inMonth = date.month == month,
@@ -138,14 +157,30 @@ object MonthGrid {
             hasRing = ringed && date <= today,
             slices = slices,
             notDone = notDone,
+            missed = missedSlices,
+            closed = closed,
             badges = badges,
             title = "${date.weekdayName()}, ${date.labelFrom(WeekMath.weekStart(today))}",
-            description = describe(date, today, slices, notDone, badges),
+            description = describe(date, today, slices, notDone, closed, badges),
         )
     }
 
-    /** "Monday, October 26. 10 points: Health 2, Wealth 6, Love 2. 3 points didn't happen. Badges: Hat trick, First one" */
-    private fun describe(date: LocalDate, today: LocalDate, slices: List<DaySlice>, notDone: Int, badges: List<EarnedBadge>): String {
+    /** Points per pillar, in pillar order, without empty ones. */
+    private fun slicesOf(points: Map<PillarType, Int>): List<DaySlice> =
+        PillarType.scoredPillars.mapNotNull { pillar -> points[pillar]?.takeIf { it > 0 }?.let { DaySlice(pillar, it) } }
+
+    /**
+     * "Monday, October 26. 10 points: Health 2, Wealth 6, Love 2. 3 points didn't happen, ring closed.
+     * Badges: Hat trick, First one"
+     */
+    private fun describe(
+        date: LocalDate,
+        today: LocalDate,
+        slices: List<DaySlice>,
+        notDone: Int,
+        closed: Boolean,
+        badges: List<EarnedBadge>,
+    ): String {
         val month = date.month.name.lowercase().replaceFirstChar { it.uppercase() }
         val name = "${date.weekdayName()}, $month ${date.dayOfMonth}"
         val parts = mutableListOf(if (date == today) "Today, $name" else name)
@@ -158,6 +193,8 @@ object MonthGrid {
                 else -> "No points"
             }
             if (notDone > 0) parts += "${MissionWords.pointsPhrase(notDone)} didn't happen"
+            // It ends the day's points: after what didn't happen, or after the points when all of it did.
+            if (closed) parts[parts.lastIndex] += ", ring closed"
         }
         if (badges.isNotEmpty()) parts += (if (badges.size == 1) "Badge: " else "Badges: ") + badges.joinToString(", ") { it.badge.title }
         return parts.joinToString(". ")

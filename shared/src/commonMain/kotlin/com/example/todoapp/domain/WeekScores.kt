@@ -1,15 +1,28 @@
 package com.example.todoapp.domain
 
 import com.example.todoapp.db.data.mission.Mission
+import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.week.WeekSummary
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
 
 /** One pillar's points against its target for one week (spec 5). */
-data class PillarScore(val pillar: PillarType, val earned: Int, val target: Int) {
+data class PillarScore(
+    val pillar: PillarType,
+    val earned: Int,
+    val target: Int,
+    /** The pillar's stored rows that week that didn't move away, of scored missions (spec 9.2). */
+    val items: Int = 0,
+    /** Of [items], those done or done in part. */
+    val done: Int = 0,
+    /** The ring is close enough to be drawn closed (Points.closes). Never in an away week. */
+    val closed: Boolean = false,
+) {
     /** 80% of the target or more; nothing due counts as full. */
     val full: Boolean get() = Points.isFull(earned, target)
+    /** Closed by the item count while under 80% of its points: the ring reads "nearly" instead of "light". */
+    val nearly: Boolean get() = closed && !full
     /** Points past the target, shown as "+N extra" on this pillar only. */
     val extra: Int get() = (earned - target).coerceAtLeast(0)
     /** How much of the ring is drawn. A pillar with nothing due counts as full, so its ring is drawn full too. */
@@ -36,6 +49,7 @@ object WeekScores {
      * A finished week as stored at close-out, or a week without a row worked out live as the diary's
      * bars are: points from [allMissions] (archived too), targets from the active [missions]. Only this
      * week lacks a row normally; a past week can for a moment, before the diary's close-out runs.
+     * Either way, each pillar's items and whether its ring closes come from the week's stored rows.
      * [opened] is PaceOffers.openedWeeks of the same tasks.
      */
     fun forWeek(
@@ -50,8 +64,10 @@ object WeekScores {
     ): WeekScore {
         val finished = weekStart < thisWeek
         val away = finished && isAway(weekStart, opened)
-        if (summary != null) return WeekScore(stored(summary), summary.balanced, finished, away)
         val weekTasks = days.between(weekStart, weekStart.plus(6, DateTimeUnit.DAY))
+        if (summary != null) {
+            return WeekScore(closing(stored(summary), weekTasks, allMissions, away), summary.balanced, finished, away)
+        }
         val pillars = PillarType.scoredPillars.map { pillar ->
             PillarScore(
                 pillar = pillar,
@@ -59,11 +75,33 @@ object WeekScores {
                 target = Points.weeklyTarget(missions, pillar, weekStart, history),
             )
         }
-        return WeekScore(pillars, balanced(pillars), finished, away)
+        return WeekScore(closing(pillars, weekTasks, allMissions, away), balanced(pillars), finished, away)
     }
 
     fun stored(summary: WeekSummary): List<PillarScore> =
         PillarType.scoredPillars.map { PillarScore(it, summary.earned(it), summary.target(it)) }
+
+    /**
+     * [scores] with each pillar's items and done counted from [weekTasks], and whether its ring closes
+     * (Points.closes). An away week never closes. [allMissions] include archived ones, so every row keeps
+     * its pillar.
+     */
+    private fun closing(scores: List<PillarScore>, weekTasks: List<TodayTask>, allMissions: List<Mission>, away: Boolean): List<PillarScore> {
+        val byId = allMissions.associateBy { it.missionId }
+        val byPillar = weekTasks
+            .filter { it.taskState != TaskState.MOVED }
+            .mapNotNull { task -> byId[task.missionId]?.takeIf { it.scored }?.let { it.pillarType to task.taskState } }
+            .groupBy({ it.first }, { it.second })
+        return scores.map { score ->
+            val states = byPillar[score.pillar].orEmpty()
+            val done = states.count { it.countsAsDone }
+            score.copy(
+                items = states.size,
+                done = done,
+                closed = !away && Points.closes(score.earned, score.target, states.size, done),
+            )
+        }
+    }
 
     /** WeekSummary.balanced's rule (WeekSummaries.balanced), for a week with no row yet. */
     fun balanced(pillars: List<PillarScore>): Boolean {

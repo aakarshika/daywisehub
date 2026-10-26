@@ -47,6 +47,7 @@ import com.example.todoapp.screen.basicutils.InkGray
 import com.example.todoapp.screen.basicutils.NoteInk
 import com.example.todoapp.screen.basicutils.SelectedWeekTint
 import com.example.todoapp.screen.basicutils.TodayOutline
+import com.example.todoapp.screen.basicutils.pillarLight
 import com.example.todoapp.screen.basicutils.pillarStrong
 import com.example.todoapp.screen.metrics.badges.BadgeSticker
 import org.jetbrains.compose.resources.painterResource
@@ -58,9 +59,9 @@ private val weekLetters = listOf("M", "T", "W", "T", "F", "S", "S")
 
 /**
  * Spec 9: the Monday-first month. Each day's ring is split by points per pillar, with white for what
- * didn't happen, and each balanced week has a crown. The week on screen is tinted, with flat tints
- * instead of the old gradient (spec 9.1). A day with badges wears its rarest as a sticker (spec 9.3).
- * Tapping a day hands it to [onDay].
+ * didn't happen, or each pillar's light color once a finished day was close enough (spec 9.2), and each
+ * balanced week has a crown. The week on screen is tinted, with flat tints instead of the old gradient
+ * (spec 9.1). A day with badges wears its rarest as a sticker (spec 9.3). Tapping a day hands it to [onDay].
  */
 @Composable
 fun MonthCalendarCard(calendar: MonthCalendar, onDay: (CalendarDay) -> Unit) {
@@ -100,7 +101,7 @@ fun MonthCalendarCard(calendar: MonthCalendar, onDay: (CalendarDay) -> Unit) {
             }
         }
         Text(
-            "Ring slices are sized by points. White is what didn't happen.",
+            "Ring slices are sized by points. White is what didn't happen, or a light shade once the day was close enough.",
             fontSize = 12.sp, fontStyle = FontStyle.Italic, color = InkGray, textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
         )
@@ -144,7 +145,9 @@ private fun DayCell(day: CalendarDay, modifier: Modifier, onClick: () -> Unit) {
 
 /**
  * Slices in pillar order from the top, sized by points, then white for what didn't happen, between two
- * thin edges, so a day with nothing done still reads as a ring. A day with nothing on it is one plain line.
+ * thin edges, so a day with nothing done still reads as a ring. A closed day draws what didn't happen as
+ * each pillar's light slice instead, in pillar order, so it reads as done. A day with nothing on it is one
+ * plain line.
  */
 @Composable
 private fun DayRing(day: CalendarDay) {
@@ -166,7 +169,13 @@ private fun DayRing(day: CalendarDay) {
             drawArc(pillarStrong(slice.pillar), start, sweep, useCenter = false, topLeft = topLeft, size = arc, style = Stroke(stroke))
             start += sweep
         }
-        if (day.notDone > 0) {
+        if (day.closed) {
+            day.missed.forEach { slice ->
+                val sweep = 360f * slice.points / total
+                drawArc(pillarLight(slice.pillar), start, sweep, useCenter = false, topLeft = topLeft, size = arc, style = Stroke(stroke))
+                start += sweep
+            }
+        } else if (day.notDone > 0) {
             drawArc(Color.White, start, 360f * day.notDone / total, useCenter = false, topLeft = topLeft, size = arc, style = Stroke(stroke))
         }
         drawCircle(DayRingEdge, radius = outer - edge / 2, style = Stroke(edge))

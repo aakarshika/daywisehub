@@ -66,4 +66,19 @@ object Points {
     }
 
     fun isFull(earned: Int, target: Int): Boolean = target == 0 || earned >= target * FULL_SHARE
+
+    /** A ring with this many items or more can close by its item count ([closes]). */
+    const val CLOSE_MIN_ITEMS = 6
+    /** How many of those items can be left undone and the ring still close. */
+    const val CLOSE_SPARE = 2
+
+    /**
+     * Spec 9.2: a ring that's close enough closes, and is drawn done in its pillar's light color. It closes
+     * when it's full, or when it has [CLOSE_MIN_ITEMS] or more [items] and all but [CLOSE_SPARE] are [done].
+     * Items are rows of scored missions that didn't move away; done counts did-somes too. With nothing due
+     * the ring is drawn full already, so only the item count can close it. It's only a look: points, "full",
+     * crowns and pace offers don't change.
+     */
+    fun closes(earned: Int, target: Int, items: Int, done: Int): Boolean =
+        (target > 0 && isFull(earned, target)) || (items >= CLOSE_MIN_ITEMS && done >= items - CLOSE_SPARE)
 }
