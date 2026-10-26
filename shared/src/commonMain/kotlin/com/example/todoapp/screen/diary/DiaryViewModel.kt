@@ -188,6 +188,8 @@ class DiaryViewModel(
 
     fun toggleDone(taskId: Long) = act { planRepository.toggleDone(taskId) }
     fun didSome(taskId: Long) = act { planRepository.setState(taskId, TaskState.PARTIAL) }
+    /** The swipe (spec 6.5): [percent] of the item got done. */
+    fun setProgress(taskId: Long, percent: Int) = act { planRepository.setProgress(taskId, percent) }
     fun moveTask(taskId: Long) = act { planRepository.moveToNextRoom(taskId) }
     fun skipTask(taskId: Long) = act { planRepository.setState(taskId, TaskState.SKIPPED) }
     fun toggleCrown(taskId: Long) = act { planRepository.toggleCrown(taskId) }
