@@ -323,7 +323,7 @@ These match the mockup canvas. All screens keep the bottom tab bar: Diary, Missi
 | New mission, kind | Sentence so far, then five kind cards, each with an example. Progress shows 9 steps. |
 | New mission, before saving | Full sentence, gentle-start sticky, week-cost bars, free hours, Make it lighter, Save mission. |
 | Missions | Per pillar: marker heading with this week's target, then tilted sticky notes showing pace, weight and status. Recharge group with "no points." + opens the library. |
-| Metrics | Four pillar rings (points of target, full or light), what next week adjusts, the week highlights card, pattern lines, a Monday-first calendar (day rings split by points per pillar, white for what didn't happen, crown on balanced weeks), and one progress line per mission. |
+| Metrics | Four pillar rings (points of target, full or light), what next week adjusts, the week highlights card, pattern lines, a Monday-first calendar (day rings split by points per pillar, white for what didn't happen, crown on balanced weeks, each day's rarest badge, 9.3), and one progress line per mission. |
 | Ideas library | Section 8.2. |
 | Write your own | Title inside the sentence, matched ideas, step-by-step fallback. |
 | Review what we filled in | Section 8.4. |
@@ -366,8 +366,63 @@ These change from the current app:
   - a pillar full 3 or more weeks running (at most 2 pillars), or "for a year or more";
   - the weekday a pillar's ticks mostly land on: 8 or more ticks in 8 weeks, more than half of them on one day, from missions free to land on any day (not fixed blocks, daily missions or missions with set days). It always keeps a slot.
   Away weeks neither count nor break a run. With none: "Nothing stands out yet."
-- **Calendar.** The month of the shown week's Monday, Monday first. Day rings are split by points per pillar, inside a thin edge. White is skipped or moved items, the missing half of a did-some, and anything left planned on an earlier day. A day with nothing on it is one plain thin ring; away weeks have no rings. Only finished weeks get a crown. Today has an outline. Tapping a day opens it in the diary.
+- **Calendar.** The month of the shown week's Monday, Monday first. Day rings are split by points per pillar, inside a thin edge. White is skipped or moved items, the missing half of a did-some, and anything left planned on an earlier day. A day with nothing on it is one plain thin ring; away weeks have no rings. Only finished weeks get a crown. Today has an outline. Tapping a day opens it in the diary; since 9.3, a day with badges lists them first.
 - **Mission lines.** One per active mission, as of today: a daily habit's days this month and best streak, a rhythm's average gap against its aim, a finish line's next milestone, a weekly count with a gentle pace or a run of full weeks (80% of its own points, as for pace offers, since its last pace change). Archived missions aren't listed, but their points still count in every week and day ring.
+
+### 9.3 Daily badges
+
+Every finished day earns at least one badge, so the calendar always looks generous. A day with nothing done earns only "Recharging day": kind to a casual user, and a quiet marker of a gap to a regular one, without ever saying "missed".
+
+**Rules**
+- **Computed, never stored.** Badges come from tasks, plans, milestones and week summaries every time (`domain/DayBadges.kt`). There's no table and no schema change.
+- **Which days.** Every day before today, from the first stored item's day on, including away weeks. Today has only what it has earned so far, never "Recharging day". Later days and days before the first item have none.
+- **Done by hand** is a ticked item, not one the evening check ticked ("Ticked for you"), so a work block alone never makes a day count. A block ticked by hand counts. A did-some counts as something done (it earns "Did some" rather than "Recharging day"); otherwise a badge says when it counts did-somes.
+- **Picks** are a day's items that aren't fixed blocks and didn't move away. Percent badges compare points earned with the full points of the day's scored picks.
+- **The fallback.** A finished day with nothing done by hand gets "Recharging day" and nothing else.
+- **Look-back.** Runs, personal bests, returns and quiet days look back at most `PlanRepository.HISTORY_DAYS` (120 days), which is what the diary reads, so the diary and Metrics agree about every day.
+- **Rank.** The badges below are in rank order, rarest last. The calendar shows a day's rarest; lists show all of them rarest first.
+- **Wording.** Each badge has a line from stored facts ("3 done", "8 of 10 points", "Back after 4 quiet days", "⟨Gym⟩ 7 days running"). Titles sit on chips (7.1). No exclamation marks.
+
+**Where they show**
+- **Metrics calendar.** A day's rarest badge sits on its ring's lower right as a 20dp sticker, and its description names every badge. Tapping a day with badges opens a list ("Tuesday, Oct 20"), each badge with its line, plus "Open this day" (the diary) and "Close". A day without badges opens the diary at once.
+- **Diary.** Under the evening day card, a "BADGES" row ("TODAY SO FAR" on today) of stickers with their names, rarest first, hidden when there are none. A screen reader hears each one's line.
+- **Stickers.** Round, with a light rim, a soft shadow and a slight tilt, and one hand-drawn icon in dark ink. Fill by tier: everyday cream `#EFE6CF`, good day peach `#FFD9BF`, rare lilac `#E3D7F7`, rarest gold `#F8D98A`; "Recharging day" has its own grey-lilac `#E4E0EC` and a moon.
+
+| Tier | Badge | Earned when |
+|---|---|---|
+| Everyday | Recharging day | The fallback above |
+| | Did some | A pick was done in part |
+| | First one | 1 or more done by hand |
+| | Strong start | A Monday with something done by hand |
+| | Rested on purpose | A Recharge mission done by hand |
+| | Halfway | Points earned are at least half the picks' points |
+| | Two in a row | Something done by hand this day and the day before |
+| | Showed up | Every fixed block done, and something else too |
+| | Bonus round | An item added by hand (pencil) was done |
+| | Second chance | An item moved in was done |
+| Good day | Hat trick | 3 or more done by hand |
+| | Crowned | A crowned item was done |
+| | Heavy lifting | A draining mission done by hand |
+| | Full enough | Points earned reach 80% of the picks' points (the pillar rule) |
+| | We'll count it | 3 or more picks, all but one done |
+| | Weekend warrior | A Saturday or Sunday with 2 or more done by hand |
+| | Back at it | Something done by hand after 3 or more quiet days, with something done before them |
+| | Overdue no more | An item picked as overdue was done |
+| | Gentle win | A low-energy day (or "Lighter day") that was full enough |
+| | All four | Something done by hand in Health, Wealth, Love and Life |
+| Rare | All three crowns | 3 crowned items, all done |
+| | Clean sweep | 2 or more picks, all done |
+| | Milestone | A milestone was completed that day |
+| | Pillar filled | A pillar's points for the week first reached full that day (stored target for a finished week, live for this one) |
+| | The return | A mission due once a month or slower (a cycle of 28 days or more) done after a whole cycle went by without it |
+| | 7-day run | A daily habit's streak reached 7 that day |
+| Rarest | Finish line | A finish line's last open milestone was completed that day |
+| | The re-return | As "The return", after 2 or more whole cycles |
+| | Week maker | The week ended balanced (live: is balanced so far), and this is the day every pillar became full |
+| | 30-day run | A daily habit's streak reached 30 that day |
+| | Personal best | A daily habit's streak passed its longest earlier one in the look-back (3 or more), on the day it first did |
+
+Streaks for the runs and the personal best count did-some days, as the "N-day streak" reason line does. A return's gap runs from the last time it was done or done in part, as its due date does, or from its start; cycles missed are `gap / cycle − 1`. "Better late" (taking a move back) isn't a badge: it leaves no stored trace.
 
 ## 10. Data model changes
 
