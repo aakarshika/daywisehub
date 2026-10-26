@@ -108,8 +108,9 @@ class PlanRepository(
     }
 
     /**
-     * Ticks or unticks an item. Ticking a moved item takes the move back while its copy is still planned:
-     * the copy goes, and the item is done on its own day. Otherwise a moved item stays as it is.
+     * Ticks or unticks an item. Only a done item unticks: a did-some is part done, so the box ticks it (100%).
+     * Ticking a moved item takes the move back while its copy is still planned: the copy goes, and the item
+     * is done on its own day. Otherwise a moved item stays as it is.
      */
     suspend fun toggleDone(taskId: Long) = write {
         val task = todayTaskRepository.get(taskId) ?: return@write
@@ -125,7 +126,7 @@ class PlanRepository(
         }
         // An earlier day is closed: unticking there skips the item, so the next open doesn't carry it forward again.
         val unticked = if (task.date < today()) TaskState.SKIPPED else TaskState.PLANNED
-        updateState(task, if (task.taskState.countsAsDone) unticked else TaskState.DONE)
+        updateState(task, if (task.taskState == TaskState.DONE) unticked else TaskState.DONE)
     }
 
     /**

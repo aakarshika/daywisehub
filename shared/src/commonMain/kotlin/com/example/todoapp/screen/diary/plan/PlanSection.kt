@@ -38,12 +38,16 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -88,9 +92,10 @@ class PlanRowActions(
     val onProgress: (Long, Int) -> Unit,
 )
 
-/** The tick box and the row's side padding. The swipe's track starts after both, where the title does. */
 private val BoxSize = 44.dp
 private val RowPadding = 4.dp
+/** Where the swipe's track starts: after the row's side padding and the tick box, where the title does. */
+private val TrackStart = BoxSize + RowPadding
 /** How long a let-go percent is held while its save comes back. */
 private const val LET_GO_HOLD_MILLIS = 3_000L
 
@@ -172,17 +177,20 @@ private fun GroupLabel(text: String) {
 }
 
 /**
- * One item. Dragging sideways across it records how much got done (spec 6.5): the line along the ruled
- * line and the points pill follow the finger in 5% steps, and letting go saves. A did-some keeps its line.
+ * One item. Dragging sideways across it records how much got done (spec 6.5): past the touch slop, the
+ * line along the ruled line ends under the finger, in 5% steps, the points pill shows the percent, and
+ * letting go saves. Only a done item looks ticked; a did-some keeps its open box, its line and its percent.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actions: PlanRowActions) {
-    val done = row.state.countsAsDone
+    // "If filled completely, it gets ticked off": a did-some isn't ticked.
+    val ticked = row.state == TaskState.DONE
     val closed = !row.state.isOpen
     val strong = pillarStrong(row.pillar)
     val moved = row.state == TaskState.MOVED
     val draggable = !moved && !editMode
+    val crownable = !row.isFixedBlock && row.state.isOpen
     // The percent under the finger, while dragging; null otherwise.
     var dragPercent by remember { mutableStateOf<Int?>(null) }
     // The percent let go at, held until the saved row comes back so the line doesn't blink back first.
@@ -201,54 +209,77 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
     // The gesture outlives recompositions (it's keyed on the item), so it reads the latest row and callback.
     val latestRow by rememberUpdatedState(row)
     val onProgress by rememberUpdatedState(actions.onProgress)
+
+    // A screen reader's change. It starts from the held percent, so quick repeats each take their own step.
+    fun adjust(to: (from: Int) -> Int): Boolean {
+        val from = letGoPercent ?: latestRow.progress
+        val target = to(from).coerceIn(0, TaskProgress.FULL)
+        if (target == from) return false
+        letGoPercent = target
+        onProgress(latestRow.taskId, target)
+        return true
+    }
+
     Row(
         modifier = Modifier.fillMaxWidth()
             .then(
                 if (draggable) {
-                    Modifier
-                        .pointerInput(row.taskId) {
-                            var raw = 0f
-                            try {
-                                detectHorizontalDragGestures(
-                                    onDragStart = {
-                                        val from = letGoPercent ?: latestRow.progress
-                                        raw = from.toFloat()
-                                        dragPercent = from
-                                    },
-                                    onDragEnd = {
-                                        val end = dragPercent
-                                        dragPercent = null
-                                        if (end != null && end != (letGoPercent ?: latestRow.progress)) {
-                                            letGoPercent = end
-                                            onProgress(latestRow.taskId, end)
-                                        }
-                                    },
-                                    onDragCancel = { dragPercent = null },
-                                ) { _, dx ->
-                                    val track = (size.width - (BoxSize + RowPadding).toPx()).coerceAtLeast(1f)
-                                    raw = (raw + dx / track * 100).coerceIn(0f, 100f)
-                                    dragPercent = TaskProgress.rounded(raw)
-                                }
-                            } finally {
-                                // The row stopped being draggable mid-drag (it moved, or swap mode came on): nothing is saved.
-                                dragPercent = null
-                            }
+                    Modifier.pointerInput(row.taskId) {
+                        // The percent at [x] along the track, from the title's left edge to the row's right edge.
+                        fun percentAt(x: Float): Int {
+                            val start = TrackStart.toPx()
+                            return TaskProgress.rounded((x - start) / (size.width - start).coerceAtLeast(1f) * 100)
                         }
-                        // A screen reader sets the same value without dragging. The box keeps its own checkbox node.
-                        .semantics(mergeDescendants = true) {
-                            progressBarRangeInfo = ProgressBarRangeInfo(percent / 100f, 0f..1f, steps = 19)
-                            setProgress(label = "Set how much got done") { value ->
-                                val target = TaskProgress.rounded(value * 100)
-                                if (target != row.progress) actions.onProgress(row.taskId, target)
-                                true
-                            }
+                        try {
+                            detectHorizontalDragGestures(
+                                onDragStart = { dragPercent = percentAt(it.x) },
+                                onDragEnd = {
+                                    val end = dragPercent
+                                    dragPercent = null
+                                    // Against what's stored, not what's held, so a retry after a failed save goes through.
+                                    if (end != null && end != latestRow.progress) {
+                                        letGoPercent = end
+                                        onProgress(latestRow.taskId, end)
+                                    }
+                                },
+                                onDragCancel = { dragPercent = null },
+                            ) { change, _ -> dragPercent = percentAt(change.position.x) }
+                        } finally {
+                            // The row stopped being draggable mid-drag (it moved, or swap mode came on): nothing is saved.
+                            dragPercent = null
                         }
+                    }
                 } else Modifier
             )
+            // One node for a screen reader in every mode. The box keeps its own checkbox node.
+            .semantics(mergeDescendants = true) {
+                val readerActions = mutableListOf<CustomAccessibilityAction>()
+                if (draggable) {
+                    progressBarRangeInfo = ProgressBarRangeInfo(percent / 100f, 0f..1f, steps = 19)
+                    stateDescription = "$percent%"
+                    setProgress(label = "Set how much got done") { value -> adjust { TaskProgress.rounded(value * 100) } }
+                    // iOS reads neither the range nor setProgress, so the steps are actions too.
+                    readerActions += CustomAccessibilityAction("${TaskProgress.STEP}% more") { adjust { it + TaskProgress.STEP } }
+                    readerActions += CustomAccessibilityAction("${TaskProgress.STEP}% less") { adjust { it - TaskProgress.STEP } }
+                }
+                if (crownable) {
+                    // The title's long-press, for a screen reader: Android's hold, and an action iOS lists.
+                    val crown = if (row.crowned) "Remove crown" else "Crown"
+                    onLongClick(label = crown) {
+                        actions.onCrown(row.taskId)
+                        true
+                    }
+                    readerActions += CustomAccessibilityAction(crown) {
+                        actions.onCrown(row.taskId)
+                        true
+                    }
+                }
+                if (readerActions.isNotEmpty()) customActions = readerActions
+            }
             .drawBehind {
                 drawLine(Blue80, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 1.dp.toPx())
                 if (showLine && percent > 0) {
-                    val start = (BoxSize + RowPadding).toPx()
+                    val start = TrackStart.toPx()
                     val end = start + (size.width - start) * percent / 100f
                     drawLine(strong, Offset(start, size.height), Offset(end, size.height), strokeWidth = 3.dp.toPx())
                 }
@@ -265,11 +296,11 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
             contentAlignment = Alignment.Center
         ) {
             Image(
-                painter = painterResource(if (done) Res.drawable.check_square else Res.drawable.square_b),
+                painter = painterResource(if (ticked) Res.drawable.check_square else Res.drawable.square_b),
                 contentDescription = when {
                     moved && row.canTakeBack -> "Take back the move of ${row.title}"
                     moved -> "${row.title}, moved"
-                    done -> "Untick ${row.title}"
+                    ticked -> "Untick ${row.title}"
                     else -> "Tick ${row.title}"
                 },
                 colorFilter = ColorFilter.tint(strong),
@@ -284,7 +315,6 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
                 )
             }
         }
-        val crownable = !row.isFixedBlock && row.state.isOpen
         Column(
             modifier = Modifier.weight(1f).then(
                 if (crownable) {
@@ -301,7 +331,7 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
                 modifier = Modifier.drawWithContent {
                     drawContent()
                     val layout = titleLayout
-                    if (done && layout != null) {
+                    if (ticked && layout != null) {
                         for (line in 0 until layout.lineCount) {
                             val y = (layout.getLineTop(line) + layout.getLineBottom(line)) / 2
                             drawLine(
