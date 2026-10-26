@@ -6,6 +6,8 @@ import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.week.WeekSummary
 import com.example.todoapp.domain.DayTasks
 import com.example.todoapp.domain.History
+import com.example.todoapp.domain.LinePart
+import com.example.todoapp.domain.WeekAhead
 import com.example.todoapp.domain.WeekHighlights
 import com.example.todoapp.domain.WeekHighlightsBuilder
 import com.example.todoapp.domain.WeekMath
@@ -45,6 +47,10 @@ data class MetricsUiState(
     /** The week's pillar scores: stored for a finished week, live for this one. */
     val score: WeekScore,
     val highlights: WeekHighlights,
+    /** "NEXT WEEK", or "THE WEEK AFTER" for a finished week. */
+    val aheadTitle: String,
+    /** What next week adjusts, each line naming its mission on a chip. Never empty. */
+    val ahead: List<List<LinePart>>,
 )
 
 object MetricsStateBuilder {
@@ -70,6 +76,8 @@ object MetricsStateBuilder {
             canGoForward = week < thisWeek,
             score = score,
             highlights = WeekHighlightsBuilder.build(title.uppercase(), week, thisWeek, score, byWeek, days),
+            aheadTitle = if (week < thisWeek) "THE WEEK AFTER" else "NEXT WEEK",
+            ahead = WeekAhead.lines(week, thisWeek, missions, days, history),
         )
     }
 

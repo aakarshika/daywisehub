@@ -46,6 +46,7 @@ fun MetricsScreen(viewModel: MetricsViewModel) {
                     WeekHeader(s, onPrevious = viewModel::previousWeek, onNext = viewModel::nextWeek, onThisWeek = viewModel::backToThisWeek)
                 }
                 item(key = "rings") { PillarRings(s.score) }
+                item(key = "week-ahead") { WeekAheadNotes(s.aheadTitle, s.ahead) }
                 item(key = "highlights") { WeekHighlightsCard(s.highlights) }
             }
             item(key = "bottom-space") { Spacer(Modifier.height(120.dp)) }
