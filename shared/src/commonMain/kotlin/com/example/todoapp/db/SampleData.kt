@@ -10,6 +10,7 @@ import com.example.todoapp.domain.Period
 import com.example.todoapp.domain.PillarType
 import com.example.todoapp.domain.Reason
 import com.example.todoapp.domain.ReasonCode
+import com.example.todoapp.domain.TaskProgress
 import com.example.todoapp.domain.TaskState
 import com.example.todoapp.domain.WeekMath
 import com.example.todoapp.repo.MissionRepository
@@ -70,6 +71,7 @@ object SampleData {
         missionId = missionId,
         taskDate = date,
         state = TaskState.DONE.name,
+        progress = TaskProgress.stored(TaskState.DONE),
         pointsEarned = points,
         isFixedBlock = isFixedBlock,
         reasonCode = reason.code.name,

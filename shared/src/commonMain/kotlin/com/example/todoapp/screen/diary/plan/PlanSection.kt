@@ -4,6 +4,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -24,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -79,6 +82,7 @@ import todoapp.shared.generated.resources.Res
 import todoapp.shared.generated.resources.check_square
 import todoapp.shared.generated.resources.crown_a
 import todoapp.shared.generated.resources.square_b
+import kotlin.math.abs
 
 class PlanRowActions(
     val onToggle: (Long) -> Unit,
@@ -98,6 +102,8 @@ private val RowPadding = 4.dp
 private val TrackStart = BoxSize + RowPadding
 /** How long a let-go percent is held while its save comes back. */
 private const val LET_GO_HOLD_MILLIS = 3_000L
+/** How far the finger must end up sideways from where it went down for letting go to save. */
+private val MinSwipe = 24.dp
 
 /** "Picked for you · 2 h 15 min of your 2½ h free" and a link to change the day. */
 @Composable
@@ -179,7 +185,9 @@ private fun GroupLabel(text: String) {
 /**
  * One item. Dragging sideways across it records how much got done (spec 6.5): past the touch slop, the
  * line along the ruled line ends under the finger, in 5% steps, the points pill shows the percent, and
- * letting go saves. Only a done item looks ticked; a did-some keeps its open box, its line and its percent.
+ * letting go saves, once the finger is at least [MinSwipe] sideways from where it went down. A shorter
+ * drag, such as a scroll that slips sideways, puts the line back as a cancel does and saves nothing. Only
+ * a done item looks ticked; a did-some keeps its open box, its line and its percent.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -193,6 +201,8 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
     val crownable = !row.isFixedBlock && row.state.isOpen
     // The percent under the finger, while dragging; null otherwise.
     var dragPercent by remember { mutableStateOf<Int?>(null) }
+    // Where the finger went down, for how far a drag went: the drag only reports where it passed the slop.
+    var downX by remember { mutableFloatStateOf(0f) }
     // The percent let go at, held until the saved row comes back so the line doesn't blink back first.
     // A save that fails never brings it, so it lets go after a moment.
     var letGoPercent by remember { mutableStateOf<Int?>(null) }
@@ -225,25 +235,37 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
             .then(
                 if (draggable) {
                     Modifier.pointerInput(row.taskId) {
+                        // Only watches: every touch's first point, consumed or not.
+                        awaitEachGesture { downX = awaitFirstDown(requireUnconsumed = false).position.x }
+                    }.pointerInput(row.taskId) {
                         // The percent at [x] along the track, from the title's left edge to the row's right edge.
                         fun percentAt(x: Float): Int {
                             val start = TrackStart.toPx()
                             return TaskProgress.rounded((x - start) / (size.width - start).coerceAtLeast(1f) * 100)
                         }
+                        var lastX = 0f
                         try {
                             detectHorizontalDragGestures(
-                                onDragStart = { dragPercent = percentAt(it.x) },
+                                onDragStart = {
+                                    lastX = it.x
+                                    dragPercent = percentAt(it.x)
+                                },
                                 onDragEnd = {
                                     val end = dragPercent
                                     dragPercent = null
+                                    // A slip isn't a swipe: too short, and it ends as a cancel does.
+                                    val far = abs(lastX - downX) >= MinSwipe.toPx()
                                     // Against what's stored, not what's held, so a retry after a failed save goes through.
-                                    if (end != null && end != latestRow.progress) {
+                                    if (far && end != null && end != latestRow.progress) {
                                         letGoPercent = end
                                         onProgress(latestRow.taskId, end)
                                     }
                                 },
                                 onDragCancel = { dragPercent = null },
-                            ) { change, _ -> dragPercent = percentAt(change.position.x) }
+                            ) { change, _ ->
+                                lastX = change.position.x
+                                dragPercent = percentAt(lastX)
+                            }
                         } finally {
                             // The row stopped being draggable mid-drag (it moved, or swap mode came on): nothing is saved.
                             dragPercent = null
@@ -390,16 +412,18 @@ private fun subline(row: PlanRow): String = when (row.state) {
 }
 
 /**
- * Small rounded choice used for evening options, swap mode and the energy picker. A toggle or a pick from
- * a set passes [selected], and a screen reader hears whether it's on; an action leaves it null, so it isn't
- * presented as something that can be selected.
+ * The app's small rounded chip, at least 44dp tall: an action ("Skip today", "All months", "Done") or one
+ * choice among a few (the energy picker, a mission's pace, the All months filters). A choice passes
+ * [selected], filled while it's on, and a screen reader hears whether it is; an action leaves it null, so
+ * it isn't presented as something that can be selected. [modifier] adds to the chip's own node, such as
+ * a state description.
  */
 @Composable
-fun SmallChip(text: String, selected: Boolean? = null, onClick: () -> Unit) {
+fun SmallChip(text: String, selected: Boolean? = null, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val shape = RoundedCornerShape(16.dp)
     val on = selected == true
     Box(
-        modifier = Modifier.heightIn(min = 44.dp).clickable(role = Role.Button, onClick = onClick)
+        modifier = modifier.heightIn(min = 44.dp).clickable(role = Role.Button, onClick = onClick)
             .then(if (selected != null) Modifier.semantics { this.selected = selected } else Modifier)
             .padding(end = 6.dp),
         contentAlignment = Alignment.Center

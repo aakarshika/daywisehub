@@ -19,7 +19,7 @@ data class CalendarFilter(val pillars: Set<PillarType> = emptySet(), val mission
 
     /**
      * The line under the months, over the counted items from [from] to [today]: "⟨Call mom⟩ and ⟨Gym⟩: done
-     * 23 times, 4 in part". Done is DONE and "in part" is PARTIAL, of any mission, scored or not. A
+     * 23 times, 4 in part" ("done once", "done twice"). Done is DONE and "in part" is PARTIAL, of any mission, scored or not. A
      * finished week that isn't in [opened] (PaceOffers.openedWeeks) is away and left out, as it has no rings.
      *
      * When every picked pillar and mission fits on 2 chips, each is named ("⟨Health⟩ and ⟨Gym⟩: …").
@@ -69,14 +69,10 @@ data class CalendarFilter(val pillars: Set<PillarType> = emptySet(), val mission
         }
         val counted = when {
             done == 0 && inPart == 0 -> "nothing done yet"
-            done == 0 -> "done in part ${times(inPart)}"
-            inPart == 0 -> "done ${times(done)}"
-            else -> "done ${times(done)}, $inPart in part"
+            done == 0 -> "done in part ${MissionWords.times(inPart)}"
+            inPart == 0 -> "done ${MissionWords.times(done)}"
+            else -> "done ${MissionWords.times(done)}, $inPart in part"
         }
         return joined(names) + LinePart(": $counted")
-    }
-
-    private companion object {
-        fun times(n: Int): String = if (n == 1) "1 time" else "$n times"
     }
 }

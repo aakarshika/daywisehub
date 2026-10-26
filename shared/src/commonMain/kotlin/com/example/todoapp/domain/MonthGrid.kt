@@ -290,10 +290,14 @@ object MonthGrid {
         return parts.joinToString(". ")
     }
 
-    /** "Monday, October 19", "Monday, October 19, 2025" in another year than today's, or "Today, Monday, October 26". */
+    /**
+     * "Monday, October 19", or "Today, Monday, October 26". A day in another year than this week's carries
+     * it ("Monday, October 19, 2025"), as the titles do (labelFrom).
+     */
     private fun spokenName(date: LocalDate, today: LocalDate): String {
         val month = date.month.name.lowercase().replaceFirstChar { it.uppercase() }
-        val name = "${date.weekdayName()}, $month ${date.dayOfMonth}" + if (date.year != today.year) ", ${date.year}" else ""
+        val year = if (date.year != WeekMath.weekStart(today).year) ", ${date.year}" else ""
+        val name = "${date.weekdayName()}, $month ${date.dayOfMonth}$year"
         return if (date == today) "Today, $name" else name
     }
 }

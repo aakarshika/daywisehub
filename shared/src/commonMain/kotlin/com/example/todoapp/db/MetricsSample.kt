@@ -4,6 +4,7 @@ import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.domain.Reason
 import com.example.todoapp.domain.ReasonCode
+import com.example.todoapp.domain.TaskProgress
 import com.example.todoapp.domain.TaskState
 import com.example.todoapp.domain.WeekMath
 import com.example.todoapp.domain.weekdayName
@@ -47,6 +48,7 @@ object MetricsSample {
                     missionId = id,
                     taskDate = MyDate.fromLocalDate(date),
                     state = state.name,
+                    progress = TaskProgress.stored(state),
                     pointsEarned = points,
                     isFixedBlock = fixed,
                     movedFromDate = movedFrom?.let { MyDate.fromLocalDate(it) },

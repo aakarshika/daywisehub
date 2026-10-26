@@ -31,6 +31,7 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
@@ -71,6 +72,8 @@ fun AllMonthsScreen(viewModel: AllMonthsViewModel, openDay: (LocalDate) -> Unit,
         modifier = Modifier.fillMaxSize().background(Light_Yellowww)
             // Over the Metrics tab: a touch anywhere stops here instead of reaching the list underneath.
             .pointerInput(Unit) {}
+            // A screen reader announces the screen as it opens.
+            .semantics { paneTitle = "All months" }
     ) {
         TopBar(onClose)
         if (s != null) {

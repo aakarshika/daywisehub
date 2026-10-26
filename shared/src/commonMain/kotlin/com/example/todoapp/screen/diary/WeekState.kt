@@ -17,8 +17,8 @@ import com.example.todoapp.domain.PaceOffers
 import com.example.todoapp.domain.PillarType
 import com.example.todoapp.domain.WeekAhead
 import com.example.todoapp.domain.WeekMath
+import com.example.todoapp.domain.chip
 import com.example.todoapp.domain.earned
-import com.example.todoapp.domain.pillarType
 import com.example.todoapp.domain.pillarsFull
 import com.example.todoapp.domain.shortLabel
 import com.example.todoapp.domain.target
@@ -143,6 +143,4 @@ object WeekStateBuilder {
                 AheadLine(listOf(chip(item.mission), LinePart(words)), adjusted = true)
             }
             .ifEmpty { listOf(AheadLine(listOf(LinePart("Nothing to catch up on.")), adjusted = false)) }
-
-    private fun chip(mission: Mission) = LinePart(mission.title, mission.pillarType)
 }

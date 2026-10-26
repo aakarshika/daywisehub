@@ -40,6 +40,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -126,7 +127,11 @@ fun MetricsScreen(viewModel: MetricsViewModel, openDay: (LocalDate) -> Unit) {
                 if (s.patterns.size > FOLDED_PATTERNS) {
                     item(key = "patterns-more") {
                         Box(modifier = Modifier.padding(start = 22.dp, top = 4.dp)) {
-                            SmallChip(if (allPatterns) "Fewer patterns" else "More patterns", onClick = { allPatterns = !allPatterns })
+                            SmallChip(
+                                if (allPatterns) "Fewer patterns" else "More patterns",
+                                modifier = Modifier.semantics { stateDescription = if (allPatterns) "expanded" else "collapsed" },
+                                onClick = { allPatterns = !allPatterns }
+                            )
                         }
                     }
                 }
@@ -145,7 +150,8 @@ fun MetricsScreen(viewModel: MetricsViewModel, openDay: (LocalDate) -> Unit) {
                     item(key = "missions-none") { RuledLine("Missions you add show their progress here.", color = InkGray) }
                 }
                 s.missions.forEach { line -> item(key = "mission-${line.missionId}") { MissionProgressRow(line) } }
-                item(key = "bottom-space") { Spacer(Modifier.height(120.dp)) }
+                // The tab bar is the scaffold's own, outside this screen: a little room is enough.
+                item(key = "bottom-space") { Spacer(Modifier.height(24.dp)) }
             }
         }
         if (allMonths) {

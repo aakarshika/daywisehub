@@ -202,7 +202,8 @@ class DayBadgeBook internal constructor(private val input: BadgeInput) {
         val fullEnough = planned > 0 && Points.isFull(points, planned)
         val floor = date.minus(lookBack, DateTimeUnit.DAY)
 
-        picks.filter { it.taskState == TaskState.PARTIAL }.missions().takeIf { it.isNotEmpty() }?.let {
+        // Any item done in part by hand, a fixed block too: the same test that keeps the day from being quiet.
+        day.filter { it.taskState == TaskState.PARTIAL && !it.autoTicked }.missions().takeIf { it.isNotEmpty() }?.let {
             add(Badge.DID_SOME, about("Did some of ", it, "", many = { n -> "Did some of $n things" }))
         }
         if (byHand.isNotEmpty()) add(Badge.FIRST_ONE, words("${byHand.size} done"))
@@ -288,16 +289,15 @@ class DayBadgeBook internal constructor(private val input: BadgeInput) {
         bestRun(runs, date, floor)?.let { (mission, run, best) ->
             add(Badge.PERSONAL_BEST, listOf(chip(mission), LinePart(" $run days running, past its best of $best")))
         }
-        // Every finished day keeps at least one badge, even one whose only act earns nothing on its own.
+        // A safeguard: every finished day keeps at least one badge, though each act above already earns one.
         if (earned.isEmpty() && date < today) return listOf(EarnedBadge(Badge.RECHARGING_DAY, words("A quiet day")))
         return earned.sortedByDescending { it.badge.ordinal }
     }
 
     /**
      * True when [date] is inside the input's range and has something done or done in part by hand, or a
-     * milestone reached: the fallback's own test in [on]. No badges are worked out for it, so a run of days
-     * stays cheap. A day whose only act earns nothing on its own (a fixed block done in part) passes it,
-     * though [on] still ends with the fallback.
+     * milestone reached: the fallback's own test in [on], so it's true exactly when [on] gives the day more
+     * than "Recharging day". No badges are worked out for it, so a run of days stays cheap.
      */
     fun counts(date: LocalDate): Boolean = date >= input.from && date <= input.to && date in handDays
 

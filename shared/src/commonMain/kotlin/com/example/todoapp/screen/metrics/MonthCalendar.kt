@@ -26,6 +26,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -63,7 +64,7 @@ private val weekLetters = listOf("M", "T", "W", "T", "F", "S", "S")
 const val POINTS_CAPTION = "Ring slices are sized by points. White is what didn't happen, or a light shade once the day was close enough."
 
 /** Once on All months while a filter is on (spec 9.4). */
-const val ITEMS_CAPTION = "Slices are the picked missions' items. White is what didn't happen."
+const val ITEMS_CAPTION = "Slices are the counted items. White is what didn't happen."
 
 /**
  * Spec 9: the Monday-first month. Each day's ring is split by points per pillar, with white for what
@@ -91,20 +92,19 @@ fun MonthCalendarCard(
         if (onAllMonths == null) {
             MonthTitle(calendar.title, Modifier.fillMaxWidth())
         } else {
-            // The title stays centred on the card, with the chip at its end.
-            Box(modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)) {
-                Box(
-                    modifier = Modifier.align(Alignment.Center).heightIn(min = 44.dp)
-                        .clickable(role = Role.Button, onClickLabel = "Open all months", onClick = onAllMonths)
-                        .padding(horizontal = 12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    MonthTitle(calendar.title, Modifier)
-                }
-                Box(modifier = Modifier.align(Alignment.CenterEnd)) {
-                    SmallChip("All months", onClick = onAllMonths)
-                }
-            }
+            CentredBeside(
+                title = {
+                    Box(
+                        modifier = Modifier.heightIn(min = 44.dp)
+                            .clickable(role = Role.Button, onClickLabel = "Open all months", onClick = onAllMonths),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        MonthTitle(calendar.title, Modifier)
+                    }
+                },
+                end = { SmallChip("All months", onClick = onAllMonths) },
+                modifier = Modifier.fillMaxWidth()
+            )
         }
         // The letters are for the eye; each day tells a screen reader its own name.
         Row(modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 4.dp).clearAndSetSemantics {}) {
@@ -131,6 +131,27 @@ fun MonthCalendarCard(
             }
         }
         if (caption != null) CalendarCaption(caption, Modifier.fillMaxWidth().padding(top = 6.dp))
+    }
+}
+
+/**
+ * [title] centred across the full width, with [end] at the end. The title gets what's left between [end]
+ * and the same width on the other side, so it stays centred and, at large text sizes, wraps instead of
+ * running under [end].
+ */
+@Composable
+private fun CentredBeside(title: @Composable () -> Unit, end: @Composable () -> Unit, modifier: Modifier) {
+    Layout(contents = listOf(title, end), modifier = modifier) { (titles, ends), constraints ->
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val endPlaceable = ends.first().measure(loose)
+        val side = endPlaceable.width
+        val middle = (constraints.maxWidth - 2 * side).coerceAtLeast(0)
+        val titlePlaceable = titles.first().measure(loose.copy(minWidth = middle, maxWidth = middle))
+        val height = maxOf(titlePlaceable.height, endPlaceable.height).coerceAtLeast(constraints.minHeight)
+        layout(constraints.maxWidth, height) {
+            titlePlaceable.place(side, (height - titlePlaceable.height) / 2)
+            endPlaceable.place(constraints.maxWidth - side, (height - endPlaceable.height) / 2)
+        }
     }
 }
 
