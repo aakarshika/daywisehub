@@ -125,6 +125,7 @@ fun DiaryScreen(
             onDidSome = diaryViewModel::didSome,
             onMove = diaryViewModel::moveTask,
             onSkip = diaryViewModel::skipTask,
+            onProgress = diaryViewModel::setProgress,
         )
     }
 

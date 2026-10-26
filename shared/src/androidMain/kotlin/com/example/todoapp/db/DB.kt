@@ -13,7 +13,7 @@ fun getDatabaseBuilder(ctx: Context): RoomDatabase.Builder<AppDatabase> {
         context = appContext,
         name = dbFile.absolutePath
     )
-        // Real data is kept from version 5 on: 5 → 6 is an auto migration (Database.kt), and a missing
+        // Real data is kept from version 5 on: 5 → 6 and 6 → 7 are auto migrations (Database.kt), and a missing
         // migration from 5 or later stops with an error instead of wiping. Databases from before the
         // redesign (1 to 4) are wiped, and so is one from a newer build when an older build is installed.
         .fallbackToDestructiveMigrationFrom(true, 1, 2, 3, 4)

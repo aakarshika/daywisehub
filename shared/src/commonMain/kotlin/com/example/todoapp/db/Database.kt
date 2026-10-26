@@ -28,9 +28,9 @@ import com.example.todoapp.db.data.week.WeekSummary
  * conscious choice: it only happens while testing, and an older build can't read newer tables.
  * From version 5 on, data is kept: each new version adds an auto migration from the one before,
  * generated from the exported schemas in shared/schemas. Version 6 adds the week tables, the
- * mission's pace-since day and the task's auto-ticked flag.
+ * mission's pace-since day and the task's auto-ticked flag. Version 7 adds the task's progress.
  *
- * Rules for version 7 and later:
+ * Rules for version 8 and later:
  * - A new column must be nullable, or have `@ColumnInfo(defaultValue = ...)`, so the auto migration can add it.
  * - A rename or a delete needs an `AutoMigrationSpec`, or a manual `Migration`.
  * - Keep every `N.json` in shared/schemas, and never edit one by hand.
@@ -48,8 +48,8 @@ import com.example.todoapp.db.data.week.WeekSummary
         WaterIntake::class,
         WeekSummary::class,
         PaceOffer::class],
-    version = 6,
-    autoMigrations = [AutoMigration(from = 5, to = 6)]
+    version = 7,
+    autoMigrations = [AutoMigration(from = 5, to = 6), AutoMigration(from = 6, to = 7)]
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {

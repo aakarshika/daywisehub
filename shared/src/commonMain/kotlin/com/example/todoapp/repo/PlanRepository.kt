@@ -23,6 +23,7 @@ import com.example.todoapp.domain.Planner
 import com.example.todoapp.domain.Points
 import com.example.todoapp.domain.Reason
 import com.example.todoapp.domain.ReasonCode
+import com.example.todoapp.domain.TaskProgress
 import com.example.todoapp.domain.TaskState
 import com.example.todoapp.domain.WeekLoad
 import com.example.todoapp.domain.WeekMath
@@ -99,7 +100,7 @@ class PlanRepository(
     /** Evening check: fixed blocks start ticked, once per day, so an untick sticks. */
     suspend fun tickFixedBlocks(date: LocalDate) = write { tickBlocks(date) }
 
-    /** "Did some" or "Skip today". A moved item stays moved, so a fast second tap after "Move" can't count it twice. */
+    /** "Did some" (50%) or "Skip today". A moved item stays moved, so a fast second tap after "Move" can't count it twice. */
     suspend fun setState(taskId: Long, state: TaskState) = write {
         val task = todayTaskRepository.get(taskId) ?: return@write
         if (task.taskState == TaskState.MOVED) return@write
@@ -107,8 +108,9 @@ class PlanRepository(
     }
 
     /**
-     * Ticks or unticks an item. Ticking a moved item takes the move back while its copy is still planned:
-     * the copy goes, and the item is done on its own day. Otherwise a moved item stays as it is.
+     * Ticks or unticks an item. Only a done item unticks: a did-some is part done, so the box ticks it (100%).
+     * Ticking a moved item takes the move back while its copy is still planned: the copy goes, and the item
+     * is done on its own day. Otherwise a moved item stays as it is.
      */
     suspend fun toggleDone(taskId: Long) = write {
         val task = todayTaskRepository.get(taskId) ?: return@write
@@ -124,7 +126,20 @@ class PlanRepository(
         }
         // An earlier day is closed: unticking there skips the item, so the next open doesn't carry it forward again.
         val unticked = if (task.date < today()) TaskState.SKIPPED else TaskState.PLANNED
-        updateState(task, if (task.taskState.countsAsDone) unticked else TaskState.DONE)
+        updateState(task, if (task.taskState == TaskState.DONE) unticked else TaskState.DONE)
+    }
+
+    /**
+     * Spec 6.5, the swipe: [percent], in 5% steps, says how much got done. 100 ticks the item, 1–99 makes it a
+     * did-some (half points, whatever the percent), and 0 unticks it as [toggleDone] does. A moved item stays
+     * moved, and a percent the item already shows changes nothing, so a skipped item isn't reopened by a 0.
+     */
+    suspend fun setProgress(taskId: Long, percent: Int) = write {
+        val task = todayTaskRepository.get(taskId) ?: return@write
+        if (task.taskState == TaskState.MOVED) return@write
+        val rounded = TaskProgress.rounded(percent.toFloat())
+        if (rounded == TaskProgress.shown(task)) return@write
+        updateState(task, TaskProgress.stateFor(rounded, task.date, today()), progress = rounded)
     }
 
     suspend fun toggleCrown(taskId: Long) = write {
@@ -182,7 +197,9 @@ class PlanRepository(
         val order = (dayTasks.maxOfOrNull { it.sortOrder } ?: -1) + 1
         val task = newTask(mission, date, Reason(ReasonCode.ADDED), fixed = false, order = order)
         if (date < today()) {
-            todayTaskRepository.insert(task.copy(state = TaskState.DONE.name, pointsEarned = Points.forTask(mission, TaskState.DONE)))
+            todayTaskRepository.insert(
+                task.copy(state = TaskState.DONE.name, pointsEarned = Points.forTask(mission, TaskState.DONE), progress = TaskProgress.FULL)
+            )
             refreshClosedWeek(date)
         } else {
             todayTaskRepository.insert(task)
@@ -323,7 +340,7 @@ class PlanRepository(
                 coming += mission.missionId
             } else {
                 // A skipped item keeps its crown, as in updateState, so ticking it later brings the crown back.
-                todayTaskRepository.update(task.copy(state = TaskState.SKIPPED.name, pointsEarned = 0))
+                todayTaskRepository.update(task.copy(state = TaskState.SKIPPED.name, pointsEarned = 0, progress = 0))
             }
         }
     }
@@ -341,7 +358,7 @@ class PlanRepository(
         val order = (upcoming.filter { it.date == target }.maxOfOrNull { it.sortOrder } ?: -1) + 1
         todayTaskRepository.move(
             copy = newTask(mission, target, Reason(ReasonCode.MOVED, listOf(from.weekdayName())), fixed = false, order = order, movedFrom = from),
-            moved = task.copy(state = TaskState.MOVED.name, pointsEarned = 0, crowned = false),
+            moved = task.copy(state = TaskState.MOVED.name, pointsEarned = 0, crowned = false, progress = 0),
         )
         return true
     }
@@ -389,8 +406,8 @@ class PlanRepository(
     private fun today(): LocalDate = MyDate.now().toLocalDate()
 
     /** Saves [task] in [state] (see [withState]). Call only inside [write]. */
-    private suspend fun updateState(task: TodayTask, state: TaskState, byApp: Boolean = false) {
-        todayTaskRepository.update(withState(task, state, byApp) ?: return)
+    private suspend fun updateState(task: TodayTask, state: TaskState, byApp: Boolean = false, progress: Int? = null) {
+        todayTaskRepository.update(withState(task, state, byApp, progress) ?: return)
         refreshClosedWeek(task.date)
     }
 
@@ -398,9 +415,10 @@ class PlanRepository(
      * [task] in [state], with its points; null when its mission is gone. Only a move takes its crown: a
      * skipped item keeps it, so ticking it again brings it back, unless the day has filled its
      * [MAX_CROWNS] open crowns meanwhile. [byApp] is true only for the evening check's ticks
-     * ("Ticked for you"); any change by hand clears it.
+     * ("Ticked for you"); any change by hand clears it. Progress follows the state (TaskProgress.stored):
+     * a did-some keeps [progress], or 50 without one.
      */
-    private suspend fun withState(task: TodayTask, state: TaskState, byApp: Boolean = false): TodayTask? {
+    private suspend fun withState(task: TodayTask, state: TaskState, byApp: Boolean = false, progress: Int? = null): TodayTask? {
         val mission = missionRepository.get(task.missionId) ?: return null
         val reopened = !task.taskState.isOpen && state.isOpen
         val crowned = task.crowned && state != TaskState.MOVED && (!reopened || openCrowns(task) < MAX_CROWNS)
@@ -409,6 +427,7 @@ class PlanRepository(
             pointsEarned = Points.forTask(mission, state),
             crowned = crowned,
             autoTicked = byApp,
+            progress = TaskProgress.stored(state, progress),
         )
     }
 

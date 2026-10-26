@@ -18,6 +18,7 @@ import com.example.todoapp.domain.Pick
 import com.example.todoapp.domain.PillarType
 import com.example.todoapp.domain.Points
 import com.example.todoapp.domain.ReasonLines
+import com.example.todoapp.domain.TaskProgress
 import com.example.todoapp.domain.TaskState
 import com.example.todoapp.domain.WeekMath
 import com.example.todoapp.domain.WeekScores
@@ -70,6 +71,8 @@ data class PlanRow(
     val tickedForYou: Boolean,
     /** MOVED and its copy is still planned: ticking takes the move back (PlanRepository.toggleDone). */
     val canTakeBack: Boolean,
+    /** How much got done, 0 to 100 in 5% steps (TaskProgress.shown): what the swipe starts from and draws. */
+    val progress: Int,
 )
 
 data class DidntFitRow(val title: String, val text: String)
@@ -274,6 +277,7 @@ object DiaryStateBuilder {
             moveTo = moveTo,
             tickedForYou = task.isFixedBlock && task.taskState == TaskState.DONE && task.autoTicked,
             canTakeBack = Moves.canTakeBack(task, copy),
+            progress = TaskProgress.shown(task),
         )
     }
 

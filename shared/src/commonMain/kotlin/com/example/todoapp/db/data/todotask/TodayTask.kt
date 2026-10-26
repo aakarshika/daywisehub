@@ -12,6 +12,8 @@ import com.example.todoapp.db.models.MyDate
  * One mission on one day. [state] stores a TaskState name. [reasonCode] and [reasonArgs]
  * hold the reason line (domain/ReasonLines.kt), so it can be redrawn later. [autoTicked] is true
  * for a fixed block the evening check ticked ("Ticked for you"); any change by hand clears it.
+ * [progress] is how much got done, 0 to 100 (spec 6.5); read it through TaskProgress.shown, which
+ * covers did-somes saved before it was stored.
  */
 @Entity(
     tableName = "today_task",
@@ -36,4 +38,5 @@ data class TodayTask(
     @ColumnInfo(name = "task_reason_args") val reasonArgs: String = "",
     @ColumnInfo(name = "task_order") val sortOrder: Int = 0,
     @ColumnInfo(name = "task_auto_ticked", defaultValue = "0") val autoTicked: Boolean = false,
+    @ColumnInfo(name = "task_progress", defaultValue = "0") val progress: Int = 0,
 )
