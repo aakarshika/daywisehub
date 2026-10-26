@@ -92,7 +92,7 @@ The last screen shows the full sentence, then:
 | Pillar is "full" | At 80% of its target or more. A pillar with a target of 0 this week counts as full. |
 | Balanced week | Every pillar full. Shown as a crown on the week. |
 | Doing extra | Shown as "+N extra" in that pillar only. Extra never fills another pillar or next week. |
-| Did some | Half the points, rounded up (a big mission done partly earns 2). |
+| Did some | Half the points, rounded up (a big mission done partly earns 2). Since plan 6 a swipe records how far it got (6.5), but the points stay half until it's done. |
 | Finish-line milestones | No extra points. A milestone shows a flag and a celebration. |
 
 ### 5.1 End of week: no debt
@@ -181,6 +181,16 @@ It opens when the diary is first opened after 6 pm, and can be reached anytime f
 - "Ticked for you" stays on a fixed block only until it's changed by hand.
 - The Move chip names the day it will use ("Move to Thursday", or "next Thursday" for the same weekday a week on). It is left out when the mission can't go anywhere in the coming week, and "Skip today" stays.
 - The day closes with the diary's highlights card: points today, how many pillars got something, and crowned items.
+
+### 6.5 Partly done: swipe to fill (plan 6)
+
+The old app's drag is back. Dragging sideways across an item records how much of it got done.
+
+- **The line.** While dragging, a 3dp line in the pillar's strong color grows along the row's ruled line, from the title's left edge, and the points pill shows the percent ("40%"). It moves in steps of 5%. Letting go saves it.
+- **What it saves.** 100% ticks the item (strike-through, full points). 1–99% makes it a did-some (half points, rounded up, whatever the percent). 0% unticks it: back to planned, or skipped on an earlier day, as unticking does. A did-some keeps its line under the row with its percent; the subline reads "Did some · 40%".
+- **The other ways in.** Ticking sets 100%, unticking 0%, and the evening check's "Did some" 50%. A did-some saved before plan 6 shows as 50%.
+- **Where it works.** On any item that hasn't moved away, fixed blocks included (a drag is a change by hand, so it clears "Ticked for you"). It's off in swap mode. Long-press still crowns, and the box still ticks.
+- **Screen readers.** The row is an adjustable progress value in 5% steps, so it can be set without dragging.
 
 ## 7. Reason lines and wording
 
@@ -358,15 +368,23 @@ These change from the current app:
 ### 9.2 Metrics, as built in plan 4
 
 - **One week at a time.** Arrows step back to the first stored week and forward to this week, and "Back to this week" returns. The tab opens on this week, and starts again after midnight. A date in another year than this week's carries its year.
+- **The tab opens at the top**, on this week's header, every time it's opened.
 - **Rings.** A finished week shows its stored summary. This week is worked out live, as the diary's bars are. Each ring reads "full" or "light" at the 80% rule, and a pillar with nothing due is drawn full. A finished week without an item of its own (items moved in don't count) reads "away", with no numbers and no arc: the diary wasn't opened, so its zeros aren't misses.
+- **Closed rings (plan 6).** A ring that's close enough closes: the earned arc stays in the pillar's strong color and the rest of the ring fills in its light color, so it reads as done. At 100% it's all strong. A pillar's ring closes when it's full (80% of its points), or when it has 6 or more items that week and all but 2 of them are done or done in part. Items are the pillar's rows that week that didn't move away. A ring closed by the item count but under 80% reads "nearly" instead of "light". It's only a look: points, "full", crowns and pace offers don't change.
 - **What next week adjusts.** Only what the app knows, at most 3 lines: items "move it" carried into the week after, and every-so-often missions due and not done, by the same rule as the diary's "Last week" card. For this week it also lists longer rhythms coming due and pauses ending next week. Titles sit on chips. Only a line about something the app adjusted has the wand; the others, here and on the "Last week" card, have a quiet dot. With nothing to list it says "Nothing to catch up on."
 - **Highlights card.** Points (each pillar counted up to its target, the rest as "+N extra"), pillars full ("so far" for this week, "Nothing was due that week." when nothing was), and balanced weeks out of the last 4 finished weeks. Away weeks aren't counted.
-- **Patterns.** As of today, at most 3 lines, each shown only when the data holds it up:
+- **Patterns.** As of today, each shown only when the data holds it up, in this order:
   - balanced weeks in a row (2 or more);
+  - missions going well (plan 6): "⟨Call mom⟩ and ⟨Gym⟩ are going well." Each was full, by its own 80% rule as for pace offers, 3 or more counted weeks running since its last pace change. Fixed blocks and Recharge are left out. Two names at most, longest run first, then "and N more";
   - a pillar full 3 or more weeks running (at most 2 pillars), or "for a year or more";
-  - the weekday a pillar's ticks mostly land on: 8 or more ticks in 8 weeks, more than half of them on one day, from missions free to land on any day (not fixed blocks, daily missions or missions with set days). It always keeps a slot.
-  Away weeks neither count nor break a run. With none: "Nothing stands out yet."
-- **Calendar.** The month of the shown week's Monday, Monday first. Day rings are split by points per pillar, inside a thin edge. White is skipped or moved items, the missing half of a did-some, and anything left planned on an earlier day. A day with nothing on it is one plain thin ring; away weeks have no rings. Only finished weeks get a crown. Today has an outline. Tapping a day opens it in the diary; since 9.3, a day with badges lists them first.
+  - a strong pillar (plan 6): "⟨Life⟩ has been strong this past month." The pillar was full in 3 of its last 4 counted weeks, and it has no run line;
+  - a pillar picking up (plan 6): "⟨Love⟩ is picking up." The pillar was full in each of its last 2 counted weeks, after at most 1 full week in the 4 counted weeks before them;
+  - weekends in a row (plan 6): "3 weekends in a row with 2 or more things done." Each weekend had 2 or more items done by hand across Saturday and Sunday (as for the badges). It counts back from the last finished weekend, plus this one once it qualifies, and needs 2 or more;
+  - the best week (plan 6): "Last week was your best in 6 weeks." Last week earned more points (extra included) than each of the 4 or more counted weeks before it. It reads "in N weeks" up to 8, "in N months" (weeks / 4) after that, and "yet" when no stored week beat it;
+  - a badge run (plan 6): "5 days running with a badge besides Recharging day." Every day from today (or yesterday, while today has none) back, 5 or more, earned more than the fallback, within the badges' look-back;
+  - the weekday a pillar's ticks mostly land on: 8 or more ticks in 8 weeks, more than half of them on one day, from missions free to land on any day (not fixed blocks, daily missions or missions with set days).
+  The tab shows the first 4 and a "More patterns" chip for the rest. Away weeks neither count nor break a run. For the pillar lines, a counted week is a finished, non-away week; a week where the pillar had nothing due doesn't count for strong or picking up. Mission and pillar titles sit on chips. With none: "Nothing stands out yet."
+- **Calendar.** The month of the shown week's Monday, Monday first. Day rings are split by points per pillar, inside a thin edge. White is skipped or moved items, the missing half of a did-some, and anything left planned on an earlier day. A day with nothing on it is one plain thin ring; away weeks have no rings. Only finished weeks get a crown. Today has an outline. Tapping a day opens it in the diary; since 9.3, a day with badges lists them first. Since plan 6, a finished day's ring closes by the rule for pillar rings, over the day's scored items: its missed points are then drawn in each pillar's light color instead of white. Today's ring stays as it is. The month's title opens "All months" (9.4).
 - **Mission lines.** One per active mission, as of today: a daily habit's days this month and best streak, a rhythm's average gap against its aim, a finish line's next milestone, a weekly count with a gentle pace or a run of full weeks (80% of its own points, as for pace offers, since its last pace change). Archived missions aren't listed, but their points still count in every week and day ring.
 
 ### 9.3 Daily badges
@@ -384,7 +402,7 @@ Every finished day earns at least one badge, so the calendar always looks genero
 - **Wording.** Each badge has a line from stored facts ("3 done", "8 of 10 points", "Back after 4 quiet days", "⟨Gym⟩ 7 days running"). Titles sit on chips (7.1). No exclamation marks.
 
 **Where they show**
-- **Metrics calendar.** A day's rarest badge sits on its ring's lower right as a 20dp sticker, and its description names every badge. Tapping a day with badges opens a list ("Tuesday, Oct 20"), each badge with its line, plus "Open this day" (the diary) and "Close". A day without badges opens the diary at once.
+- **Metrics calendar.** A day's rarest badge sits in the middle of its ring as a 26dp sticker, over the day number, which then doesn't show (plan 6; it was a 20dp sticker on the ring's lower right). "Recharging day" alone stays a 20dp sticker on the lower right, so a quiet day keeps its number. The day's description names every badge. Tapping a day with badges opens a list ("Tuesday, Oct 20"), each badge with its line, plus "Open this day" (the diary) and "Close". A day without badges opens the diary at once.
 - **Diary.** Under the evening day card, a "BADGES" row ("TODAY SO FAR" on today) of stickers with their names, rarest first, hidden when there are none. A screen reader hears each one's line.
 - **Stickers.** Round, with a light rim, a soft shadow and a slight tilt, and one hand-drawn icon in dark ink. Fill by tier: everyday cream `#EFE6CF`, good day peach `#FFD9BF`, rare lilac `#E3D7F7`, rarest gold `#F8D98A`; "Recharging day" has its own grey-lilac `#E4E0EC` and a moon.
 
@@ -424,14 +442,24 @@ Every finished day earns at least one badge, so the calendar always looks genero
 
 Streaks for the runs and the personal best count did-some days, as the "N-day streak" reason line does. A return's gap runs from the last time it was done or done in part, as its due date does, or from its start; cycles missed are `gap / cycle − 1`. "Better late" (taking a move back) isn't a badge: it leaves no stored trace.
 
+### 9.4 All months (plan 6)
+
+The old Metrics was one long scroll of months with a pillar filter. It's back as a full screen over the Metrics tab.
+
+- **Getting there.** The calendar card's title row has an "All months" chip; tapping it or the month's title opens the screen. A back arrow ("Back to Metrics") and the system back close it.
+- **The months.** From the month of the first stored item to this month, one card each, in the same look as the Metrics calendar: Monday first, day rings, crowns, stickers, today's outline. No week is tinted. It opens on this month at the bottom, and older months are above. With nothing stored, it shows this month.
+- **Filters.** A row pinned at the top: a chip for each pillar (Health, Wealth, Love, Life, Recharge) and a "Missions" chip. Any number can be on. The Missions chip opens a checklist of every mission grouped by pillar, archived ones marked "archived", with "Clear" and "Done"; with some picked it reads "2 missions". An item counts when its pillar is picked or its mission is picked. With nothing picked, everything counts.
+- **With a filter on.** Each day's ring counts the counted items instead of points, so Recharge shows too: one slice per item done or done in part, in its pillar's strong color, then white for the rest that didn't happen. Stickers and crowns hide, since they speak for the whole day and week. One line under the filters sums it up over every month: "⟨Call mom⟩ and ⟨Gym⟩: done 23 times, 4 in part" (pillars name themselves on chips; 3 or more are counted, "3 missions"). Tapping a day opens it in the diary.
+- **Without a filter.** Days look and tap as on the Metrics calendar.
+
 ## 10. Data model changes
 
-The database is Room, version 6. Version 5 replaced the old schema and wiped anything older (destructive migration), with no data migration. **From version 5 on, data is kept.** Version 6 (plan 2) adds the two week tables, `Mission.paceSince` and `TodayTask.autoTicked` through `@AutoMigration(from = 5, to = 6)`, and each later version adds an auto migration from the one before. Installing an older build over a newer database wipes it.
+The database is Room, version 7. Version 5 replaced the old schema and wiped anything older (destructive migration), with no data migration. **From version 5 on, data is kept.** Version 6 (plan 2) adds the two week tables, `Mission.paceSince` and `TodayTask.autoTicked` through `@AutoMigration(from = 5, to = 6)`, and each later version adds an auto migration from the one before: version 7 (plan 6) adds `TodayTask.progress` with `@AutoMigration(from = 6, to = 7)`. Installing an older build over a newer database wipes it.
 
 | Entity | Change |
 |---|---|
 | `Mission` | One table holds everything: title, `pillar` (enum name, including RECHARGE), `kind`, `weight` (0–3), `durationMinutes`, `effort`, `ifMissed`, pace fields (`count` + `period`, `goalCount`, `intervalCount` + `intervalUnit`, `weekDays`, `startTime`, `endTime`), `startDate`, `endDate`, `pausedUntil`, `motivation`, `active`, and `paceSince` (plan 2: the day the pace or weight last changed; pace offers judge only the weeks from then on). The old `mission_frequency`, `pillar` and `mission_pillar_mapping` tables are gone; pillars are a fixed enum in code. `ideaId` comes with the ideas library. |
-| `TodayTask` | `state` (PLANNED, DONE, PARTIAL, MOVED, SKIPPED), `pointsEarned`, `isFixedBlock`, `crowned` (replaces the TOP3 tag), `movedFromDate`, `reasonCode`, `reasonArgs`, `sortOrder`, and `autoTicked` (plan 2: a fixed block the evening check ticked, cleared by any change by hand). The reminder and sub-task tables are dropped. |
+| `TodayTask` | `state` (PLANNED, DONE, PARTIAL, MOVED, SKIPPED), `pointsEarned`, `isFixedBlock`, `crowned` (replaces the TOP3 tag), `movedFromDate`, `reasonCode`, `reasonArgs`, `sortOrder`, and `autoTicked` (plan 2: a fixed block the evening check ticked, cleared by any change by hand), and `progress` (plan 6, version 7: 0–100, how much got done, set by the swipe in 6.5). The reminder and sub-task tables are dropped. |
 | `Milestone` | Unchanged. |
 | New `DaySettings` | Free minutes per weekday. The evening check time is a constant (18:00) for now. |
 | New `DayPlan` | Date, free minutes, energy, confirmed, fixed-blocks-ticked, and the day's didn't-fit pick. The row is written last, so a day exists only once its list is built. |
