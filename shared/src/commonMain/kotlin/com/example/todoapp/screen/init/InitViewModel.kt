@@ -2,6 +2,8 @@ package com.example.todoapp.screen.init
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.todoapp.db.MetricsSample
+import com.example.todoapp.db.SEED_METRICS_HISTORY
 import com.example.todoapp.db.SEED_SAMPLE_MISSIONS
 import com.example.todoapp.db.SampleData
 import com.example.todoapp.db.models.LOCAL_USER_ID
@@ -32,6 +34,7 @@ class InitViewModel(
             planRepository.ensureDefaults()
             if (SEED_SAMPLE_MISSIONS && missionRepository.count() == 0) {
                 SampleData.seed(missionRepository, todayTaskRepository)
+                if (SEED_METRICS_HISTORY) MetricsSample.seed(missionRepository, todayTaskRepository)
             }
             _isReady.value = true
         }
