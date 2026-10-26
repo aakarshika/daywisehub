@@ -3,6 +3,7 @@ package com.example.todoapp.db.data.todotask
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
@@ -20,6 +21,20 @@ interface TodayTaskDao {
 
     @Query("DELETE FROM today_task WHERE today_task_id = :taskId")
     suspend fun delete(taskId: Long)
+
+    /** A move: the copy goes in on its new day and the item is marked moved, both or neither. */
+    @Transaction
+    suspend fun move(copy: TodayTask, moved: TodayTask) {
+        insert(copy)
+        update(moved)
+    }
+
+    /** Taking a move back: the moved item is done on its own day and its planned copy goes, both or neither. */
+    @Transaction
+    suspend fun takeBack(done: TodayTask, copyId: Long) {
+        update(done)
+        delete(copyId)
+    }
 
     /** A mission's still-planned items from [from] on. Dates are yyyy-MM-dd, so text order is date order. */
     @Query("DELETE FROM today_task WHERE task_mission_id = :missionId AND task_date >= :from AND task_state = 'PLANNED'")

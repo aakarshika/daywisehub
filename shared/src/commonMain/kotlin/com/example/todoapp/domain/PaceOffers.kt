@@ -76,8 +76,9 @@ object PaceOffers {
     ): List<OfferFound> {
         val found = mutableListOf<OfferFound>()
         val weekEnd = weekStart.plus(6, DateTimeUnit.DAY)
-        // Weeks with any item at all. A week the app wasn't opened in breaks a run, so a holiday isn't three slipped weeks.
-        val opened = history.all.map { WeekMath.weekStart(it.date) }.toSet()
+        // Weeks with an item of their own. A week the app wasn't opened in breaks a run, so a holiday isn't three
+        // slipped weeks. Items moved in don't count: a move can land in a week the app then never opens.
+        val opened = history.all.filter { it.movedFromDate == null }.map { WeekMath.weekStart(it.date) }.toSet()
         var freeLeft = freeMinutesLeft
         for (type in OfferType.entries) {
             for (mission in missions) {
@@ -241,7 +242,7 @@ object PaceOffers {
         since: LocalDate?,
         freeMinutesLeft: Int,
     ): Boolean {
-        // The last n finished weeks, or null when one starts before [since] or has no items at all.
+        // The last n finished weeks, or null when one starts before [since] or wasn't opened.
         fun lastWeeks(n: Int): List<LocalDate>? =
             (1..n).map { weekStart.minus(7 * it, DateTimeUnit.DAY) }
                 .takeIf { weeks -> weeks.all { (since == null || it >= since) && it in opened } }
