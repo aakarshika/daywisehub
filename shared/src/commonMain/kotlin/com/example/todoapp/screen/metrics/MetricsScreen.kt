@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -21,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -61,10 +63,14 @@ fun MetricsScreen(viewModel: MetricsViewModel, openDay: (LocalDate) -> Unit) {
     val s = state
     // The day whose badges are open. A new view model after midnight closes it, since today's badges change.
     var badgeDay by remember(viewModel) { mutableStateOf<CalendarDay?>(null) }
+    // A new view model (after midnight, or on reopening the tab) starts at the top too.
+    val listState = key(viewModel) { rememberLazyListState() }
 
     Box(modifier = Modifier.fillMaxSize().background(Light_Yellowww)) {
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            if (s != null) {
+        // Drawn only once the state is built, so it opens at the top. Drawn sooner, its bottom space would be its
+        // only item, and the list would keep that in view as the cards arrived above it.
+        if (s != null) {
+            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                 item(key = "header") {
                     WeekHeader(s, onPrevious = viewModel::previousWeek, onNext = viewModel::nextWeek, onThisWeek = viewModel::backToThisWeek)
                 }
@@ -97,8 +103,8 @@ fun MetricsScreen(viewModel: MetricsViewModel, openDay: (LocalDate) -> Unit) {
                     item(key = "missions-none") { RuledLine("Missions you add show their progress here.", color = InkGray) }
                 }
                 s.missions.forEach { line -> item(key = "mission-${line.missionId}") { MissionProgressRow(line) } }
+                item(key = "bottom-space") { Spacer(Modifier.height(120.dp)) }
             }
-            item(key = "bottom-space") { Spacer(Modifier.height(120.dp)) }
         }
     }
     badgeDay?.let { day ->

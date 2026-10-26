@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.todoapp.domain.Badge
 import com.example.todoapp.domain.CalendarDay
 import com.example.todoapp.domain.MonthCalendar
 import com.example.todoapp.screen.basicutils.CalendarTint
@@ -108,11 +109,14 @@ fun MonthCalendarCard(calendar: MonthCalendar, onDay: (CalendarDay) -> Unit) {
 
 /**
  * A tap target at least 44dp tall with the day's ring and number. Today has an outline as well as a bold
- * number. The day's rarest badge sits on the ring's lower right like an avatar's badge, clear of the number;
- * the day's description names every badge.
+ * number. The day's rarest badge sits in the ring's middle as a 26dp sticker, over the number, which then
+ * doesn't show. "Recharging day" stays a 20dp sticker on the ring's lower right, so a quiet day keeps its
+ * number (spec 9.3). The day's description names the date and every badge.
  */
 @Composable
 private fun DayCell(day: CalendarDay, modifier: Modifier, onClick: () -> Unit) {
+    val top = day.badges.firstOrNull()?.badge
+    val quiet = top == Badge.RECHARGING_DAY
     Box(
         modifier = modifier.heightIn(min = 44.dp)
             .clickable(role = Role.Button, onClickLabel = if (day.badges.isEmpty()) "Open in the diary" else "Show badges", onClick = onClick)
@@ -121,14 +125,20 @@ private fun DayCell(day: CalendarDay, modifier: Modifier, onClick: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         if (day.hasRing) DayRing(day)
-        Text(
-            "${day.date.dayOfMonth}",
-            fontSize = 13.sp,
-            fontWeight = if (day.isToday) FontWeight.Bold else FontWeight.Normal,
-            color = if (day.inMonth) NoteInk else InkGray.copy(alpha = 0.6f),
-            modifier = Modifier.clearAndSetSemantics {}
-        )
-        day.badges.firstOrNull()?.let { BadgeSticker(it.badge, day.date, 20.dp, Modifier.offset(11.dp, 11.dp)) }
+        if (top == null || quiet) {
+            Text(
+                "${day.date.dayOfMonth}",
+                fontSize = 13.sp,
+                fontWeight = if (day.isToday) FontWeight.Bold else FontWeight.Normal,
+                color = if (day.inMonth) NoteInk else InkGray.copy(alpha = 0.6f),
+                modifier = Modifier.clearAndSetSemantics {}
+            )
+        }
+        when {
+            top == null -> Unit
+            quiet -> BadgeSticker(top, day.date, 20.dp, Modifier.offset(11.dp, 11.dp))
+            else -> BadgeSticker(top, day.date, 26.dp)
+        }
     }
 }
 
