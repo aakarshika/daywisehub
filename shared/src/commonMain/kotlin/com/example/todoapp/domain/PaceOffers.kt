@@ -29,7 +29,7 @@ enum class OfferResponse { ACCEPTED, KEPT, PAUSED, NOT_YET, WITHDRAWN }
 
 data class OfferFound(val mission: Mission, val type: OfferType)
 
-/** A piece of a sentence. With [pillar] it's a mission title, drawn as a chip in that pillar's color (spec 7.1). */
+/** A piece of a sentence. With [pillar] it's a mission or pillar title, drawn as a chip in that pillar's color (spec 7.1). */
 data class LinePart(val text: String, val pillar: PillarType? = null)
 
 /**

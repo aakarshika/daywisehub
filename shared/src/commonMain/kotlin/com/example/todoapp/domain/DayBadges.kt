@@ -293,6 +293,14 @@ class DayBadgeBook internal constructor(private val input: BadgeInput) {
         return earned.sortedByDescending { it.badge.ordinal }
     }
 
+    /**
+     * True when [date] is inside the input's range and has something done or done in part by hand, or a
+     * milestone reached: the fallback's own test in [on]. No badges are worked out for it, so a run of days
+     * stays cheap. A day whose only act earns nothing on its own (a fixed block done in part) passes it,
+     * though [on] still ends with the fallback.
+     */
+    fun counts(date: LocalDate): Boolean = date >= input.from && date <= input.to && date in handDays
+
     private fun mission(task: TodayTask): Mission = byId.getValue(task.missionId)
 
     /** Each mission once, in list order. */

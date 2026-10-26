@@ -164,9 +164,10 @@ object MissionProgress {
      * Finished weeks in a row, back from last week, that were full the way pace offers judge it
      * (PaceOffers.full): 80% of the mission's own points, a did-some earning half. A week it wasn't due
      * ends the run, and so does its last pace change (Mission.paceSince): only weeks starting on or after
-     * it count. An away week (no items of its own) neither counts nor ends it.
+     * it count. An away week (no items of its own) neither counts nor ends it. The "going well" pattern
+     * reads it too (Patterns), so the two never disagree.
      */
-    private fun fullWeeks(mission: Mission, thisWeek: LocalDate, history: History, opened: Set<LocalDate>): Patterns.Run {
+    internal fun fullWeeks(mission: Mission, thisWeek: LocalDate, history: History, opened: Set<LocalDate>): Patterns.Run {
         val since = mission.paceSince?.let { MyDate(it).toLocalDate() }
         var week = thisWeek.minus(7, DateTimeUnit.DAY)
         var run = 0

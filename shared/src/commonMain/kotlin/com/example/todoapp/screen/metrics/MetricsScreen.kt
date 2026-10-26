@@ -18,6 +18,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -37,11 +39,13 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.todoapp.domain.CalendarDay
+import com.example.todoapp.domain.LinePart
 import com.example.todoapp.screen.basicutils.Blue80
 import com.example.todoapp.screen.basicutils.InkBlack
 import com.example.todoapp.screen.basicutils.InkGray
@@ -49,9 +53,13 @@ import com.example.todoapp.screen.basicutils.Light_Yellowww
 import com.example.todoapp.screen.basicutils.MissionsMarker
 import com.example.todoapp.screen.basicutils.Yellow180
 import com.example.todoapp.screen.basicutils.components.MarkerHeading
+import com.example.todoapp.screen.diary.plan.ChipText
 import com.example.todoapp.screen.diary.plan.SmallChip
 import com.example.todoapp.screen.metrics.badges.DayBadgesDialog
 import kotlinx.datetime.LocalDate
+
+/** Patterns shown before "More patterns". */
+private const val FOLDED_PATTERNS = 4
 
 /**
  * Spec 9: the Metrics tab, one week at a time. [openDay] shows a date in the diary: a calendar day with
@@ -63,6 +71,8 @@ fun MetricsScreen(viewModel: MetricsViewModel, openDay: (LocalDate) -> Unit) {
     val s = state
     // The day whose badges are open. A new view model after midnight closes it, since today's badges change.
     var badgeDay by remember(viewModel) { mutableStateOf<CalendarDay?>(null) }
+    // Every pattern, or the first few. A new view model folds them again.
+    var allPatterns by remember(viewModel) { mutableStateOf(false) }
     // A new view model (after midnight, or on reopening the tab) starts at the top too.
     val listState = key(viewModel) { rememberLazyListState() }
 
@@ -92,7 +102,15 @@ fun MetricsScreen(viewModel: MetricsViewModel, openDay: (LocalDate) -> Unit) {
                 if (s.patterns.isEmpty()) {
                     item(key = "patterns-none") { RuledLine("Nothing stands out yet.", color = InkGray) }
                 }
-                s.patterns.forEachIndexed { i, line -> item(key = "pattern-$i") { RuledLine(line) } }
+                val patterns = if (allPatterns) s.patterns else s.patterns.take(FOLDED_PATTERNS)
+                patterns.forEachIndexed { i, line -> item(key = "pattern-$i") { RuledLine(line) } }
+                if (s.patterns.size > FOLDED_PATTERNS) {
+                    item(key = "patterns-more") {
+                        Box(modifier = Modifier.padding(start = 22.dp, top = 4.dp)) {
+                            SmallChip(if (allPatterns) "Fewer patterns" else "More patterns", onClick = { allPatterns = !allPatterns })
+                        }
+                    }
+                }
                 item(key = "calendar") {
                     MonthCalendarCard(s.calendar, onDay = { day -> if (day.badges.isEmpty()) openDay(day.date) else badgeDay = day })
                 }
@@ -156,6 +174,28 @@ private fun WeekArrow(icon: ImageVector, label: String, enabled: Boolean, onClic
 /** One line in the diary's hand, on a ruled line (spec 9.1). */
 @Composable
 private fun RuledLine(text: String, color: Color = InkBlack) {
+    Ruled {
+        Text(
+            text, fontSize = 17.sp, fontStyle = FontStyle.Italic, fontWeight = FontWeight.Light, letterSpacing = 0.3.sp,
+            color = color, modifier = Modifier.padding(vertical = 6.dp)
+        )
+    }
+}
+
+/** The same line, its titles on chips (spec 7.1). */
+@Composable
+private fun RuledLine(parts: List<LinePart>) {
+    Ruled {
+        // ChipText takes its weight and spacing from here, so the hand matches the plain lines'.
+        ProvideTextStyle(LocalTextStyle.current.merge(TextStyle(fontWeight = FontWeight.Light, letterSpacing = 0.3.sp))) {
+            ChipText(parts, fontSize = 17.sp, color = InkBlack, italic = true, modifier = Modifier.padding(vertical = 6.dp))
+        }
+    }
+}
+
+/** The ruled line a line of the diary's hand sits on. */
+@Composable
+private fun Ruled(content: @Composable () -> Unit) {
     Box(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp).heightIn(min = 38.dp)
             .drawBehind {
@@ -164,9 +204,6 @@ private fun RuledLine(text: String, color: Color = InkBlack) {
             },
         contentAlignment = Alignment.CenterStart
     ) {
-        Text(
-            text, fontSize = 17.sp, fontStyle = FontStyle.Italic, fontWeight = FontWeight.Light, letterSpacing = 0.3.sp,
-            color = color, modifier = Modifier.padding(vertical = 6.dp)
-        )
+        content()
     }
 }
