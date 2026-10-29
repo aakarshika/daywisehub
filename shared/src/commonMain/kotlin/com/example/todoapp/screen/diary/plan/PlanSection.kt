@@ -29,7 +29,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -54,6 +59,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.progressBarRangeInfo
@@ -67,6 +73,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
+import com.example.todoapp.screen.metrics.badges.DayFactorSticker
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -120,8 +127,10 @@ private val TrackStart = BoxSize + RowPadding
 private const val LET_GO_HOLD_MILLIS = 3_000L
 /** How far the finger must end up sideways from where it went down for letting go to save. */
 private val MinSwipe = 24.dp
-/** The width a swipe left uncovers per chip (Reset, Move, Skip). */
+/** The width a swipe left uncovers per chip: Move and Skip are words, Reset and Remove narrower icons. */
 private val ChipWidth = 74.dp
+private val IconChipWidth = 52.dp
+private fun chipWidth(chip: String): Dp = if (chip == "reset" || chip == "remove") IconChipWidth else ChipWidth
 
 /** "Picked for you · 2 h 15 min of your 2½ h free" and a link to change the day. */
 @Composable
@@ -155,11 +164,10 @@ fun PlanSection(
     isToday: Boolean,
     isTomorrow: Boolean = false,
     evening: Boolean,
+    /** The plan buttons are open: no boxes, drags or swipes until Looks good. */
+    editing: Boolean = false,
     editMode: Boolean,
     actions: PlanRowActions,
-    /** The evening check's second step: tomorrow's page, to plan it the night before. */
-    tomorrowPlanned: Boolean = false,
-    onPlanTomorrow: () -> Unit = {},
     onOpenMissions: () -> Unit,
     /** The page's milestones: each under its mission's item, the rest after the items. */
     milestones: List<MilestoneWithDetails> = emptyList(),
@@ -176,15 +184,15 @@ fun PlanSection(
         modifier = Modifier.fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
-        if (isToday && state.newUser) {
+        if (state.installDay) {
             Text(
-                "Tick what got done. Swipe right for some of it, left to move or skip.",
+                "Tick what got done. Swipe right for some of it, left to move, skip or remove.",
                 fontSize = 12.sp, fontStyle = FontStyle.Italic, color = InkGray, lineHeight = 16.sp
             )
         }
         if (state.fixed.isNotEmpty()) {
             GroupLabel("ALREADY IN YOUR DAY")
-            state.fixed.forEach { key(it.taskId) { PlanRowItem(it, evening, editMode, actions, answers = isToday) }; under(it) }
+            state.fixed.forEach { key(it.taskId) { PlanRowItem(it, evening, editing, editMode, actions, answers = isToday) }; under(it) }
         }
         GroupLabel(
             when {
@@ -195,32 +203,36 @@ fun PlanSection(
             }
         )
         if (state.picks.isEmpty()) {
-            Text(
-                when {
-                    !state.hasMissions -> "No missions yet. Add a few on the Missions tab, and each morning the diary picks from them."
-                    isToday || isTomorrow -> "Nothing picked yet. Tap the pencil to see what can be added."
-                    else -> "Nothing was planned for this day."
-                },
-                fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray,
-                modifier = Modifier.padding(vertical = 10.dp)
-            )
+            if (state.hasMissions && !isToday && !isTomorrow) {
+                // A day gone by with nothing on it just sleeps.
+                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
+                    DayFactorSticker(
+                        "sleeping", tilt = -4f, size = 72.dp,
+                        modifier = Modifier.semantics { contentDescription = "Nothing was planned for this day" }
+                    )
+                }
+            } else {
+                Text(
+                    if (!state.hasMissions) "No missions yet. Add a few on the Missions tab, and each morning the diary picks from them."
+                    else "Nothing picked yet. Tap the pencil to see what can be added.",
+                    fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray,
+                    modifier = Modifier.padding(vertical = 10.dp)
+                )
+            }
             if (!state.hasMissions) SmallChip("Go to Missions") { onOpenMissions() }
         }
-        state.picks.forEach { key(it.taskId) { PlanRowItem(it, evening, editMode, actions, answers = isToday) }; under(it) }
+        state.picks.forEach { key(it.taskId) { PlanRowItem(it, evening, editing, editMode, actions, answers = isToday) }; under(it) }
         // Milestones whose mission has no item on this day.
         val alone = milestones.filter { it.mission.missionId !in onTheList }
         if (alone.isNotEmpty()) {
             GroupLabel("MILESTONES")
             alone.forEach { m -> key("m-${m.milestone.milestoneId}") { MilestoneLine(m, page, indent = false) { onMilestone(m, it) } } }
         }
-        if ((isToday || isTomorrow) && !evening && state.picks.isNotEmpty()) {
+        if (state.installDay && (isToday || isTomorrow) && !evening && state.picks.isNotEmpty()) {
             Text(
                 "Hold a title to crown it.",
                 fontSize = 11.sp, color = InkGray, modifier = Modifier.padding(top = 8.dp)
             )
-        }
-        if (isToday && evening) {
-            SmallChip(if (tomorrowPlanned) "Tomorrow is planned ✓" else "Plan tomorrow →") { onPlanTomorrow() }
         }
     }
 }
@@ -237,28 +249,30 @@ private fun GroupLabel(text: String) {
  * drag, such as a scroll that slips sideways, puts the line back as a cancel does and saves nothing. Only
  * a done item looks ticked; a did-some keeps its open box, its line and its percent.
  *
- * On today's page, a drag that starts leftward on an open, did-some or done item slides it left instead, to
- * show Reset (once some is done), Move (while nothing is) and Skip; a fixed block gets Reset only. Past halfway it stays open; a drag right
- * or an answer closes it.
+ * A drag that starts leftward on an open, did-some or done item slides it left instead, to show Remove, and on
+ * today's page also Reset (once some is done), Move (while nothing is) and Skip; a fixed block gets Reset only. A slide of
+ * [MinSwipe] or more opens it; one as far right, or an answer, closes it.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actions: PlanRowActions, answers: Boolean) {
+private fun PlanRowItem(row: PlanRow, evening: Boolean, editing: Boolean, editMode: Boolean, actions: PlanRowActions, answers: Boolean) {
     // "If filled completely, it gets ticked off": a did-some isn't ticked.
     val ticked = row.state == TaskState.DONE
     val closed = !row.state.isOpen
     val strong = pillarStrong(row.pillar)
     val moved = row.state == TaskState.MOVED
-    val draggable = !moved && !editMode
+    val draggable = !moved && !editing && !editMode
     val crownable = !row.isFixedBlock && row.state.isOpen
-    // A fixed block can only be reset: it isn't moved or skipped.
+    // A fixed block can only be reset: it isn't moved, skipped or removed. Reset, Move and Skip answer today's
+    // list; Remove works on any page, so an item added by mistake can go.
     val chips = listOfNotNull(
-        "reset".takeIf { row.progress > 0 },
-        "move".takeIf { row.state == TaskState.PLANNED && !row.isFixedBlock && row.moveTo != null },
-        "skip".takeIf { !row.isFixedBlock },
+        "reset".takeIf { answers && row.progress > 0 },
+        "move".takeIf { answers && row.state == TaskState.PLANNED && !row.isFixedBlock && row.moveTo != null },
+        "skip".takeIf { answers && !row.isFixedBlock },
+        "remove".takeIf { !row.isFixedBlock },
     )
-    val answerable = answers && row.state.let { it == TaskState.PLANNED || it == TaskState.PARTIAL || it == TaskState.DONE } && chips.isNotEmpty()
-    val actionsWidth = ChipWidth * chips.size
+    val answerable = !editing && row.state.let { it == TaskState.PLANNED || it == TaskState.PARTIAL || it == TaskState.DONE } && chips.isNotEmpty()
+    val actionsWidth = chips.fold(0.dp) { sum, chip -> sum + chipWidth(chip) }
     val latestActionsWidth by rememberUpdatedState(actionsWidth)
     // How far the item is slid left to show Move and Skip: 0, or down to minus the actions' width.
     var slideX by remember { mutableFloatStateOf(0f) }
@@ -314,16 +328,25 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
                         }
                         var lastX = 0f
                         var slide = false
+                        // Where the slide started, so a short flick either way opens or closes it.
+                        var slideFrom = 0f
                         fun settle() {
                             val full = latestActionsWidth.toPx()
+                            val min = MinSwipe.toPx()
                             sliding = false
-                            slideX = if (slideX < -full / 2) -full else 0f
+                            slideX = when {
+                                slideX < slideFrom - min -> -full
+                                slideX > slideFrom + min -> 0f
+                                slideFrom < -full / 2 -> -full
+                                else -> 0f
+                            }
                         }
                         try {
                             detectHorizontalDragGestures(
                                 onDragStart = {
                                     slide = latestAnswerable && (slideX < 0f || it.x < downX)
                                     if (slide) {
+                                        slideFrom = slideX
                                         sliding = true
                                     } else {
                                         lastX = it.x
@@ -399,22 +422,25 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
             // A moved item can't be ticked, unless its copy is still planned: then ticking takes the move back,
             // and the box is less faded, so it doesn't look off.
             val boxAlpha = if (moved && row.canTakeBack) 0.7f else if (closed) 0.4f else 1f
+            // While the plan buttons are open the box hides; its space stays, so the titles don't jump.
             Box(
                 modifier = Modifier.size(BoxSize)
-                    .clickable(enabled = !moved || row.canTakeBack, role = Role.Checkbox) { actions.onToggle(row.taskId) },
+                    .clickable(enabled = !editing && (!moved || row.canTakeBack), role = Role.Checkbox) { actions.onToggle(row.taskId) },
                 contentAlignment = Alignment.Center
             ) {
-                Image(
-                    painter = painterResource(if (ticked) Res.drawable.check_square else Res.drawable.square_b),
-                    contentDescription = when {
-                        moved && row.canTakeBack -> "Take back the move of ${row.title}"
-                        moved -> "${row.title}, moved"
-                        ticked -> "Untick ${row.title}"
-                        else -> "Tick ${row.title}"
-                    },
-                    colorFilter = ColorFilter.tint(strong),
-                    modifier = Modifier.size(24.dp).alpha(boxAlpha)
-                )
+                if (!editing) {
+                    Image(
+                        painter = painterResource(if (ticked) Res.drawable.check_square else Res.drawable.square_b),
+                        contentDescription = when {
+                            moved && row.canTakeBack -> "Take back the move of ${row.title}"
+                            moved -> "${row.title}, moved"
+                            ticked -> "Untick ${row.title}"
+                            else -> "Tick ${row.title}"
+                        },
+                        colorFilter = ColorFilter.tint(strong),
+                        modifier = Modifier.size(24.dp).alpha(boxAlpha)
+                    )
+                }
                 if (row.crowned) {
                     Image(
                         painter = painterResource(Res.drawable.crown_a),
@@ -508,27 +534,34 @@ private fun SlideActions(
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             chips.forEach { chip ->
+                val weight = chipWidth(chip).value
                 when (chip) {
-                    "reset" -> EveningButton("Reset") { onDone(); actions.onProgress(row.taskId, 0) }
-                    "move" -> EveningButton("→ ${shortDay(row.moveTo.orEmpty())}") { onDone(); actions.onMove(row.taskId) }
-                    else -> EveningButton("Skip") { onDone(); actions.onSkip(row.taskId) }
+                    "reset" -> EveningButton("Reset", weight, Icons.Default.Refresh) { onDone(); actions.onProgress(row.taskId, 0) }
+                    "move" -> EveningButton("→ ${shortDay(row.moveTo.orEmpty())}", weight) { onDone(); actions.onMove(row.taskId) }
+                    "remove" -> EveningButton("Remove", weight, Icons.Default.Delete) { onDone(); actions.onRemove(row.taskId) }
+                    else -> EveningButton("Skip", weight) { onDone(); actions.onSkip(row.taskId) }
                 }
             }
         }
     }
 }
 
+/** A slide chip: [text] as its label, or, with an [icon], as what a screen reader says. */
 @Composable
-private fun RowScope.EveningButton(text: String, onClick: () -> Unit) {
+private fun RowScope.EveningButton(text: String, weight: Float, icon: ImageVector? = null, onClick: () -> Unit) {
     val shape = RoundedCornerShape(16.dp)
     Box(
-        modifier = Modifier.weight(1f).heightIn(min = 40.dp).clip(shape)
+        modifier = Modifier.weight(weight).heightIn(min = 40.dp).clip(shape)
             .border(1.dp, ChipBorder, shape)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 6.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(text, fontSize = 13.sp, color = Color(0xFF4A4A4A), maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+        if (icon != null) {
+            Icon(icon, contentDescription = text, tint = Color(0xFF4A4A4A), modifier = Modifier.size(20.dp))
+        } else {
+            Text(text, fontSize = 13.sp, color = Color(0xFF4A4A4A), maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 

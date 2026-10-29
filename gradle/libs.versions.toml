@@ -19,7 +19,6 @@ ksp = "2.0.20-1.0.25"
 koin = "3.2.0"
 lifecycle = "2.8.0-rc01"
 cal-version = "2.6.1"
-rendering = "1.17.1"
 serialization-json = "1.6.3"
 glance = "1.1.1"
 
@@ -47,7 +46,6 @@ androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime
 androidx-lifecycle-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
 androidx-lifecycle-viewmodel = { module = "androidx.lifecycle:lifecycle-viewmodel", version.ref = "lifecycle" }
 calendar-lib = { module = "com.kizitonwose.calendar:compose-multiplatform", version.ref = "cal-version"}
-rendering = { group = "com.google.ar.sceneform", name = "rendering", version.ref = "rendering" }
 
 
 [plugins]

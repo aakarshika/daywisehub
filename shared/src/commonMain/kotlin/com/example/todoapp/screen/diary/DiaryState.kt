@@ -111,8 +111,7 @@ data class AddOption(
             title = pick.mission.title,
             pillar = pick.mission.pillarType,
             minutes = pick.mission.durationMinutes,
-            // "Added by you" says nothing in the pencil's list.
-            reason = if (pick.reason.code == ReasonCode.ADDED) "" else ReasonLines.render(pick.reason),
+            reason = ReasonLines.render(pick.reason),
         )
     }
 }
@@ -149,8 +148,8 @@ data class DiaryUiState(
     val freshStart: Boolean,
     /** The page's badges, rarest first (spec 9.3), as the Metrics calendar has them. Today's are those earned so far. */
     val badges: List<EarnedBadge>,
-    /** In the first week since the first stored item: the list explains ticking and swiping. */
-    val newUser: Boolean,
+    /** The day the app was installed (the first mission's start): the only page whose list explains ticking, swiping and crowning. */
+    val installDay: Boolean,
 ) {
     /** Every open scored pick resolved as done or did-some; drives the confetti. */
     val allPicksDone: Boolean
@@ -241,7 +240,7 @@ object DiaryStateBuilder {
             weekLabel = weekTitle(weekStart, thisWeek).uppercase(),
             freshStart = date == today && lastWeek != null && pillars.all { it.earned == 0 },
             badges = badges(date, today, allMissions, history, plan, stored, badgeExtras),
-            newUser = badgeExtras.firstDay.let { it == null || it > today.minus(7, DateTimeUnit.DAY) },
+            installDay = date == (allMissions.minOfOrNull { it.startDate.toLocalDate() } ?: today),
         )
     }
 

@@ -32,6 +32,7 @@ import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.todoapp.screen.basicutils.InkBlack
@@ -83,16 +84,50 @@ fun DidntFitNote(row: DidntFitRow) {
     }
 }
 
-/** Morning buttons: Swap one, Lighter day, and Looks good when [showLooksGood]. */
+/**
+ * The "Make lighter or swap tasks" line, when [showCta], with the evening check's [tomorrowLabel] chip
+ * beside it. Tapping the line shows Swap one, Lighter day and Looks good while [open]; Looks good closes them.
+ */
 @Composable
-fun PlanActions(editMode: Boolean, showLooksGood: Boolean, onEdit: () -> Unit, onLighter: () -> Unit, onLooksGood: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+fun PlanActions(
+    showCta: Boolean, open: Boolean, editMode: Boolean,
+    tomorrowLabel: String?, onPlanTomorrow: () -> Unit,
+    onToggle: () -> Unit, onEdit: () -> Unit, onLighter: () -> Unit, onLooksGood: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        PlanButton(if (editMode) "Done swapping" else "Swap one", filled = false, onClick = onEdit)
-        PlanButton("Lighter day", filled = false, onClick = onLighter)
-        if (showLooksGood) PlanButton("Looks good", filled = true, onClick = onLooksGood)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = if (showCta && tomorrowLabel != null) Arrangement.SpaceBetween else Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (showCta) {
+                Box(
+                    modifier = Modifier.weight(1f, fill = false).heightIn(min = 44.dp).clickable(role = Role.Button) { onToggle() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "Make lighter or swap tasks",
+                        fontSize = 13.sp, fontStyle = FontStyle.Italic, color = PeachText,
+                        textDecoration = TextDecoration.Underline,
+                        modifier = Modifier.padding(horizontal = 12.dp)
+                    )
+                }
+            }
+            if (tomorrowLabel != null) SmallChip(tomorrowLabel) { onPlanTomorrow() }
+        }
+        if (open) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+            ) {
+                PlanButton(if (editMode) "Done swapping" else "Swap one", filled = false, onClick = onEdit)
+                PlanButton("Lighter day", filled = false, onClick = onLighter)
+                PlanButton("Looks good", filled = true, onClick = onLooksGood)
+            }
+        }
     }
 }
 

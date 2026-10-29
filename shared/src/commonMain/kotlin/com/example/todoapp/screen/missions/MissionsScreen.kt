@@ -45,7 +45,6 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -97,8 +96,6 @@ fun MissionsScreen(viewModel: MissionsViewModel, listState: LazyListState) {
                             "Missions", fontSize = 30.sp, fontStyle = FontStyle.Italic, letterSpacing = 0.5.sp, color = InkGray,
                             modifier = Modifier.weight(1f)
                         )
-                        // Up here rather than floating, so it never covers a card.
-                        AddButton { viewModel.openNew() }
                         if (s != null) {
                             SettingsMenu(
                                 freeTimeLabel = "Free time · ${MissionWords.hoursNumber(s.weeklyFreeMinutes)} h a week",
@@ -142,18 +139,9 @@ fun MissionsScreen(viewModel: MissionsViewModel, listState: LazyListState) {
                 item(key = "blueprint") { BlueprintStrip(plan) { showBlueprint = true } }
             }
             if (s != null && !s.isEmpty) {
-                s.groups.forEach { group ->
+                s.groups.filter { it.cards.isNotEmpty() }.forEach { group ->
                     item(key = "heading-${group.pillar.name}") {
                         MarkerHeading(group.heading, pillarLight(group.pillar), Modifier.padding(top = 24.dp, bottom = 8.dp))
-                    }
-                    if (group.cards.isEmpty()) {
-                        item(key = "none-${group.pillar.name}") {
-                            Text(
-                                "Nothing here yet.",
-                                fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray,
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp)
-                            )
-                        }
                     }
                     group.cards.chunked(2).forEach { row ->
                         item(key = "cards-${row.first().missionId}") {
@@ -172,9 +160,10 @@ fun MissionsScreen(viewModel: MissionsViewModel, listState: LazyListState) {
                     }
                 }
             }
-            item(key = "about") { AboutLinks() }
-            item(key = "bottom-space") { Spacer(Modifier.height(24.dp)) }
+            // Room for the floating + below the last row of cards.
+            item(key = "bottom-space") { Spacer(Modifier.height(96.dp)) }
         }
+        AddButton(Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 20.dp)) { viewModel.openNew() }
         val plan = blueprint
         if (showBlueprint && plan != null) BlueprintScreen(plan, onClose = { showBlueprint = false })
     }
@@ -248,32 +237,35 @@ private fun MissionCard(card: MissionCardRow, modifier: Modifier, onClick: () ->
 }
 
 @Composable
-private fun AddButton(onClick: () -> Unit) {
-    val shape = RoundedCornerShape(12.dp)
-    Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-        Box(
-            modifier = Modifier.size(40.dp).shadow(3.dp, shape).clip(shape).background(Orange80)
-                .clickable(role = Role.Button, onClickLabel = "Add a mission") { onClick() },
-            contentAlignment = Alignment.Center
-        ) {
-            Image(
-                painterResource(Res.drawable.plus_sign), contentDescription = "Add a mission",
-                colorFilter = ColorFilter.tint(PeachText), modifier = Modifier.size(18.dp)
-            )
-        }
+private fun AddButton(modifier: Modifier, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(16.dp)
+    Box(
+        modifier = modifier.size(56.dp).shadow(6.dp, shape).clip(shape).background(Orange80)
+            .clickable(role = Role.Button, onClickLabel = "Add a mission") { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Image(
+            painterResource(Res.drawable.plus_sign), contentDescription = "Add a mission",
+            colorFilter = ColorFilter.tint(PeachText), modifier = Modifier.size(22.dp)
+        )
     }
 }
 
-/** The gear: free time, reminders and backup, which are settings rather than missions. */
+/** The gear: free time, reminders, backup, and the privacy policy and help the stores want reachable from inside the app. */
 @Composable
 private fun SettingsMenu(freeTimeLabel: String, onFreeTime: () -> Unit, onReminders: () -> Unit, onBackup: () -> Unit) {
     var open by remember { mutableStateOf(false) }
+    val uri = LocalUriHandler.current
     Box {
         IconButton(onClick = { open = true }) {
             Icon(Icons.Default.Settings, contentDescription = "Settings", tint = InkGray)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = Color.White) {
-            listOf(freeTimeLabel to onFreeTime, "Reminders" to onReminders, "Backup" to onBackup).forEach { (label, action) ->
+            listOf<Pair<String, () -> Unit>>(
+                freeTimeLabel to onFreeTime, "Reminders" to onReminders, "Backup" to onBackup,
+                "Privacy policy" to { uri.openUri("https://ideeya.com/inbalance/privacy/") },
+                "Help" to { uri.openUri("https://ideeya.com/inbalance/") },
+            ).forEach { (label, action) ->
                 DropdownMenuItem(
                     text = { Text(label, fontSize = 15.sp, color = InkBlack) },
                     onClick = {
@@ -286,20 +278,3 @@ private fun SettingsMenu(freeTimeLabel: String, onFreeTime: () -> Unit, onRemind
     }
 }
 
-/** The stores want the privacy policy reachable from inside the app. */
-@Composable
-private fun AboutLinks() {
-    val uri = LocalUriHandler.current
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
-        horizontalArrangement = Arrangement.Center
-    ) {
-        listOf("Privacy policy" to "https://ideeya.com/inbalance/privacy/", "Help" to "https://ideeya.com/inbalance/")
-            .forEach { (label, url) ->
-                Text(
-                    label, fontSize = 13.sp, color = InkGray, textDecoration = TextDecoration.Underline,
-                    modifier = Modifier.clickable(role = Role.Button) { uri.openUri(url) }.padding(horizontal = 12.dp, vertical = 8.dp)
-                )
-            }
-    }
-}

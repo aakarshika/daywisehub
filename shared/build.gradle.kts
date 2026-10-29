@@ -31,9 +31,11 @@ kotlin {
         iosArm64(),
         iosSimulatorArm64()
     ).forEach {
+        // Dynamic, so the app and its widget extension load the one copy the app embeds.
         it.binaries.framework {
             baseName = "shared"
-            isStatic = true
+            isStatic = false
+            binaryOption("bundleId", "com.ideeya.inbalance.shared")
         }
     }
     sourceSets.all {
@@ -77,7 +79,6 @@ android {
 }
 
 dependencies {
-    implementation(libs.rendering)
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
     add("kspIosX64", libs.androidx.room.compiler)

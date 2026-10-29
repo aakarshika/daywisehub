@@ -1,6 +1,8 @@
 package com.example.todoapp.app
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -14,6 +16,8 @@ import com.example.todoapp.db.sample.SampleSeed
 import com.example.todoapp.di.KoinF
 import com.example.todoapp.reminders.ReminderSync
 import com.example.todoapp.screen.NavScreens
+import com.example.todoapp.screen.basicutils.Light_Yellowww
+import com.example.todoapp.screen.init.IntroScreen
 import com.example.todoapp.screen.init.InitViewModel
 import com.example.todoapp.screen.metrics.CalDiaryViewModel
 import com.example.todoapp.widget.WidgetSync
@@ -37,21 +41,27 @@ fun App(sample: SampleSeed? = null, devTools: Boolean = false){
         val initViewModel = KoinF.di?.get<InitViewModel>()!!
         val isReady by initViewModel.isReady.collectAsState()
         val startOnMissions by initViewModel.startOnMissions.collectAsState()
+        val showIntro by initViewModel.showIntro.collectAsState()
 
         LaunchedEffect(Unit) {
             initViewModel.insertDefaultData(sample)
         }
 
+        // The screens and the tab bar handle the status bar and home indicator themselves, so each page's
+        // colour fills the whole screen; here the inset is left alone instead of being padded twice.
         Scaffold(
-            topBar = {}
+            topBar = {},
+            containerColor = Light_Yellowww,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0)
         ) { paddingValues ->
             Box(modifier = Modifier.padding(paddingValues)) {
             if(isReady){
                 LaunchedEffect(Unit) { KoinF.di?.get<ReminderSync>()?.start() }
                 // Widgets follow the app's changes while it runs; each platform says how to reload them.
                 LaunchedEffect(Unit) { KoinF.di?.get<WidgetSync>()?.start(this) }
-                NavScreens(KoinF.di?.get<CalDiaryViewModel>()!!, startOnMissions)
-                if (devTools) DevClockPill(Modifier.align(Alignment.TopCenter).padding(top = 4.dp))
+                if (showIntro) IntroScreen(onStart = initViewModel::introDone)
+                else NavScreens(KoinF.di?.get<CalDiaryViewModel>()!!, startOnMissions)
+                if (devTools) DevClockPill(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 4.dp))
             }
             }
         }

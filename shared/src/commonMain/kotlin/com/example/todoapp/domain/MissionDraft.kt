@@ -8,8 +8,8 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.plus
 
-/** The nine questions of spec section 4.1, in order. */
-enum class EditorStep { TITLE, PILLAR, KIND, PACE, DURATION, EFFORT, WEIGHT, IF_MISSED, GENTLE }
+/** The nine questions, in the order the mission sentence reads them. */
+enum class EditorStep { TITLE, KIND, PACE, DURATION, EFFORT, WEIGHT, PILLAR, IF_MISSED, GENTLE }
 
 /**
  * One milestone line of a finish line. [milestoneId] is 0 until it's saved. [due] is the date picked for

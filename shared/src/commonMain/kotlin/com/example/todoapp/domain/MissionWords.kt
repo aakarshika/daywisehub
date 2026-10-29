@@ -58,7 +58,7 @@ object MissionWords {
 
     /** The highlighted answer to step 3. */
     fun kindPhrase(kind: MissionKind): String = when (kind) {
-        MissionKind.HABIT -> "something I keep doing"
+        MissionKind.HABIT -> "something I do regularly"
         MissionKind.FINISH_LINE -> "something with a finish line"
         MissionKind.BLOCK -> "a fixed block in my day"
         MissionKind.RHYTHM -> "something I do every so often"

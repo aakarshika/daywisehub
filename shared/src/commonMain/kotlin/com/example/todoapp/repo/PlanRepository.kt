@@ -174,7 +174,10 @@ class PlanRepository(
 
     /** Spec 6.3, the pencil: every live mission not on the day's list, with its reason line. Only reads, so it doesn't lock. */
     suspend fun addOptions(date: LocalDate): AddChoices = withContext(Dispatchers.Default) {
-        Planner.options(input(date, currentPlan(date)))
+        val today = today()
+        // The last two weeks can still be filled in, with missions that started after them too.
+        val backfill = date < today && date >= today.minus(BACKFILL_DAYS, DateTimeUnit.DAY)
+        Planner.options(input(date, currentPlan(date)), backfill)
     }
 
     /**
@@ -232,9 +235,12 @@ class PlanRepository(
         }
     }
 
+    /** Takes an item off its day, done or not; a finished week's points follow. */
     suspend fun removeTask(taskId: Long) = write {
-        todayTaskRepository.get(taskId)?.let { claim(it.date) }
+        val task = todayTaskRepository.get(taskId) ?: return@write
+        claim(task.date)
         todayTaskRepository.delete(taskId)
+        refreshClosedWeek(task.date)
     }
 
     /**
@@ -628,6 +634,8 @@ class PlanRepository(
 
     companion object {
         const val HISTORY_DAYS = 120
+        /** How many days back the diary can still be filled in: the pencil lists every mission for them. */
+        const val BACKFILL_DAYS = 14
         const val MAX_CROWNS = 3
         /** Same cap as the diary's "Your day" dialog. */
         const val MAX_FREE_MINUTES = 16 * 60

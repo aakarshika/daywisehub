@@ -57,6 +57,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.todoapp.screen.basicutils.components.swipeDownToClose
+import com.example.todoapp.screen.basicutils.components.edgeSwipeBack
 import com.example.todoapp.domain.Blueprint
 import com.example.todoapp.domain.BlueprintDay
 import com.example.todoapp.domain.BlueprintFilter
@@ -108,7 +110,7 @@ fun BlueprintScreen(blueprint: Blueprint, onClose: () -> Unit) {
     val day = picked?.let { date -> blueprint.weeks.flatMap { it.days }.firstOrNull { it.date == date } }
 
     Column(
-        modifier = Modifier.fillMaxSize().background(Light_Yellowww)
+        modifier = Modifier.fillMaxSize().edgeSwipeBack(onClose).background(Light_Yellowww)
             // Over the Missions tab: a touch stops here instead of reaching the list underneath.
             .pointerInput(Unit) {}
             .semantics { paneTitle = "Blueprint" }
@@ -296,7 +298,7 @@ private fun DayCard(blueprint: Blueprint, day: BlueprintDay, filter: BlueprintFi
     val items = day.items.filter(filter::keeps)
     val guessed = !day.past && day.date > Projection.lastDay(blueprint.today)
     Column(
-        modifier = Modifier.fillMaxWidth().shadow(10.dp, shape).clip(shape).background(Color.White)
+        modifier = Modifier.fillMaxWidth().swipeDownToClose(onClose).shadow(10.dp, shape).clip(shape).background(Color.White)
             .border(1.dp, CardBorder, shape)
             .padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 16.dp)
     ) {

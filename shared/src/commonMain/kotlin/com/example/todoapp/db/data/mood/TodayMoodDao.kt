@@ -12,6 +12,9 @@ interface TodayMoodDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertMood(mood: Mood): Long
 
+    @Query("UPDATE mood SET mood_name = 'UNWELL', mood_icon = 'unwell' WHERE mood_icon = 'confused'")
+    suspend fun renameConfusedToUnwell()
+
     @Query("SELECT COUNT(*) FROM mood")
     suspend fun getMoodCount(): Int
 

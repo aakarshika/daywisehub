@@ -1,7 +1,6 @@
 package com.example.todoapp.screen.diary.diaryitem.components.dateheader
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,8 +22,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.todoapp.screen.basicutils.components.WriteText
@@ -32,10 +29,7 @@ import com.example.todoapp.screen.diary.WeekCalendarScreen
 import com.example.todoapp.screen.basicutils.Orange80
 import com.example.todoapp.screen.basicutils.Red80
 import com.example.todoapp.screen.basicutils.getOrdinal
-import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.minus
-import kotlinx.datetime.plus
 
 @Composable
 fun DateHeader(cDate: LocalDate,
@@ -43,25 +37,10 @@ fun DateHeader(cDate: LocalDate,
 
     var diaryViewMode by remember { mutableStateOf("week") }
 
-    val swipeDistance = with(LocalDensity.current) { 60.dp.toPx() }
+    // A sideways swipe here turns the diary's page, like anywhere else on it.
     Box(modifier = Modifier
         .fillMaxWidth()
-        .wrapContentHeight()
-        .pointerInput(cDate) {
-            // Swipe left for the next day, right for the day before.
-            var dragged = 0f
-            detectHorizontalDragGestures(
-                onDragStart = { dragged = 0f },
-                onDragEnd = {
-                    if (dragged <= -swipeDistance) changeDate(cDate.plus(1, DateTimeUnit.DAY))
-                    else if (dragged >= swipeDistance) changeDate(cDate.minus(1, DateTimeUnit.DAY))
-                },
-                onHorizontalDrag = { change, amount ->
-                    change.consume()
-                    dragged += amount
-                }
-            )
-        }) {
+        .wrapContentHeight()) {
         Column(modifier = Modifier.padding(top = 20.dp, start = 20.dp)) {
             Row(
                 modifier = Modifier

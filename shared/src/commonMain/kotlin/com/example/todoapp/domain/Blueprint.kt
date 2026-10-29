@@ -138,7 +138,7 @@ object Blueprints {
                 storedByDate[date].orEmpty().forEach { task ->
                     val mission = byId[task.missionId] ?: return@forEach
                     if (date >= today && !task.taskState.isOpen) return@forEach
-                    val flexible = task.reasonCode != ReasonCode.ADDED.name && isFlexible(mission)
+                    val flexible = isFlexible(mission)
                     val done = when {
                         date < today -> task.taskState.countsAsDone
                         task.taskState.countsAsDone -> true

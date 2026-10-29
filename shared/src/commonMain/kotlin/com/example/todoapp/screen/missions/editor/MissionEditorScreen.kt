@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -22,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.todoapp.screen.basicutils.components.swipeDownToClose
 import com.example.todoapp.domain.EditorStep
 import com.example.todoapp.domain.MissionKind
 import com.example.todoapp.domain.MissionSentence
@@ -50,7 +52,14 @@ fun MissionEditorScreen(viewModel: MissionEditorViewModel, onClose: () -> Unit) 
     BackHandler { if (!viewModel.back()) leave() }
 
     val s = state
-    Column(modifier = Modifier.fillMaxSize().background(Light_Yellowww)) {
+    // Back moves a question at a time, so there's no edge swipe here; only Close or a swipe down leaves.
+    Column(
+        modifier = Modifier.fillMaxSize()
+            .swipeDownToClose { leave() }
+            .background(Light_Yellowww)
+            // Keeps Back and Next just above the keyboard; the tab bar's room is already taken off.
+            .imePadding()
+    ) {
         if (s != null) {
             val step = s.step
             EditorHeader(
@@ -82,9 +91,12 @@ fun MissionEditorScreen(viewModel: MissionEditorViewModel, onClose: () -> Unit) 
                     )
                     MarkerHeading(questionFor(step, s), Orange80, Modifier.padding(top = 18.dp, bottom = 8.dp))
                     StepQuestion(step, s, viewModel)
-                    StepFooter(onBack = { if (!viewModel.back()) leave() }, onNext = nextAction(step, s, viewModel))
                 }
                 Spacer(Modifier.height(24.dp))
+            }
+            // Pinned under the scrolling question, so it's always in reach.
+            if (step != null) {
+                StepFooter(onBack = { if (!viewModel.back()) leave() }, onNext = nextAction(step, s, viewModel))
             }
         }
     }

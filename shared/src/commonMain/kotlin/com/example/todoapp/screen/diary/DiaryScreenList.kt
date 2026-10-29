@@ -3,6 +3,7 @@ package com.example.todoapp.screen.diary
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -82,15 +84,18 @@ fun LazyListScope.Notes(waterIntake: WaterIntake?,
     item(key = "notes") {
         val rowHeight = remember { mutableStateOf(52) }
 
-        NotesItem(rowHeight.value,waterIntake, selection,textArranged = { lineCount ->
-            rowHeight.value = 26*(lineCount+1)
-        }, upsertWaterIntake = {n:String->
-            upsertWaterIntake((waterIntake ?: WaterIntake(
-                waterIntakeId = 0,
-                notes = n,
-                waterDate = MyDate.fromLocalDate(selection)
-            )).copy(notes = n))
-        })
+        // The notes keep a sideways drag to themselves rather than turning the diary's page.
+        Box(Modifier.pointerInput(Unit) { detectHorizontalDragGestures { change, _ -> change.consume() } }) {
+            NotesItem(rowHeight.value,waterIntake, selection,textArranged = { lineCount ->
+                rowHeight.value = 26*(lineCount+1)
+            }, upsertWaterIntake = {n:String->
+                upsertWaterIntake((waterIntake ?: WaterIntake(
+                    waterIntakeId = 0,
+                    notes = n,
+                    waterDate = MyDate.fromLocalDate(selection)
+                )).copy(notes = n))
+            })
+        }
     }
 }
 

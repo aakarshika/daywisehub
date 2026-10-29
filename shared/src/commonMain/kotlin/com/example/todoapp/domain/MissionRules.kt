@@ -49,4 +49,14 @@ fun Mission.isLiveOn(date: LocalDate): Boolean {
     return true
 }
 
+/**
+ * [isLiveOn] for a day in the two weeks the diary can still be filled in for: a mission that started
+ * later still counts, and a pause doesn't, since a new install fills in the days before its missions began.
+ */
+fun Mission.isLiveForBackfill(date: LocalDate): Boolean {
+    if (!active) return false
+    endDate?.let { if (date > it.toLocalDate()) return false }
+    return true
+}
+
 fun Mission.isScheduledOn(date: LocalDate): Boolean = date.dayOfWeek.isoDayNumber in daySet

@@ -29,7 +29,14 @@ class InitViewModel(
     private val _startOnMissions = MutableStateFlow(false)
     /** True when there are no missions yet, so the app opens on Missions with the ideas library up. */
     val startOnMissions: StateFlow<Boolean> get() = _startOnMissions
+    private val _showIntro = MutableStateFlow(false)
+    /** True on the first start after an install, while there are no missions: the intro shows once before Missions opens. */
+    val showIntro: StateFlow<Boolean> get() = _showIntro
     private var job: Job? = null
+
+    fun introDone() {
+        _showIntro.value = false
+    }
 
     /**
      * A fresh install gets the default settings and no missions. [sample] is dev-only (see SampleSeed) and
@@ -41,11 +48,13 @@ class InitViewModel(
         job = viewModelScope.launch {
             try {
                 todayMoodRepository.insertDefaultMoods(LOCAL_USER_ID)
-                planRepository.ensureDefaults()
+                val firstStart = planRepository.ensureDefaults()
                 if (sample != null && missionRepository.count() == 0) {
                     sample.run(database, missionRepository, todayTaskRepository)
                 }
-                _startOnMissions.value = missionRepository.count() == 0
+                val noMissions = missionRepository.count() == 0
+                _startOnMissions.value = noMissions
+                _showIntro.value = firstStart && noMissions
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

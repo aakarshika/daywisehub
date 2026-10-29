@@ -94,15 +94,17 @@ object Planner {
      * missions on purpose: the list is for adding by hand, so the owner decides what fits. Paused and
      * not-yet-started missions aren't live, so they're left out.
      */
-    fun options(input: PlanInput): AddChoices {
+    fun options(input: PlanInput, backfill: Boolean = false): AddChoices {
         // Only the fixed blocks stay on the list, so the day's own picks are recommended too.
         val blocksOnly = input.copy(todayTasks = input.todayTasks.filter { it.isFixedBlock })
         val recommended = candidates(blocksOnly, fixedBlocks(input)).map { Pick(it.mission, it.reason, isFixedBlock = false) }
         val recommendedIds = recommended.map { it.mission.missionId }.toSet()
         val rest = input.missions
-            .filter { it.missionKind != MissionKind.BLOCK && it.isLiveOn(input.date) && it.missionId !in recommendedIds }
+            .filter { it.missionKind != MissionKind.BLOCK && it.missionId !in recommendedIds }
+            .filter { it.isLiveOn(input.date) || (backfill && it.isLiveForBackfill(input.date)) }
             .filter { mission -> input.todayTasks.none { it.missionId == mission.missionId } }
-            .map { Pick(it, standing(it, input), isFixedBlock = false) }
+            // A mission that hadn't started yet has no standing that day to explain.
+            .map { Pick(it, if (it.isLiveOn(input.date)) standing(it, input) else Reason(ReasonCode.ADDED), isFixedBlock = false) }
         return AddChoices(recommended, rest)
     }
 

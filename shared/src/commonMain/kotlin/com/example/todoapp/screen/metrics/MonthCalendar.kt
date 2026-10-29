@@ -66,9 +66,6 @@ import todoapp.shared.generated.resources.crown_a
 private val CrownColumn = 20.dp
 private val weekLetters = listOf("M", "T", "W", "T", "F", "S", "S")
 
-/** Under the Metrics calendar, and once on All months while no filter is on. */
-const val POINTS_CAPTION = "Ring slices are sized by points. White is what didn't happen, or a light shade once the day was close enough."
-
 /** Once on All months while a filter is on (spec 9.4). */
 const val ITEMS_CAPTION = "Slices are the counted items. White is what didn't happen."
 

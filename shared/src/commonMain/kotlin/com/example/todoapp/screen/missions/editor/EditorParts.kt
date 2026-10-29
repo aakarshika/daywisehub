@@ -190,8 +190,8 @@ private fun stepLabel(step: EditorStep): String = when (step) {
     EditorStep.PACE -> "pace"
     EditorStep.DURATION -> "time each"
     EditorStep.EFFORT -> "effort"
-    EditorStep.WEIGHT -> "size"
-    EditorStep.IF_MISSED -> "if a day goes sideways"
+    EditorStep.WEIGHT -> "points"
+    EditorStep.IF_MISSED -> "if it goes sideways"
     EditorStep.GENTLE -> "gentle start"
 }
 
@@ -256,29 +256,34 @@ private fun DrawScope.blank(l: TextLayoutResult, start: Int, end: Int) {
     )
 }
 
-/** Close, "New mission", "3 of 9". With [onBack], a back arrow takes the place of Close. */
+/** "3 of 9", "New mission", Close. Close always sits top right; with [onBack], a back arrow takes the progress's place. */
 @Composable
 fun EditorHeader(title: String, progress: String, onClose: () -> Unit, onBack: (() -> Unit)? = null) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 16.dp, top = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier.size(44.dp).clickable(role = Role.Button) { if (onBack != null) onBack() else onClose() },
-            contentAlignment = Alignment.Center
-        ) {
-            if (onBack != null) {
+        if (onBack != null) {
+            Box(
+                modifier = Modifier.size(44.dp).clickable(role = Role.Button) { onBack() },
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = InkGray)
-            } else {
-                Icon(Icons.Default.Close, contentDescription = "Close", tint = InkGray)
             }
+        } else {
+            Text(progress, fontSize = 13.sp, color = InkGray, modifier = Modifier.widthIn(min = 44.dp).padding(start = 8.dp))
         }
         Text(
             title,
             fontSize = 20.sp, fontStyle = FontStyle.Italic, color = InkGray, textAlign = TextAlign.Center,
             modifier = Modifier.weight(1f)
         )
-        Text(progress, fontSize = 13.sp, color = InkGray, textAlign = TextAlign.End, modifier = Modifier.widthIn(min = 44.dp))
+        Box(
+            modifier = Modifier.size(44.dp).clickable(role = Role.Button) { onClose() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Default.Close, contentDescription = "Close", tint = InkGray)
+        }
     }
 }
 

@@ -38,6 +38,8 @@ class TodayMoodRepository(private val database: AppDatabase) {
     }
 
     suspend fun insertDefaultMoods(userId: Long) {
+        // "Confused" became "Unwell"; an install that has the old face keeps its picked days under the new one.
+        todayMoodDao.renameConfusedToUnwell()
         if (todayMoodDao.getMoodCount() > 0) return
         todayMoodDao.upsertMood(
             Mood(
@@ -83,8 +85,8 @@ class TodayMoodRepository(private val database: AppDatabase) {
             Mood(
                 moodId = 0L,
                 moodUserId = userId,
-                moodName = "CONFUSED",
-                moodIcon = "confused"
+                moodName = "UNWELL",
+                moodIcon = "unwell"
             )
         )
 //        todayMoodDao.upsertMood(

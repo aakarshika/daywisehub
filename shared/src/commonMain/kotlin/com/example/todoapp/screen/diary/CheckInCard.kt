@@ -2,7 +2,6 @@ package com.example.todoapp.screen.diary
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Icon
@@ -28,10 +26,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
@@ -54,7 +52,6 @@ import com.example.todoapp.screen.metrics.badges.BadgeSticker
 import com.example.todoapp.screen.metrics.badges.WaterGlassSticker
 import kotlinx.datetime.LocalDate
 
-private val CardFill = Color(0xFFFFFDF6)
 private val CardEdge = Color(0xFFE7DFC6)
 private val WaterInk = Color(0xFF3F6EA8)
 private val FactorInk = Color(0xFF2F5E22)
@@ -73,19 +70,15 @@ fun LazyListScope.CheckInItem(
     waterIntake: WaterIntake?,
     upsertWaterIntake: (WaterIntake) -> Unit,
     waterIntakeCompleted: (Boolean) -> Unit,
-    notes: List<String>,
+    notes: List<AnnotatedString>,
 ) {
     item(key = "check-in") {
         var open by rememberSaveable(selection) { mutableStateOf(false) }
-        val shape = RoundedCornerShape(22.dp)
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
-                .clip(shape).background(CardFill).border(1.dp, CardEdge, shape)
-        ) {
+        // No box: the check-in sits on the paper like the rest of the page, closed off by a hairline.
+        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
             FoldedLine(selection, todayMoodList, dayFactors, waterIntake, open) { open = !open }
             AnimatedVisibility(open) {
                 Column(modifier = Modifier.padding(bottom = 8.dp)) {
-                    Divider()
                     MoodHeader(todayMoodList, selection, upsertMood)
                     DayFactorRow(dayFactors, onFactor)
                     WaterIntakeHeader(waterIntake?.waterIntakeProgress ?: 0.0, selection) { progress ->
@@ -98,6 +91,7 @@ fun LazyListScope.CheckInItem(
                     if (notes.isNotEmpty()) DayNotesList(notes)
                 }
             }
+            Divider()
         }
     }
 }
@@ -119,7 +113,7 @@ private fun FoldedLine(
         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
             .clickable(role = Role.Button, onClickLabel = if (open) "Fold" else "Open", onClick = onToggle)
             .semantics { stateDescription = if (open) "Open" else "Folded" }
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -135,13 +129,18 @@ private fun FoldedLine(
             Spacer(Modifier.width(3.dp))
             Text("$glasses/$water_daily_limit", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = WaterInk)
         }
-        Bar()
-        Text(
-            factors.ifEmpty { "What shaped the day?" },
-            fontSize = 13.sp, fontStyle = if (factors.isEmpty()) FontStyle.Italic else FontStyle.Normal,
-            color = if (factors.isEmpty()) InkGray else FactorInk,
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
-        )
+        // With no mood and no factors, "How's today?" is the only prompt; a second one is noise.
+        if (sticker == null && factors.isEmpty()) {
+            Spacer(Modifier.weight(1f))
+        } else {
+            Bar()
+            Text(
+                factors.ifEmpty { "What shaped the day?" },
+                fontSize = 13.sp, fontStyle = if (factors.isEmpty()) FontStyle.Italic else FontStyle.Normal,
+                color = if (factors.isEmpty()) InkGray else FactorInk,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
+            )
+        }
         Icon(
             Icons.Filled.KeyboardArrowDown, contentDescription = null, tint = InkGray,
             modifier = Modifier.size(22.dp).rotate(if (open) 180f else 0f)
@@ -153,4 +152,4 @@ private fun FoldedLine(
 private fun Bar() = Box(Modifier.width(1.dp).height(22.dp).background(CardEdge))
 
 @Composable
-private fun Divider() = Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp).height(1.dp).background(CardEdge))
+private fun Divider() = Box(Modifier.fillMaxWidth().height(1.dp).background(CardEdge))

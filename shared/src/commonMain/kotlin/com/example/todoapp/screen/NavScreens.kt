@@ -1,13 +1,11 @@
 package com.example.todoapp.screen
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerDefaults
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -24,15 +22,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.viewModelScope
 import com.example.todoapp.app.MyScreen
 import com.example.todoapp.reminders.ReminderLinks
+import com.example.todoapp.screen.basicutils.DiaryBackground
+import com.example.todoapp.screen.basicutils.Light_Yellowww
 import com.example.todoapp.di.KoinF
 import com.example.todoapp.screen.diary.DiaryScreen
 import com.example.todoapp.screen.diary.DiaryViewModel
@@ -47,6 +51,9 @@ import com.example.todoapp.screen.missions.editor.MissionEditorScreen
 import com.example.todoapp.screen.missions.editor.MissionEditorViewModel
 import com.example.todoapp.screen.missions.ideas.IdeasScreen
 import kotlinx.coroutines.cancel
+import kotlinx.datetime.LocalDate
+import kotlin.math.abs
+import kotlin.math.acos
 import moe.tlaster.precompose.navigation.NavHost
 import moe.tlaster.precompose.navigation.NavOptions
 import moe.tlaster.precompose.navigation.PopUpTo
@@ -105,6 +112,8 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel, startOnMissions: Boolean = f
     }
 
     Scaffold(
+        // What shows behind the status bar: the page's own colour.
+        containerColor = if (currentScreen == MyScreen.Diary) DiaryBackground else Light_Yellowww,
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(
@@ -131,7 +140,8 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel, startOnMissions: Boolean = f
             }
         }
     ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding)) {
+        // The tab bar's room counts as taken, so a screen's imePadding only adds what the keyboard covers above it.
+        Box(modifier = Modifier.padding(innerPadding).consumeWindowInsets(innerPadding)) {
             NavHost(
                 navigator = navigator,
                 initialRoute = MyScreen.Diary.name
@@ -171,45 +181,56 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel, startOnMissions: Boolean = f
                     }
                 }
                 scene(route = MyScreen.Diary.name) {
-                    // Each day is its own page: a later day slides in over this one, an earlier day is uncovered from beneath it.
-                    AnimatedContent(
-                        targetState = currentDate,
-                        transitionSpec = {
-                            val spec = tween<IntOffset>(350)
-                            if (targetState > initialState) {
-                                (slideInHorizontally(spec) { it } togetherWith
-                                    slideOutHorizontally(spec) { -it / 4 } + fadeOut(tween(350), targetAlpha = 0.6f))
-                            } else {
-                                (slideInHorizontally(spec) { -it / 4 } + fadeIn(tween(350), initialAlpha = 0.6f) togetherWith
-                                    slideOutHorizontally(spec) { it }).apply { targetContentZIndex = -1f }
+                    // Each day is a page, one per epoch day. A sideways drag anywhere a row doesn't use it turns the page.
+                    // Not saved: coming back to the tab restored the old page, and the settled page below then wrote it
+                    // over the date Metrics had just picked. The view model's value is read straight, as the collected
+                    // state may not have caught up with that pick yet.
+                    val pagerState = remember { PagerState(currentPage = calDateViewModel.currentDate.value.toEpochDays()) { DIARY_PAGES } }
+                    // A date picked elsewhere (the week strip, Metrics, midnight) turns to it.
+                    LaunchedEffect(currentDate) {
+                        val page = currentDate.toEpochDays()
+                        if (pagerState.currentPage != page) pagerState.animateScrollToPage(page)
+                    }
+                    // The page the diary settles on is the date every tab shares.
+                    LaunchedEffect(pagerState) {
+                        snapshotFlow { pagerState.settledPage }.collect { calDateViewModel.selectDate(LocalDate.fromEpochDays(it)) }
+                    }
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.fillMaxSize(),
+                        // The days either side are ready, so the page underneath is already filled in when one turns.
+                        beyondViewportPageCount = 1,
+                        key = { it },
+                        flingBehavior = PagerDefaults.flingBehavior(pagerState, snapPositionalThreshold = 0.25f),
+                    ) { page ->
+                        val date = LocalDate.fromEpochDays(page)
+                        Box(Modifier.fillMaxSize().pageTurn(pagerState, page)) {
+                            val diaryViewModel = remember(date) {
+                                KoinF.di!!.get<DiaryViewModel> { parametersOf(date) }
                             }
-                        }
-                    ) { date ->
-                        val diaryViewModel = remember(date) {
-                            KoinF.di!!.get<DiaryViewModel> { parametersOf(date) }
-                        }
-                        val moodViewModel = remember(date) {
-                            KoinF.di!!.get<MoodViewModel> { parametersOf(date) }
-                        }
-                        val waterIntakeViewModel = remember(date) {
-                            KoinF.di!!.get<WaterIntakeViewModel> { parametersOf(date) }
-                        }
-                        // Nothing owns these view models, so stop their work when the page leaves or the diary leaves the screen.
-                        DisposableEffect(diaryViewModel, moodViewModel, waterIntakeViewModel) {
-                            onDispose {
-                                diaryViewModel.viewModelScope.cancel()
-                                moodViewModel.viewModelScope.cancel()
-                                waterIntakeViewModel.viewModelScope.cancel()
+                            val moodViewModel = remember(date) {
+                                KoinF.di!!.get<MoodViewModel> { parametersOf(date) }
                             }
+                            val waterIntakeViewModel = remember(date) {
+                                KoinF.di!!.get<WaterIntakeViewModel> { parametersOf(date) }
+                            }
+                            // Nothing owns these view models, so stop their work when the page leaves or the diary leaves the screen.
+                            DisposableEffect(diaryViewModel, moodViewModel, waterIntakeViewModel) {
+                                onDispose {
+                                    diaryViewModel.viewModelScope.cancel()
+                                    moodViewModel.viewModelScope.cancel()
+                                    waterIntakeViewModel.viewModelScope.cancel()
+                                }
+                            }
+                            DiaryScreen(
+                                diaryViewModel,
+                                moodViewModel,
+                                waterIntakeViewModel,
+                                date,
+                                changeDate = { calDateViewModel.selectDate(it) },
+                                openMissions = { navigateTab(MyScreen.Missions) }
+                            )
                         }
-                        DiaryScreen(
-                            diaryViewModel,
-                            moodViewModel,
-                            waterIntakeViewModel,
-                            date,
-                            changeDate = { calDateViewModel.selectDate(it) },
-                            openMissions = { navigateTab(MyScreen.Missions) }
-                        )
                     }
                 }
                 scene(route = MyScreen.Calendar.name) {
@@ -229,3 +250,43 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel, startOnMissions: Boolean = f
         }
     }
 }
+
+/** One page per epoch day, up to the year 2243. */
+private const val DIARY_PAGES = 100_000
+
+/** How far [page] is from rest: above 0 it is turned over toward the left, below 0 it lies under the page on top. */
+private fun PagerState.turnOf(page: Int): Float = currentPage - page + currentPageOffsetFraction
+
+/**
+ * A book's page turn in place of the pager's slide. Pages stay put; the earlier of the two lifts about its left
+ * edge over the later one, its right edge following the finger, and the page underneath lightens as it shows.
+ */
+private fun Modifier.pageTurn(state: PagerState, page: Int): Modifier = this
+    .layout { measurable, constraints ->
+        val placeable = measurable.measure(constraints)
+        layout(placeable.width, placeable.height) {
+            // The page being turned lies on top of the one it uncovers.
+            placeable.place(0, 0, zIndex = state.turnOf(page))
+        }
+    }
+    .graphicsLayer {
+        val turn = state.turnOf(page)
+        // A page fully turned, either way, keeps the pager's place off screen, so it never takes a touch.
+        if (abs(turn) >= 1f) return@graphicsLayer
+        translationX = turn * size.width
+        if (turn > 0f) {
+            transformOrigin = TransformOrigin(0f, 0.5f)
+            cameraDistance = 24f * density
+            rotationY = -(acos(1f - turn) * 180f / kotlin.math.PI).toFloat()
+        }
+    }
+    .drawWithContent {
+        drawContent()
+        val turn = state.turnOf(page)
+        val shade = when {
+            abs(turn) >= 1f -> 0f
+            turn > 0f -> 0.12f * turn
+            else -> 0.25f * -turn
+        }
+        if (shade > 0f) drawRect(Color.Black.copy(alpha = shade))
+    }

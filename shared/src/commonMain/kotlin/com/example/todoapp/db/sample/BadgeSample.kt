@@ -127,7 +127,7 @@ object BadgeSample {
         done(10, WALK); planned(10, READ, BUDGET)                                      // Two in a row
         done(12, WALK, READ); planned(12, BUDGET, CLEAN, SPANISH)                      // Weekend warrior (Saturday)
         add(WORK, 14, TaskState.DONE, block, fixed = true); done(14, WALK); planned(14, READ, BUDGET, CLEAN) // Showed up
-        add(READ, 16, TaskState.DONE, Reason(ReasonCode.ADDED)); planned(16, BUDGET, CLEAN)                  // Bonus round
+        add(READ, 16, TaskState.DONE); planned(16, BUDGET, CLEAN)
         add(READ, 17, TaskState.MOVED)
         add(READ, 18, TaskState.DONE, Reason(ReasonCode.MOVED, listOf(day(17).weekdayName())), movedFrom = 17)
         planned(18, BUDGET, CLEAN)                                                     // Second chance
@@ -168,7 +168,7 @@ object BadgeSample {
         }
         val plans = listOf(DayPlan(date = MyDate.fromLocalDate(day(39)).dateString, freeMinutes = 180, energy = Energy.LOW.name))
         // Quiet days with something logged: a mood sticker, or the full glass. Today too.
-        val moods = listOf(5 to "happy", 11 to "sad", 13 to "angry", 17 to "dreamy", 20 to "bored", 26 to "confused", 86 to "happy")
+        val moods = listOf(5 to "happy", 11 to "sad", 13 to "angry", 17 to "dreamy", 20 to "bored", 26 to "unwell", 86 to "happy")
             .map { (n, icon) -> day(n) to icon } + (today to "dreamy")
         val water = listOf(6, 19, 27, 87).map { day(it) } + today
         return Data(missions, milestones, tasks, plans, moods, water)

@@ -18,7 +18,7 @@ import kotlin.random.Random
 /** Stickers are die-cut: a white edge around the drawing. The rest are badges, framed by their tier. */
 fun isSticker(badge: Badge): Boolean = badge in stickers
 
-private val stickers = setOf(Badge.DID_SOME, Badge.HALFWAY, Badge.FULL_ENOUGH, Badge.TWO_IN_A_ROW, Badge.CROWNED, Badge.BACK_AT_IT, Badge.MILESTONE, Badge.STRONG_START, Badge.SHOWED_UP, Badge.WEEKEND_WARRIOR, Badge.RECHARGING_DAY, Badge.RESTED, Badge.GENTLE_WIN, Badge.FIRST_ONE, Badge.BONUS_ROUND, Badge.SECOND_CHANCE, Badge.HAT_TRICK, Badge.COUNT_IT, Badge.HEAVY_LIFTING, Badge.OVERDUE_NO_MORE, Badge.FELT_HAPPY, Badge.FELT_SAD, Badge.FELT_ANGRY, Badge.FELT_DREAMY, Badge.FELT_BORED, Badge.FELT_CONFUSED, Badge.DRANK_UP, Badge.ALL_FOUR)
+private val stickers = setOf(Badge.DID_SOME, Badge.HALFWAY, Badge.FULL_ENOUGH, Badge.TWO_IN_A_ROW, Badge.CROWNED, Badge.BACK_AT_IT, Badge.MILESTONE, Badge.STRONG_START, Badge.SHOWED_UP, Badge.WEEKEND_WARRIOR, Badge.RECHARGING_DAY, Badge.RESTED, Badge.GENTLE_WIN, Badge.FIRST_ONE, Badge.SECOND_CHANCE, Badge.HAT_TRICK, Badge.COUNT_IT, Badge.HEAVY_LIFTING, Badge.OVERDUE_NO_MORE, Badge.FELT_HAPPY, Badge.FELT_SAD, Badge.FELT_ANGRY, Badge.FELT_DREAMY, Badge.FELT_BORED, Badge.FELT_UNWELL, Badge.DRANK_UP, Badge.ALL_FOUR)
 
 /** A badge's whole picture, on a 52-unit grid. A sticker's includes its white edge. Built once, on first use. */
 fun badgeArt(badge: Badge): ImageVector = art.getValue(badge)
@@ -71,7 +71,8 @@ fun dayFactorOutline(icon: String): ImageVector? = factorOutlines[icon]
 fun dayFactorLines(icon: String): ImageVector? =
     if (icon in factorIcons) factorLines.getOrPut(icon) { vector { drawFactor(icon, Layer.LINE) } } else null
 
-private val factorIcons = setOf("guests", "weather", "work", "errand", "travel", "family", "home")
+/** "sleeping" is no day factor to pick; it is the sticker for a past day with nothing on it. */
+private val factorIcons = setOf("guests", "weather", "work", "errand", "travel", "family", "home", "sleeping")
 private val factorArt: Map<String, ImageVector> by lazy {
     factorIcons.associateWith { vector { drawFactor(it, Layer.EDGE); drawFactor(it, Layer.CUT); drawFactor(it, Layer.ART) } }
 }
@@ -90,6 +91,7 @@ private fun Pen.drawFactor(icon: String, layer: Layer) {
         "travel" -> pen.factorTravel()
         "family" -> pen.factorFamily()
         "home" -> pen.factorHome()
+        "sleeping" -> pen.factorSleeping()
     }
 }
 
@@ -153,7 +155,6 @@ private fun Pen.draw(badge: Badge, layer: Layer) {
         Badge.RESTED -> pen.rested()
         Badge.GENTLE_WIN -> pen.gentleWin()
         Badge.FIRST_ONE -> pen.firstOne()
-        Badge.BONUS_ROUND -> pen.bonusRound()
         Badge.SECOND_CHANCE -> pen.secondChance()
         Badge.HAT_TRICK -> pen.hatTrick()
         Badge.COUNT_IT -> pen.countIt()
@@ -164,7 +165,7 @@ private fun Pen.draw(badge: Badge, layer: Layer) {
         Badge.FELT_ANGRY -> pen.feltAngry()
         Badge.FELT_DREAMY -> pen.feltDreamy()
         Badge.FELT_BORED -> pen.feltBored()
-        Badge.FELT_CONFUSED -> pen.feltConfused()
+        Badge.FELT_UNWELL -> pen.feltUnwell()
         Badge.DRANK_UP -> pen.drankUp()
         Badge.ALL_FOUR -> pen.allFour()
         Badge.PILLAR_FILLED -> pen.pillarFilled()
@@ -845,18 +846,6 @@ private fun Pen.firstOne() {
     p("M21.9 28.6q2.1 2.2 4.2 0", null, 0xFF3A2A20, 1.15f)
 }
 
-/** Bonus round: a sticker. */
-private fun Pen.bonusRound() {
-    p("M25 30L31 44", null, 0xFF3A2A20, 3.8f)
-    p("M25 30L31 44", null, 0xFFFFFFFF, 2f)
-    p("M10.5 19a11.5 11.5 0 1 0 23 0a11.5 11.5 0 1 0 -23 0Z", 0xFFFF7EB6, 0xFF3A2A20, 1.6f)
-    p("M22 19L22.14 19.03L22.26 19.13L22.33 19.28L22.34 19.46L22.28 19.66L22.15 19.84L21.94 20L21.67 20.09L21.35 20.11L21.01 20.03L20.68 19.85L20.38 19.57L20.15 19.2L20.02 18.75L19.99 18.25L20.1 17.72L20.35 17.21L20.74 16.76L21.25 16.39L21.87 16.15L22.56 16.05L23.29 16.13L24 16.39L24.66 16.84L25.22 17.45L25.63 18.21L25.86 19.07L25.87 19.99L25.67 20.93L25.23 21.82L24.57 22.61L23.72 23.24L22.72 23.66L21.61 23.84L20.45 23.76L19.32 23.39L18.28 22.75L17.39 21.87L16.72 20.77L16.31 19.51L16.2 18.16L16.42 16.79L16.97 15.48L17.82 14.3L18.95 13.34L20.31 12.65L21.82 12.29L23.41 12.29L24.98 12.67L26.45 13.42L27.74 14.51L28.75 15.9L29.42 17.51L29.71 19.28L29.57 21.09L29.01 22.85L28.03 24.47L26.69 25.83L25.03 26.86L23.15 27.49L21.14 27.67L19.11 27.37L17.18 26.6L15.45 25.38L14.03 23.76L13.01 21.83L12.45 19.69L12.41 17.44L12.9 15.21L13.91 13.12", null, 0xFFFFFFFF, 2.4f)
-    p("M10.5 19a11.5 11.5 0 1 0 23 0a11.5 11.5 0 1 0 -23 0Z", null, 0xFF3A2A20, 1.7f)
-    p("M14.5 13.5q1.5 -2.5 4 -3.6", null, 0xFFFFFFFF, 1.6f, 0.9f)
-    p("M38 6.4Q38 10 41.6 10Q38 10 38 13.6Q38 10 34.4 10Q38 10 38 6.4Z", 0xFFFFE36B, 0xFF3A2A20, 1f)
-    p("M39.5 22.6Q39.5 25 41.9 25Q39.5 25 39.5 27.4Q39.5 25 37.1 25Q39.5 25 39.5 22.6Z", 0xFFFFE36B, 0xFF3A2A20, 0.9f)
-}
-
 /** Second chance: a sticker. */
 private fun Pen.secondChance() {
     p("M10.5 33l-3 2.5M12.5 37l-2.5 3.5M16 38.5l-.5 3.5", null, 0xFF3A2A20, 1.4f)
@@ -991,7 +980,7 @@ private fun Pen.feltDreamy() {
 
 /** Felt bored: a sticker. */
 private fun Pen.feltBored() {
-    p("M8.5 24a15.5 15.5 0 1 0 31 0a15.5 15.5 0 1 0 -31 0Z", 0xFFBFD8B8, 0xFF3A2A20, 1.9f)
+    p("M8.5 24a15.5 15.5 0 1 0 31 0a15.5 15.5 0 1 0 -31 0Z", 0xFFD8CBB4, 0xFF3A2A20, 1.9f)
     p("M15.7 21a3.3 3.3 0 1 0 6.6 0a3.3 3.3 0 1 0 -6.6 0Z", 0xFFFFFFFF, 0xFF3A2A20, 1.4f)
     p("M17.4 19a1.6 1.6 0 1 0 3.2 0a1.6 1.6 0 1 0 -3.2 0Z", 0xFF3A2A20, null, 1.6f)
     p("M25.7 21a3.3 3.3 0 1 0 6.6 0a3.3 3.3 0 1 0 -6.6 0Z", 0xFFFFFFFF, 0xFF3A2A20, 1.4f)
@@ -1003,15 +992,31 @@ private fun Pen.feltBored() {
     p("M41 30h2.4l-2.4 2.4h2.4", null, 0xFF3A2A20, 1f)
 }
 
-/** Felt confused: a sticker. */
-private fun Pen.feltConfused() {
-    p("M8.5 24a15.5 15.5 0 1 0 31 0a15.5 15.5 0 1 0 -31 0Z", 0xFFFFB870, 0xFF3A2A20, 1.9f)
-    p("M27 15.5l4.5 -2", null, 0xFF3A2A20, 1.4f)
-    p("M17.3 21.5a1.7 2.3 0 1 0 3.4 0a1.7 2.3 0 1 0 -3.4 0Z", 0xFF3A2A20, null, 1.6f)
-    p("M27.4 20a2.1 2.8 0 1 0 4.2 0a2.1 2.8 0 1 0 -4.2 0Z", 0xFF3A2A20, null, 1.6f)
-    p("M17 30.5L31 27.5L30.5 30.5Q24 33.5 17.5 32.5Z", 0xFFFFFFFF, 0xFF3A2A20, 1.4f)
-    p("M36.5 8.5q0 -3.5 3.5 -3.5q3.5 0 3.5 3q0 2.2 -2.6 3.2q-1 .5 -1 2", null, 0xFF7C8CF0, 2f)
-    p("M38.8 16.5a1.1 1.1 0 1 0 2.2 0a1.1 1.1 0 1 0 -2.2 0Z", 0xFF7C8CF0, null, 1.6f)
+/** Felt unwell: a sticker. */
+private fun Pen.feltUnwell() {
+    p("M8.5 24a15.5 15.5 0 1 0 31 0a15.5 15.5 0 1 0 -31 0Z", 0xFFA9D98C, 0xFF3A2A20, 1.9f)
+    p("M14.3 27.3a2.2 1.5 0 1 0 4.4 0a2.2 1.5 0 1 0 -4.4 0Z", 0xFF6FBF5A, null, 1.6f, 0.5f)
+    p("M29.3 27.3a2.2 1.5 0 1 0 4.4 0a2.2 1.5 0 1 0 -4.4 0Z", 0xFF6FBF5A, null, 1.6f, 0.5f)
+    p("M15.2 21.8Q18.5 18.6 21.8 21.8M26.2 21.8Q29.5 18.6 32.8 21.8", null, 0xFF3A2A20, 1.6f)
+    p("M16.5 31q1.9 -2.6 3.8 0t3.8 0t3.8 0", null, 0xFF3A2A20, 1.5f)
+    p("M28.5 32.5L40.5 39.5", null, 0xFF3A2A20, 3.8f)
+    p("M28.5 32.5L40.5 39.5", null, 0xFFFFFFFF, 2.2f)
+    p("M38.8 38.5L41.2 39.9", null, 0xFFE0405A, 2.6f)
+    p("M10.5 9c-1.7 3 -2.5 4.5 0 5.6c2.5 -1.1 1.7 -2.7 0 -5.6Z", 0xFF8EC5FF, 0xFF3A2A20, 1.1f)
+}
+
+/** A sleeping face in a nightcap with floating Zs: a day with nothing on it. */
+private fun Pen.factorSleeping() {
+    p("M10.5 28a13.5 13.5 0 1 0 27 0a13.5 13.5 0 1 0 -27 0Z", 0xFFFFD9B8, 0xFF3A2A20, 1.7f)
+    p("M11.2 22L23 6.8L37 22Q24 17.6 11.2 22Z", 0xFF7C8CF0, 0xFF3A2A20, 1.6f)
+    p("M11.4 22Q24 17.6 36.8 22", null, 0xFFFFFFFF, 2.4f)
+    p("M20.6 6.8a2.6 2.6 0 1 0 5.2 0a2.6 2.6 0 1 0 -5.2 0Z", 0xFFFFFFFF, 0xFF3A2A20, 1.3f)
+    p("M14.2 31.2a2.2 1.5 0 1 0 4.4 0a2.2 1.5 0 1 0 -4.4 0Z", 0xFFFF7F9B, null, 1.6f, 0.55f)
+    p("M29.4 31.2a2.2 1.5 0 1 0 4.4 0a2.2 1.5 0 1 0 -4.4 0Z", 0xFFFF7F9B, null, 1.6f, 0.55f)
+    p("M16.2 28q2.6 2.8 5.2 0M26.6 28q2.6 2.8 5.2 0", null, 0xFF3A2A20, 1.6f)
+    p("M22.2 34.6q1.8 1.6 3.6 0", null, 0xFF3A2A20, 1.4f)
+    p("M36.5 9h5.5l-5.5 6.5h5.5", null, 0xFF7C8CF0, 2.1f)
+    p("M42.2 18h3.6l-3.6 4.4h3.6", null, 0xFF7C8CF0, 1.7f)
 }
 
 /** Drank up: a sticker. */

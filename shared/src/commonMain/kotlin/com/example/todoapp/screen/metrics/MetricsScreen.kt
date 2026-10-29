@@ -138,7 +138,6 @@ fun MetricsScreen(viewModel: MetricsViewModel, openDay: (LocalDate) -> Unit) {
                     MonthCalendarCard(
                         s.calendar,
                         onDay = { day -> if (day.badges.isEmpty()) openDay(day.date) else badgeDay = day },
-                        caption = POINTS_CAPTION,
                         onAllMonths = { allMonths = true }
                     )
                 }
@@ -196,7 +195,6 @@ private fun WeekHeader(state: MetricsUiState, onPrevious: () -> Unit, onNext: ()
         // The dates share their row with "Back to this week", whose room stays on this week too, so the page
         // doesn't jump when it comes and goes.
         Row(modifier = Modifier.heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(state.range, fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray, modifier = Modifier.padding(end = 12.dp))
             if (!state.isThisWeek) SmallChip("Back to this week", onClick = onThisWeek)
         }
     }

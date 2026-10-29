@@ -291,7 +291,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "cd \"$SRCROOT/..\"\n./gradlew :shared:embedAndSignAppleFrameworkForXcode\n";
+			shellScript = "cd \"$SRCROOT/..\"\n# The widget links the framework the app embeds, and draws no bundled images,\n# so its copies of both go to a scratch folder instead of the .appex.\nTARGET_BUILD_DIR=\"$DERIVED_FILE_DIR\" BUILT_PRODUCTS_DIR=\"$DERIVED_FILE_DIR\" ./gradlew :shared:embedAndSignAppleFrameworkForXcode\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

@@ -36,6 +36,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.todoapp.screen.basicutils.components.edgeSwipeBack
 import com.example.todoapp.domain.CalendarDay
 import com.example.todoapp.domain.CalendarFilter
 import com.example.todoapp.domain.PillarType
@@ -47,7 +48,6 @@ import com.example.todoapp.screen.diary.plan.SmallChip
 import com.example.todoapp.screen.metrics.CalendarCaption
 import com.example.todoapp.screen.metrics.ITEMS_CAPTION
 import com.example.todoapp.screen.metrics.MonthCalendarCard
-import com.example.todoapp.screen.metrics.POINTS_CAPTION
 import com.example.todoapp.screen.metrics.badges.DayBadgesDialog
 import kotlinx.datetime.LocalDate
 import moe.tlaster.precompose.navigation.BackHandler
@@ -69,7 +69,7 @@ fun AllMonthsScreen(viewModel: AllMonthsViewModel, openDay: (LocalDate) -> Unit,
     BackHandler { onClose() }
 
     Column(
-        modifier = Modifier.fillMaxSize().background(Light_Yellowww)
+        modifier = Modifier.fillMaxSize().edgeSwipeBack(onClose).background(Light_Yellowww)
             // Over the Metrics tab: a touch anywhere stops here instead of reaching the list underneath.
             .pointerInput(Unit) {}
             // A screen reader announces the screen as it opens.
@@ -86,11 +86,10 @@ fun AllMonthsScreen(viewModel: AllMonthsViewModel, openDay: (LocalDate) -> Unit,
                 contentPadding = PaddingValues(bottom = 16.dp),
                 modifier = Modifier.weight(1f).fillMaxWidth()
             ) {
-                item(key = "caption") {
-                    CalendarCaption(
-                        if (s.filter.isOn) ITEMS_CAPTION else POINTS_CAPTION,
-                        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp)
-                    )
+                if (s.filter.isOn) {
+                    item(key = "caption") {
+                        CalendarCaption(ITEMS_CAPTION, Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp))
+                    }
                 }
                 item(key = "summary") {
                     // Always there, so the first pick changes the line and a screen reader reads it again.

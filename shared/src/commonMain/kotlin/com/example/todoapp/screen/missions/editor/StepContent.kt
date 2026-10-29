@@ -69,7 +69,6 @@ import todoapp.shared.generated.resources.star_border
 /** The question written on the marker heading for [step]. */
 fun questionFor(step: EditorStep, state: EditorUiState): String = when (step) {
     EditorStep.TITLE -> "WHAT DO YOU WANT TO MAKE ROOM FOR?"
-    EditorStep.PILLAR -> "WHICH PART OF YOUR LIFE DOES IT FEED?"
     EditorStep.KIND -> "WHAT KIND OF THING IS IT?"
     EditorStep.PACE -> when (state.draft.kind) {
         MissionKind.FINISH_LINE -> "BY WHEN? HOW WILL YOU KNOW YOU'RE DONE?"
@@ -80,8 +79,9 @@ fun questionFor(step: EditorStep, state: EditorUiState): String = when (step) {
     }
     EditorStep.DURATION -> "EACH TIME TAKES ABOUT…"
     EditorStep.EFFORT -> "HOW DOES IT FEEL TO DO?"
-    EditorStep.WEIGHT -> "HOW BIG A PART OF YOUR ${state.draft.pillar.title.uppercase()} WEEK IS IT?"
-    EditorStep.IF_MISSED -> "IF A DAY GOES SIDEWAYS…"
+    EditorStep.WEIGHT -> "HOW MANY POINTS IS EACH TIME WORTH?"
+    EditorStep.PILLAR -> "TOWARD WHICH PART OF YOUR LIFE?"
+    EditorStep.IF_MISSED -> "IF IT GOES SIDEWAYS…"
     EditorStep.GENTLE -> "IT'S NEW. START GENTLY?"
 }
 
@@ -104,7 +104,7 @@ fun StepQuestion(step: EditorStep, state: EditorUiState, viewModel: MissionEdito
         }
         EditorStep.KIND -> MissionKind.entries.forEachIndexed { i, kind ->
             val (title, example, icon) = when (kind) {
-                MissionKind.HABIT -> Triple("Something I keep doing", "like the gym, or guitar", Res.drawable.check_square)
+                MissionKind.HABIT -> Triple("Something I do regularly", "like the gym, or guitar", Res.drawable.check_square)
                 MissionKind.FINISH_LINE -> Triple("Something with a finish line", "like a dance routine by spring", Res.drawable.flag_open)
                 MissionKind.BLOCK -> Triple("A fixed block in my day", "like your job, on weekdays", Res.drawable.metrics_calendar)
                 MissionKind.RHYTHM -> Triple("Something I do every so often", "like calling Grandma, or a trip every 3 months", Res.drawable.star_border)
@@ -130,10 +130,10 @@ fun StepQuestion(step: EditorStep, state: EditorUiState, viewModel: MissionEdito
         }
         EditorStep.WEIGHT -> (1..3).forEach { weight ->
             ChoiceCard(
-                MissionWords.weightWord(weight).replaceFirstChar { it.uppercase() },
-                "${MissionWords.pointsPhrase(weight)} each time",
+                "+${MissionWords.pointsPhrase(weight)}",
+                "a ${MissionWords.weightWord(weight)} one, each time",
                 answered && draft.weight == weight, cardTilts[(weight - 1) % cardTilts.size],
-                onClick = { viewModel.pickWeight(weight) }, accent = pillarStrong(draft.pillar)
+                onClick = { viewModel.pickWeight(weight) }, accent = draft.pillarChoice?.let { pillarStrong(it) }
             )
         }
         EditorStep.IF_MISSED -> IfMissed.entries.forEachIndexed { i, rule ->

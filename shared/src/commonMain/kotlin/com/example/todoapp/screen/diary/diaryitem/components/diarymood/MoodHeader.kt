@@ -48,7 +48,6 @@ import todoapp.shared.generated.resources.happy
 import todoapp.shared.generated.resources.sad
 import todoapp.shared.generated.resources.angryemoji
 import todoapp.shared.generated.resources.boredemoji
-import todoapp.shared.generated.resources.confusedemoji
 import todoapp.shared.generated.resources.dreamyemoji
 import todoapp.shared.generated.resources.happyemoji
 import todoapp.shared.generated.resources.sademoji
@@ -60,8 +59,7 @@ private fun getDrawableIdFromMoodIcon(moodIcon: String): DrawableResource {
         "sad" to Res.drawable.sademoji,
         "angry" to Res.drawable.angryemoji,
         "dreamy" to Res.drawable.dreamyemoji,
-        "bored" to Res.drawable.boredemoji,
-        "confused" to Res.drawable.confusedemoji
+        "bored" to Res.drawable.boredemoji
     )
     return drawableMap[moodIcon] ?: Res.drawable.sad
 }

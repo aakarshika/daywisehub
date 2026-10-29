@@ -36,6 +36,7 @@ import androidx.compose.ui.zIndex
 import com.example.todoapp.app.AppClock
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.screen.basicutils.components.WriteText
+import com.example.todoapp.screen.basicutils.Orange180
 import com.example.todoapp.screen.basicutils.Orange40
 import com.example.todoapp.screen.basicutils.Red80
 import com.kizitonwose.calendar.compose.WeekCalendar
@@ -268,7 +269,8 @@ private fun ExpandedMonthCalendar(
                         if (date != null) {
                             RoundButton(
                                 date = date,
-                                todayHighlight = date == selectedDate
+                                todayHighlight = date == selectedDate,
+                                isToday = date == AppClock.today()
                             ) {
                                 onDateClicked(date)
                             }
@@ -290,15 +292,17 @@ private fun WeekDayGola(
     val date = day.date
 
     Box(modifier = Modifier.padding(2.dp)){
-        RoundButton((date), todayHighlight = isSelected){
+        RoundButton((date), todayHighlight = isSelected, isToday = date == AppClock.today()){
             onDateClicked(date)
         }
     }
 }
 
 
+private val TodayInk = Color(0xFFB8602A)
+
 @Composable
-fun RoundButton(date: LocalDate, todayHighlight: Boolean = false,
+fun RoundButton(date: LocalDate, todayHighlight: Boolean = false, isToday: Boolean = false,
                 onClick: () -> Unit) {
 
     Box(
@@ -307,17 +311,19 @@ fun RoundButton(date: LocalDate, todayHighlight: Boolean = false,
                 onClick()
             }
     ) {
+        // Today's weekday badge is inked in, whether or not it is the page on screen.
         Box(modifier = Modifier.size(25.dp).align(Alignment.BottomEnd)){
             Icon(
                 painter = painterResource( Res.drawable.circle_filled_a),
                 contentDescription = "circle_filled",
-                tint = if(todayHighlight) Red80 else  Orange40,
+                tint = if(todayHighlight) Red80 else if (isToday) Orange180 else Orange40,
                 modifier = Modifier.fillMaxSize()
             )
             WriteText(
                 text = ""+date.dayOfMonth,
                 color = Color.Black,
                 fontSize = 14f,
+                fontWeight = if (isToday) FontWeight.Normal else FontWeight.Light,
                 modifier = Modifier.padding(top = 2.dp, start = 2.dp).align(Alignment.Center)
             )
         }
@@ -325,14 +331,14 @@ fun RoundButton(date: LocalDate, todayHighlight: Boolean = false,
             Icon(
                 painter = painterResource(Res.drawable.circle_filled_b),
                 contentDescription = "circle_filled",
-                tint = if (todayHighlight) Red80 else Color.White,
+                tint = if (isToday) TodayInk else if (todayHighlight) Red80 else Color.White,
                 modifier = Modifier.fillMaxSize()
             )
             WriteText(
                 text = date.dayOfWeek.name.substring(0, 1),
                 fontSize = 10f,
                 fontWeight = FontWeight.Normal,
-                color = Color.Black,
+                color = if (isToday) Color.White else Color.Black,
                 modifier = Modifier.align(Alignment.Center)
             )
         }

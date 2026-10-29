@@ -23,18 +23,25 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
@@ -85,6 +92,8 @@ fun NotesItem(
                     modifier = Modifier.wrapContentHeight()
                         .fillMaxWidth()
                         .border(1.dp, Blue80, RoundedCornerShape(8.dp)).clickable {
+                        // The item outlives a date change, so start from the shown day's notes.
+                        if (!editing.value) nn.value = water?.notes ?: ""
                         editing.value = true
                     }
                 ) {
@@ -132,12 +141,22 @@ private fun NotesEdit(
 ) {
     Box(modifier = Modifier) {
         val layout: MutableState<TextLayoutResult?> = mutableStateOf(null)
+        // Cursor at the end, so a tap carries on writing where the notes left off.
+        var field by remember { mutableStateOf(TextFieldValue(nn.value, TextRange(nn.value.length))) }
+        val focus = remember { FocusRequester() }
+        val keyboard = LocalSoftwareKeyboardController.current
+        LaunchedEffect(Unit) {
+            focus.requestFocus()
+            keyboard?.show()
+        }
 
         BasicTextField(
-            value = nn.value,
-            onValueChange = { it: String ->
-                nn.value = it
-                upsertWaterIntake(nn.value)
+            value = field,
+            onValueChange = {
+                val changed = it.text != field.text
+                field = it
+                nn.value = it.text
+                if (changed) upsertWaterIntake(nn.value)
             },
             textStyle = TextStyle(
                 // fontFamily = anniFontFamily, // Uncomment if you have this defined
@@ -151,6 +170,7 @@ private fun NotesEdit(
             ),
             modifier = Modifier
                 .fillMaxWidth()
+                .focusRequester(focus)
                 .background(Color.Transparent)
                 .border(1.dp, Blue80, RoundedCornerShape(8.dp))
                 .padding(horizontal = 12.dp, vertical = 8.dp)

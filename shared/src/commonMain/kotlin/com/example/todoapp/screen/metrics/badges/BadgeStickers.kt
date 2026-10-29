@@ -1,6 +1,8 @@
 package com.example.todoapp.screen.metrics.badges
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,24 +14,26 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import com.example.todoapp.domain.Badge
 import com.example.todoapp.domain.BadgeTier
 import com.example.todoapp.domain.CalendarDay
@@ -37,10 +41,13 @@ import com.example.todoapp.screen.basicutils.BadgeInk
 import com.example.todoapp.screen.basicutils.InkBlack
 import com.example.todoapp.screen.basicutils.InkGray
 import com.example.todoapp.screen.basicutils.Light_Yellowww
-import com.example.todoapp.screen.basicutils.PeachText
+import com.example.todoapp.screen.basicutils.Orange180
+import com.example.todoapp.screen.basicutils.PeachInk
 import com.example.todoapp.screen.diary.plan.ChipText
-import com.example.todoapp.screen.diary.plan.PlanButton
 import kotlinx.datetime.LocalDate
+import org.jetbrains.compose.resources.painterResource
+import todoapp.shared.generated.resources.Res
+import todoapp.shared.generated.resources.diary_heart_closed
 
 /**
  * How much of its space a badge fills: the rarer, the bigger. Everyday and good-day stickers stay small,
@@ -101,18 +108,33 @@ internal fun tilt(badge: Badge, date: LocalDate): Float = ((date.dayOfYear * 7 +
 
 /**
  * Spec 9.3: a calendar day's badges. The rarest shows as its sticker with its line; the rest follow as a
- * plain bulleted list, rarest first. "Open this day" does what a tap on a day without badges does.
+ * plain bulleted list, rarest first. The diary icon ("Open this day") does what a tap on a day without
+ * badges does; a tap outside closes it.
  */
 @Composable
 fun DayBadgesDialog(day: CalendarDay, onOpen: () -> Unit, onDismiss: () -> Unit) {
     val top = day.badges.firstOrNull()
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = { PlanButton("Open this day", filled = true, onClick = onOpen) },
-        dismissButton = {
-            TextButton(onClick = onDismiss, colors = ButtonDefaults.textButtonColors(contentColor = PeachText)) { Text("Close") }
+        // No buttons: a tap outside closes it, and the diary icon by the title opens the day.
+        confirmButton = {},
+        properties = DialogProperties(dismissOnClickOutside = true, dismissOnBackPress = true),
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(day.title, modifier = Modifier.weight(1f).semantics { heading() })
+                Box(
+                    modifier = Modifier.padding(start = 12.dp).size(44.dp).clip(CircleShape).background(Orange180)
+                        .clickable(role = Role.Button, onClickLabel = "Open this day") { onOpen() }
+                        .semantics { contentDescription = "Open this day" },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painterResource(Res.drawable.diary_heart_closed), contentDescription = null,
+                        colorFilter = ColorFilter.tint(PeachInk), modifier = Modifier.size(26.dp)
+                    )
+                }
+            }
         },
-        title = { Text(day.title, modifier = Modifier.semantics { heading() }) },
         text = {
             LazyColumn(modifier = Modifier.heightIn(max = 420.dp)) {
                 if (top != null) item(key = "top") {

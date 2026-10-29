@@ -76,12 +76,15 @@ fun DiaryScreen(
     val tomorrowPlanned by diaryViewModel.tomorrowPlanned.collectAsState()
     val notice by diaryViewModel.notice.collectAsState()
     val milestoneOffer by diaryViewModel.milestoneOffer.collectAsState()
+    // The plan buttons are open: the boxes hide until Looks good.
+    var planOpen by remember(selection) { mutableStateOf(false) }
     var editMode by remember(selection) { mutableStateOf(false) }
     var showCapacity by remember { mutableStateOf(false) }
-    // Swap mode never shows over the evening check, not even for the frame before the effect clears it.
-    val swapping = editMode && !evening
+    // The evening check closes them as it opens at 18:00; they can be opened again after.
+    val swapping = editMode && planOpen
     LaunchedEffect(evening) {
         if (evening) {
+            planOpen = false
             editMode = false
             showCapacity = false
         }
@@ -165,9 +168,7 @@ fun DiaryScreen(
                 item(key = "plan-section") {
                     PlanSection(
                         s, isToday = diaryViewModel.isToday, isTomorrow = diaryViewModel.isTomorrow,
-                        evening = evening, editMode = swapping, actions = actions,
-                        tomorrowPlanned = tomorrowPlanned,
-                        onPlanTomorrow = { changeDate(selection.plus(1, DateTimeUnit.DAY)) },
+                        evening = evening, editing = planOpen, editMode = swapping, actions = actions,
                         onOpenMissions = openMissions,
                         milestones = milestones,
                         page = selection,
@@ -185,14 +186,26 @@ fun DiaryScreen(
                     }
                 }
                 s.didntFit?.let { row -> item(key = "didnt-fit") { DidntFitNote(row) } }
-                if (diaryViewModel.canPlan && !evening && s.hasMissions) {
+                val canEdit = diaryViewModel.canPlan && s.hasMissions
+                // The evening check's "Plan tomorrow" shares the line with "Make lighter or swap tasks".
+                val planTomorrow = diaryViewModel.isToday && evening
+                if (canEdit || planTomorrow) {
                     item(key = "plan-actions") {
                         PlanActions(
+                            showCta = canEdit,
+                            open = planOpen && canEdit,
                             editMode = swapping,
-                            showLooksGood = !s.confirmed,
+                            tomorrowLabel = if (!planTomorrow) null
+                                else if (tomorrowPlanned) "Tomorrow is planned ✓" else "Plan tomorrow →",
+                            onPlanTomorrow = { changeDate(selection.plus(1, DateTimeUnit.DAY)) },
+                            onToggle = {
+                                planOpen = !planOpen
+                                editMode = false
+                            },
                             onEdit = { editMode = !swapping },
                             onLighter = { diaryViewModel.lighterDay() },
                             onLooksGood = {
+                                planOpen = false
                                 editMode = false
                                 diaryViewModel.confirm()
                             }

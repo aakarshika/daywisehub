@@ -21,8 +21,9 @@ The app is in its dev phase. Ship fast; the owner tests by hand.
 ## Build
 
 - Gradle: `./gradlew`, which uses Gradle 8.14.6.
-- After each change, run `:androidApp:assembleDebug` only.
-- Run iOS once at the end of a batch, or when asked, with `:shared:compileKotlinIosSimulatorArm64` (or `:shared:linkDebugFrameworkIosSimulatorArm64`).
+- After each change, run `:androidApp:assembleDebug`.
+- Then run `make ios-run-bg`. It builds iOS and installs it on the phone or simulator picked in Xcode's toolbar, in the background, and returns at once. Don't wait for it, read `build/ios-run.log` or check for errors: it can fail when another agent is building at the same time, and that's fine. End your reply with "iOS build triggered."
+- `make ios-run` does the same in the foreground, for when the owner asks to see the iOS build's result.
 
 ## Rules that still hold
 

@@ -3,7 +3,10 @@ package com.example.todoapp.domain
 /** A piece of the mission sentence. An answer carries its [step]; [placeholder] is the blank being asked now. */
 data class SentencePart(val text: String, val step: EditorStep? = null, val placeholder: Boolean = false)
 
-/** Spec 4.1: "I want to ⟨learn guitar⟩ for ⟨Life⟩ points. It's ⟨something I keep doing⟩, ⟨about 3 times a week⟩, …" */
+/**
+ * "I want to ⟨go for a bike ride⟩. It's ⟨something I do regularly⟩, ⟨about twice a week⟩, ⟨45 mins⟩ each, and it
+ * feels ⟨steady⟩. I will get ⟨+3⟩ points toward my ⟨Health⟩. If it goes sideways, ⟨move it⟩."
+ */
 object MissionSentence {
 
     /**
@@ -30,27 +33,27 @@ object MissionSentence {
 
     private fun lead(draft: MissionDraft, step: EditorStep): String = when (step) {
         EditorStep.TITLE -> "I want to "
-        EditorStep.PILLAR -> " for "
         EditorStep.KIND -> ". It's "
         EditorStep.PACE -> if (draft.kind == MissionKind.BLOCK && !MissionWords.isEveryDay(draft.weekDays)) ", on " else ", "
         EditorStep.DURATION -> ", "
         EditorStep.EFFORT -> ", and it feels "
-        EditorStep.WEIGHT -> ". It's a "
-        EditorStep.IF_MISSED -> ". If a day goes sideways, "
+        EditorStep.WEIGHT -> ". I will get "
+        EditorStep.PILLAR -> " toward my "
+        EditorStep.IF_MISSED -> ". If it goes sideways, "
         EditorStep.GENTLE -> ""
     }
 
     private fun answer(draft: MissionDraft, step: EditorStep): List<SentencePart> = when (step) {
         EditorStep.TITLE -> listOf(SentencePart(draft.title.trim(), step))
-        EditorStep.PILLAR -> listOf(SentencePart(draft.pillar.title, step), SentencePart(" points"))
         EditorStep.KIND -> listOf(SentencePart(draft.kind?.let { MissionWords.kindPhrase(it) }.orEmpty(), step))
         EditorStep.PACE -> pace(draft)
         EditorStep.DURATION -> listOf(SentencePart(MissionWords.durationWords(draft.durationMinutes), step), SentencePart(" each"))
         EditorStep.EFFORT -> listOf(SentencePart(MissionWords.effortWord(draft.effort), step))
         EditorStep.WEIGHT -> listOf(
-            SentencePart(MissionWords.weightWord(draft.weight), step),
-            SentencePart(" part of my ${draft.pillar.title} week"),
+            SentencePart("+${draft.weight}", step),
+            SentencePart(if (draft.weight == 1) " point" else " points"),
         )
+        EditorStep.PILLAR -> listOf(SentencePart(draft.pillar.title, step))
         EditorStep.IF_MISSED -> listOf(SentencePart(MissionWords.ifMissedWords(draft.ifMissed), step))
         EditorStep.GENTLE -> emptyList()
     }

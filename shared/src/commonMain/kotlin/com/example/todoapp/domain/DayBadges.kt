@@ -31,7 +31,7 @@ enum class Badge(val title: String, val tier: BadgeTier) {
     FELT_ANGRY("Felt angry", BadgeTier.EVERYDAY),
     FELT_DREAMY("Felt dreamy", BadgeTier.EVERYDAY),
     FELT_BORED("Felt bored", BadgeTier.EVERYDAY),
-    FELT_CONFUSED("Felt confused", BadgeTier.EVERYDAY),
+    FELT_UNWELL("Felt unwell", BadgeTier.EVERYDAY),
     DID_SOME("Did some", BadgeTier.EVERYDAY),
     FIRST_ONE("First one", BadgeTier.EVERYDAY),
     STRONG_START("Strong start", BadgeTier.EVERYDAY),
@@ -39,7 +39,6 @@ enum class Badge(val title: String, val tier: BadgeTier) {
     HALFWAY("Halfway", BadgeTier.EVERYDAY),
     TWO_IN_A_ROW("Two in a row", BadgeTier.EVERYDAY),
     SHOWED_UP("Showed up", BadgeTier.EVERYDAY),
-    BONUS_ROUND("Bonus round", BadgeTier.EVERYDAY),
     SECOND_CHANCE("Second chance", BadgeTier.EVERYDAY),
     HAT_TRICK("Hat trick", BadgeTier.GOOD_DAY),
     CROWNED("Crowned", BadgeTier.GOOD_DAY),
@@ -124,7 +123,7 @@ object DayBadges {
 
     private val moodBadges = mapOf(
         "happy" to Badge.FELT_HAPPY, "sad" to Badge.FELT_SAD, "angry" to Badge.FELT_ANGRY,
-        "dreamy" to Badge.FELT_DREAMY, "bored" to Badge.FELT_BORED, "confused" to Badge.FELT_CONFUSED,
+        "dreamy" to Badge.FELT_DREAMY, "bored" to Badge.FELT_BORED, "unwell" to Badge.FELT_UNWELL,
     )
 }
 
@@ -256,9 +255,6 @@ class DayBadgeBook internal constructor(private val input: BadgeInput) {
                 else -> "All ${blocks.size} fixed blocks"
             }
             add(Badge.SHOWED_UP, words("$all and $others more done"))
-        }
-        ticked.filter { it.reasonCode == ReasonCode.ADDED.name }.missions().takeIf { it.isNotEmpty() }?.let {
-            add(Badge.BONUS_ROUND, about("Added and did ", it, "", many = { n -> "Added and did $n things" }))
         }
         ticked.filter { it.movedFromDate != null }.missions().takeIf { it.isNotEmpty() }?.let {
             add(Badge.SECOND_CHANCE, about("Did ", it, " after a move", many = { n -> "Did $n things after a move" }))

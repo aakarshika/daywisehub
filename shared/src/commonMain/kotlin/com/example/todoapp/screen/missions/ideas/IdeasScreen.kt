@@ -1,6 +1,7 @@
 package com.example.todoapp.screen.missions.ideas
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +26,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -39,11 +41,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -51,6 +56,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.todoapp.screen.basicutils.components.swipeDownToClose
 import com.example.todoapp.domain.Idea
 import com.example.todoapp.domain.Ideas
 import com.example.todoapp.domain.PillarType
@@ -85,6 +91,7 @@ fun IdeasScreen(viewModel: MissionsViewModel) {
     var query by remember { mutableStateOf("") }
     var pillar by remember { mutableStateOf<PillarType?>(null) }
     var openBlank by remember { mutableStateOf<String?>(null) }
+    var collapsed by remember { mutableStateOf(setOf<String>()) }
 
     BackHandler { viewModel.closeLibrary() }
 
@@ -95,7 +102,7 @@ fun IdeasScreen(viewModel: MissionsViewModel) {
         viewModel.clearAdded(notice)
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Light_Yellowww)) {
+    Box(modifier = Modifier.fillMaxSize().swipeDownToClose { viewModel.closeLibrary() }.background(Light_Yellowww)) {
         Column(modifier = Modifier.fillMaxSize()) {
             EditorHeader(title = "Add a mission", progress = "", onClose = { viewModel.closeLibrary() })
             SearchField(query) { query = it }
@@ -104,14 +111,14 @@ fun IdeasScreen(viewModel: MissionsViewModel) {
                 item(key = "own") {
                     StickyNote(rotation = -1.2f, modifier = Modifier.clickable(role = Role.Button) { viewModel.writeOwn() }) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Filled.Add, contentDescription = null, tint = InkBlack, modifier = Modifier.size(48.dp))
-                            Column(modifier = Modifier.padding(start = 12.dp)) {
+                            Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                                 Text("Write your own", fontSize = 17.sp, fontStyle = FontStyle.Italic, color = InkBlack)
                                 Text(
                                     "Type what you want to make room for. We'll suggest a match or walk you through it.",
                                     fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray, modifier = Modifier.padding(top = 4.dp)
                                 )
                             }
+                            Icon(Icons.Filled.Add, contentDescription = null, tint = InkBlack, modifier = Modifier.size(48.dp))
                         }
                     }
                 }
@@ -119,7 +126,7 @@ fun IdeasScreen(viewModel: MissionsViewModel) {
                     FlowRow(modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp)) {
                         SmallChip("All", selected = pillar == null) { pillar = null }
                         PillarType.entries.forEach { p ->
-                            SmallChip(p.title, selected = pillar == p) { pillar = if (pillar == p) null else p }
+                            PillarChip(p, selected = pillar == p) { pillar = if (pillar == p) null else p }
                         }
                     }
                 }
@@ -154,10 +161,15 @@ fun IdeasScreen(viewModel: MissionsViewModel) {
                             if (inTheme.isEmpty()) return@forEach
                             // The heading takes the color of the pillar most of its ideas feed.
                             val main = inTheme.groupingBy { it.pillar }.eachCount().maxBy { it.value }.key
+                            val isCollapsed = theme.id in collapsed
                             item(key = "theme-${theme.id}") {
-                                MarkerHeading(theme.name.uppercase(), pillarLight(main), Modifier.padding(top = 18.dp, bottom = 6.dp))
+                                ThemeHeading(
+                                    text = if (isCollapsed) "${theme.name.uppercase()} · ${inTheme.size}" else theme.name.uppercase(),
+                                    color = pillarLight(main),
+                                    collapsed = isCollapsed,
+                                ) { collapsed = if (isCollapsed) collapsed - theme.id else collapsed + theme.id }
                             }
-                            items(inTheme, key = { it.id }) { row(it) }
+                            if (!isCollapsed) items(inTheme, key = { it.id }) { row(it) }
                         }
                     }
                 }
@@ -168,6 +180,43 @@ fun IdeasScreen(viewModel: MissionsViewModel) {
             AddedBar(notice.text, canUndo = notice.missionId != 0L, onUndo = viewModel::undoAdd,
                 modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp))
         }
+    }
+}
+
+/** A pillar filter in the pillar's own colors; the picked one is filled and outlined in its ink. */
+@Composable
+private fun PillarChip(pillar: PillarType, selected: Boolean, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(16.dp)
+    Box(
+        modifier = Modifier.heightIn(min = 44.dp).clickable(role = Role.Button, onClick = onClick)
+            .semantics { this.selected = selected }
+            .padding(end = 6.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            pillar.title, fontSize = 13.sp, color = pillarInk(pillar),
+            fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
+            modifier = Modifier.clip(shape)
+                .border(if (selected) 1.5.dp else 1.dp, if (selected) pillarInk(pillar) else pillarLight(pillar), shape)
+                .background(if (selected) pillarLight(pillar) else pillarLight(pillar).copy(alpha = 0.45f))
+                .padding(horizontal = 12.dp, vertical = 7.dp)
+        )
+    }
+}
+
+/** A theme's marker heading; tapping it folds the theme's ideas away or opens them again. */
+@Composable
+private fun ThemeHeading(text: String, color: Color, collapsed: Boolean, onToggle: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 6.dp)
+            .clickable(role = Role.Button, onClickLabel = if (collapsed) "Show ideas" else "Hide ideas") { onToggle() },
+        contentAlignment = Alignment.Center
+    ) {
+        MarkerHeading(text, color)
+        Icon(
+            Icons.Default.KeyboardArrowDown, contentDescription = null, tint = InkGray,
+            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 8.dp).size(24.dp).rotate(if (collapsed) -90f else 0f)
+        )
     }
 }
 

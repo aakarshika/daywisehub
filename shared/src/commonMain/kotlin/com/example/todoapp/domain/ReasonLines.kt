@@ -59,7 +59,7 @@ object ReasonLines {
                 if (arg(0) == "1") "You usually take one break a week." else "You usually take ${arg(0)} breaks a week."
             ReasonCode.BLOCK -> if (arg(0).isBlank() || arg(1).isBlank()) "Fixed block" else "${arg(0)} to ${arg(1)}"
             ReasonCode.PILLAR_LIGHT -> "${arg(0)} is light this week"
-            ReasonCode.ADDED -> "Added by you"
+            ReasonCode.ADDED -> ""
         }
     }
 }
