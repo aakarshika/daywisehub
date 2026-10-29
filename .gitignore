@@ -51,3 +51,12 @@ Podfile.lock
 # JetBrains IDEs
 .idea/
 *.iml
+
+# Release signing (see docs/release-guide.md)
+keystore.properties
+*.jks
+
+# Remotion promo video (local only)
+/promo-video/
+/marketing/
+/docs/

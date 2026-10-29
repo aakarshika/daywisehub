@@ -41,7 +41,6 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.water.WaterIntake
 import com.example.todoapp.screen.basicutils.components.DiaryLineText
 import com.example.todoapp.screen.basicutils.components.NotesLineText
@@ -89,12 +88,14 @@ fun NotesItem(
                         editing.value = true
                     }
                 ) {
-                    if(editing.value) {
-                        NotesEdit(nn, editing.value, upsertWaterIntake, textArranged, editDone={
-                            editing.value = false
-                        })
-                    } else {
-                        NotesView(water,upsertWaterIntake, textArranged)
+                    Column {
+                        if(editing.value) {
+                            NotesEdit(nn, editing.value, upsertWaterIntake, textArranged, editDone={
+                                editing.value = false
+                            })
+                        } else {
+                            NotesView(water,upsertWaterIntake, textArranged)
+                        }
                     }
                 }
             }
@@ -211,4 +212,10 @@ private fun NotesEdit(
         }
 
     }
+}
+
+@Composable
+fun NotebookLine() {
+    Box(modifier = Modifier.height(1.dp).padding(horizontal = 15.dp).fillMaxWidth().background(Blue80))
+    Box(modifier = Modifier.height(25.dp).fillMaxWidth())
 }

@@ -20,13 +20,13 @@ koin = "3.2.0"
 lifecycle = "2.8.0-rc01"
 cal-version = "2.6.1"
 rendering = "1.17.1"
-kottie = "2.0.1"
-ioslottie = "6.0"
+serialization-json = "1.6.3"
+glance = "1.1.1"
 
 [libraries]
-ioslottie = { module = "com.airbnb.android:lottie-ios", version.ref = "ioslottie"}
-kottie = { module = "io.github.ismai117:kottie", version.ref = "kottie"}
+glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
+serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization-json" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activityCompose" }
 compose-ui = { module = "androidx.compose.ui:ui", version.ref = "compose" }

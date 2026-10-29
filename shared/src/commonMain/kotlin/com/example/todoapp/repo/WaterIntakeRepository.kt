@@ -4,7 +4,6 @@ import com.example.todoapp.db.AppDatabase
 import com.example.todoapp.db.data.mood.Mood
 import com.example.todoapp.db.data.water.WaterIntake
 import com.example.todoapp.db.data.water.WaterIntakeDao
-import com.example.todoapp.db.data.user.User
 import com.example.todoapp.db.models.MyDate
 import kotlinx.coroutines.flow.Flow
 import kotlinx.datetime.LocalDate

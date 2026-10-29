@@ -20,4 +20,11 @@ interface WaterIntakeDao {
         """)
     fun getWaterIntake(selectedDate: String): Flow<WaterIntake?>
 
+    @Query("SELECT * FROM water_intake WHERE water_date BETWEEN :from AND :to")
+    fun observeBetween(from: String, to: String): Flow<List<WaterIntake>>
+
+
+    /** As TodayTaskDao.touchDay. */
+    @Query("UPDATE water_intake SET notes = notes WHERE water_date = :date")
+    suspend fun touchDay(date: String)
 }

@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.kotlinAndroid)
@@ -6,13 +8,13 @@ plugins {
 
 android {
     namespace = "com.example.todoapp.android"
-    compileSdk = 34
+    compileSdk = 36
     defaultConfig {
-        applicationId = "com.example.todoapp.android"
+        applicationId = "com.ideeya.inbalance"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 36
         versionCode = 1
-        versionName = "1.0"
+        versionName = "0.0.1"
     }
     tasks.register<Wrapper>("wrapper") {
         gradleVersion = "8.9"
@@ -28,9 +30,24 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    // The upload key lives outside the repo; keystore.properties (git-ignored) points at it.
+    // Without that file a release build is unsigned.
+    val keystoreFile = rootProject.file("keystore.properties")
+    signingConfigs {
+        if (keystoreFile.exists()) {
+            val keys = Properties().apply { keystoreFile.inputStream().use { load(it) } }
+            create("release") {
+                storeFile = file(keys.getProperty("storeFile"))
+                storePassword = keys.getProperty("storePassword")
+                keyAlias = keys.getProperty("keyAlias")
+                keyPassword = keys.getProperty("keyPassword")
+            }
+        }
+    }
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
+            signingConfigs.findByName("release")?.let { signingConfig = it }
         }
     }
     compileOptions {
@@ -50,4 +67,5 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     debugImplementation(libs.compose.ui.tooling)
     implementation(libs.koin.android)
+    implementation(libs.glance.appwidget)
 }

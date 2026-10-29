@@ -1,0 +1,141 @@
+package com.example.todoapp.screen.metrics
+
+import com.example.todoapp.db.data.mission.Mission
+import com.example.todoapp.db.data.mission.milestone.Milestone
+import com.example.todoapp.db.data.plan.DayPlan
+import com.example.todoapp.db.data.todotask.TodayTask
+import com.example.todoapp.db.data.week.WeekSummary
+import com.example.todoapp.domain.AheadLine
+import com.example.todoapp.domain.BadgeInput
+import com.example.todoapp.domain.DayBadges
+import com.example.todoapp.domain.DayLogs
+import com.example.todoapp.domain.DayTasks
+import com.example.todoapp.domain.History
+import com.example.todoapp.domain.LinePart
+import com.example.todoapp.domain.MissionLine
+import com.example.todoapp.domain.MissionProgress
+import com.example.todoapp.domain.MonthCalendar
+import com.example.todoapp.domain.MonthGrid
+import com.example.todoapp.domain.shows
+import com.example.todoapp.domain.PaceOffers
+import com.example.todoapp.domain.Patterns
+import com.example.todoapp.domain.WeekAhead
+import com.example.todoapp.domain.WeekMath
+import com.example.todoapp.domain.WeekScore
+import com.example.todoapp.domain.WeekScores
+import com.example.todoapp.domain.labelFrom
+import com.example.todoapp.domain.shortLabel
+import com.example.todoapp.domain.weekStartDate
+import com.example.todoapp.domain.weekTitle
+import com.example.todoapp.repo.PlanRepository
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
+import kotlinx.datetime.plus
+
+/** Everything the Metrics tab reads. */
+data class MetricsInput(
+    val today: LocalDate,
+    /** Monday of the week on screen. */
+    val week: LocalDate,
+    /** Active and archived missions. Archived ones still count for the points they earned. */
+    val allMissions: List<Mission>,
+    /** Tasks in MetricsViewModel's window: a year back from today, the shown week's month and its history, and next week. */
+    val tasks: List<TodayTask>,
+    /** Every finished week, oldest first. */
+    val summaries: List<WeekSummary>,
+    /** Every milestone, archived missions' too. Mission lines read only the active ones'. */
+    val milestones: List<Milestone>,
+    /** Day plans over the same window as [tasks], for the badges' energy. */
+    val plans: List<DayPlan>,
+    /** The first stored item's day, where day badges start; null on an empty install. */
+    val firstDay: LocalDate?,
+    /** Moods and water over the same window, for the badges of days with nothing done. */
+    val logs: DayLogs = DayLogs(),
+)
+
+data class MetricsUiState(
+    val weekStart: LocalDate,
+    /** "This week", "Last week" or "Week of Oct 12" ("Week of Dec 22, 2025" in another year than this week's). */
+    val title: String,
+    /** "Oct 26 to Nov 1", with the year on a date in another year than this week's. */
+    val range: String,
+    val isThisWeek: Boolean,
+    val canGoBack: Boolean,
+    val canGoForward: Boolean,
+    /** The week's pillar scores: stored for a finished week, live for this one. */
+    val score: WeekScore,
+    /** "NEXT WEEK", or "THE WEEK AFTER" for a finished week. */
+    val aheadTitle: String,
+    /** What next week adjusts, each line naming its mission on a chip. Empty when there's nothing to say. */
+    val ahead: List<AheadLine>,
+    /**
+     * As of today, whichever week is on screen, in spec 9.2's order: each line a sentence whose mission and
+     * pillar titles sit on chips. Empty until the data holds a pattern up. The tab folds what comes after
+     * the first few.
+     */
+    val patterns: List<List<LinePart>>,
+    /** The month of the week on screen. */
+    val calendar: MonthCalendar,
+    /** One per active mission, as of today, in pillar order. */
+    val missions: List<MissionLine>,
+)
+
+object MetricsStateBuilder {
+
+    fun build(input: MetricsInput): MetricsUiState {
+        val week = input.week
+        val thisWeek = WeekMath.weekStart(input.today)
+        // Read once here; every section below looks days and weeks up instead of re-reading dates.
+        val missions = input.allMissions.filter { it.active }
+        val days = DayTasks(input.tasks)
+        val history = History(input.tasks)
+        val byWeek = input.summaries.associateBy { it.weekStartDate }
+        // The weeks the diary was opened in, once for every section: the rest of the finished weeks are away.
+        val opened = PaceOffers.openedWeeks(input.tasks)
+        val score = WeekScores.forWeek(week, thisWeek, byWeek[week], missions, input.allMissions, days, history, opened)
+            .let { s -> s.copy(pillars = s.pillars.filter { it.pillar.shows(missions, it.earned, it.target) }) }
+        // One index for the calendar's days, so each of them looks its badges up rather than reading every task.
+        // It reaches back over the badges' look-back and up to today too, for the badge run's pattern; the
+        // calendar still asks only its own days, and they come out the same.
+        val span = MonthGrid.span(week)
+        val lookBack = input.today.minus(PlanRepository.HISTORY_DAYS, DateTimeUnit.DAY)
+        val badges = DayBadges.book(
+            BadgeInput(
+                today = input.today, from = minOf(span.start, lookBack), to = maxOf(span.endInclusive, input.today),
+                allMissions = input.allMissions, history = history, plans = input.plans,
+                milestones = input.milestones, summaries = byWeek, firstDay = input.firstDay, logs = input.logs,
+                lookBackDays = PlanRepository.HISTORY_DAYS, maxCrowns = PlanRepository.MAX_CROWNS,
+            )
+        )
+        // A badge run stays inside the badges' look-back and starts no earlier than the first stored day.
+        val badgeFloor = maxOf(lookBack, input.firstDay ?: lookBack)
+        // Each mission's run of full weeks, walked once for its mission line and "going well".
+        val runs = MissionProgress.fullRuns(input.today, missions, history, opened, input.firstDay)
+        val title = weekTitle(week, thisWeek)
+        val end = week.plus(6, DateTimeUnit.DAY)
+        return MetricsUiState(
+            weekStart = week,
+            title = title,
+            // The year goes once, on the end, unless the week spans two years.
+            range = "${if (week.year == end.year) week.shortLabel() else week.labelFrom(thisWeek)} to ${end.labelFrom(thisWeek)}",
+            isThisWeek = week == thisWeek,
+            canGoBack = week > earliest(input.summaries, thisWeek),
+            canGoForward = week < thisWeek,
+            score = score,
+            aheadTitle = if (week < thisWeek) "THE WEEK AFTER" else "NEXT WEEK",
+            ahead = WeekAhead.lines(week, input.today, missions, history),
+            patterns = Patterns.lines(input.today, byWeek, input.allMissions, days, runs, opened) { it >= badgeFloor && badges.counts(it) },
+            calendar = MonthGrid.build(
+                week, input.today, input.allMissions, days, byWeek, opened, badges, selected = week,
+                milestonesDue = MonthGrid.openMilestoneDays(input.milestones, input.allMissions),
+            ),
+            missions = MissionProgress.lines(input.today, missions, history, input.milestones, runs),
+        )
+    }
+
+    /** The left arrow stops here. Stored weeks start at the week of the first task, so nothing comes before the first one. */
+    fun earliest(summaries: List<WeekSummary>, thisWeek: LocalDate): LocalDate =
+        summaries.firstOrNull()?.weekStartDate?.let { minOf(it, thisWeek) } ?: thisWeek
+
+}

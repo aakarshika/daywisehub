@@ -1,4 +1,3 @@
-// data/User.kt
 package com.example.todoapp.db.data.mission
 
 import androidx.room.ColumnInfo
@@ -6,22 +5,41 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.todoapp.db.models.MyDate
 
-
+/**
+ * One thing to make room for. Enum-backed columns store the enum name; read them through
+ * the typed accessors in domain/MissionRules.kt.
+ *
+ * How it repeats depends on [kind]:
+ * - HABIT, FINISH_LINE, RECHARGE: [count] per [period] (DAY means every day). [goalCount] is the pace a gentle start steps up to.
+ * - RHYTHM: once every [intervalCount] [intervalUnit].
+ * - BLOCK: on [weekDays] (ISO numbers, Monday = 1) from [startTime] to [endTime].
+ * On habits, [weekDays] holds optional preferred days.
+ *
+ * [paceSince] is the day the pace or weight last changed, by hand or by an accepted pace offer
+ * (yyyy-MM-dd, null until then). Pace offers judge only the weeks from that day on.
+ */
 @Entity(tableName = "mission")
 data class Mission(
     @PrimaryKey(autoGenerate = true) @ColumnInfo(name = "mission_id") val missionId: Long = 0,
-    @ColumnInfo(name = "user_id") val userId: Long,
-    @ColumnInfo(name = "mission_title") val missionTitle: String,
-    @ColumnInfo(name = "importance_value") val importanceValue: Float,
-    @ColumnInfo(name = "importance_set") val importanceSet: String,//auto fill
-    @ColumnInfo(name = "frequency_set_value") val frequencySetValue: Float,
-    @ColumnInfo(name = "frequency_set") val frequencySet: String,//auto fill
-    @ColumnInfo(name = "progress_indicator") val progressIndicator: String,
-    @ColumnInfo(name = "mission_motivation") val missionMotivation: String?,
-    @ColumnInfo(name = "progress_init_value") val progressInitValue: Float?,
-    @ColumnInfo(name = "progress_init_text") val progressInitText: String?,
-    @ColumnInfo(name = "progress_Unit") val progressUnit: String?,
-    @ColumnInfo(name = "start_date") val startDate: MyDate,
-    @ColumnInfo(name = "end_date") val endDate: MyDate?,
-    @ColumnInfo(name = "mission_hidden_type") val missionHiddenType: String
+    @ColumnInfo(name = "mission_title") val title: String,
+    @ColumnInfo(name = "mission_pillar") val pillar: String,
+    @ColumnInfo(name = "mission_kind") val kind: String,
+    @ColumnInfo(name = "mission_weight") val weight: Int,
+    @ColumnInfo(name = "mission_minutes") val durationMinutes: Int,
+    @ColumnInfo(name = "mission_effort") val effort: String,
+    @ColumnInfo(name = "mission_if_missed") val ifMissed: String,
+    @ColumnInfo(name = "mission_count") val count: Int = 1,
+    @ColumnInfo(name = "mission_period") val period: String = "WEEK",
+    @ColumnInfo(name = "mission_goal_count") val goalCount: Int? = null,
+    @ColumnInfo(name = "mission_interval_count") val intervalCount: Int = 0,
+    @ColumnInfo(name = "mission_interval_unit") val intervalUnit: String = "WEEK",
+    @ColumnInfo(name = "mission_week_days") val weekDays: String = "",
+    @ColumnInfo(name = "mission_start_time") val startTime: String? = null,
+    @ColumnInfo(name = "mission_end_time") val endTime: String? = null,
+    @ColumnInfo(name = "mission_start_date") val startDate: MyDate,
+    @ColumnInfo(name = "mission_end_date") val endDate: MyDate? = null,
+    @ColumnInfo(name = "mission_paused_until") val pausedUntil: MyDate? = null,
+    @ColumnInfo(name = "mission_motivation") val motivation: String? = null,
+    @ColumnInfo(name = "mission_active") val active: Boolean = true,
+    @ColumnInfo(name = "mission_pace_since") val paceSince: String? = null,
 )

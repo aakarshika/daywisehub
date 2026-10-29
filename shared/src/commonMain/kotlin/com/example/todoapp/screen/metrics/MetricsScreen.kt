@@ -1,306 +1,251 @@
 package com.example.todoapp.screen.metrics
 
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
-import com.example.todoapp.db.data.todotask.TodayTaskWithFewDetails
-import com.example.todoapp.db.models.MyDate
-import com.example.todoapp.db.models.TaskStatus
-import com.example.todoapp.db.models.TaskType
-import com.example.todoapp.screen.basicutils.components.WriteText
-import com.example.todoapp.screen.metrics.metriccomponents.TaskTypeDropdown
-import com.example.todoapp.screen.metrics.metriccomponents.options
-import com.example.todoapp.screen.basicutils.CalendarGradientA
-import com.example.todoapp.screen.basicutils.CalendarGradientB
-import com.example.todoapp.screen.basicutils.LightRed80
-import com.example.todoapp.screen.basicutils.Orange180
-import com.example.todoapp.screen.basicutils.Orange40
-import com.example.todoapp.screen.basicutils.Orange80
-import com.example.todoapp.screen.basicutils.Pink80
-import com.example.todoapp.screen.basicutils.Red80
+import androidx.lifecycle.viewModelScope
+import com.example.todoapp.di.KoinF
+import com.example.todoapp.domain.CalendarDay
+import com.example.todoapp.domain.LinePart
+import com.example.todoapp.screen.basicutils.Blue80
+import com.example.todoapp.screen.basicutils.InkBlack
+import com.example.todoapp.screen.basicutils.InkGray
+import com.example.todoapp.screen.basicutils.Light_Yellowww
+import com.example.todoapp.screen.basicutils.MissionsMarker
 import com.example.todoapp.screen.basicutils.Yellow180
-import com.example.todoapp.screen.basicutils.getDarkPillarColor
-import com.example.todoapp.screen.basicutils.getPillarColor
-import com.kizitonwose.calendar.compose.VerticalCalendar
-import com.kizitonwose.calendar.compose.rememberCalendarState
-import com.kizitonwose.calendar.core.CalendarDay
-import com.kizitonwose.calendar.core.CalendarMonth
-import com.kizitonwose.calendar.core.DayPosition
-import com.kizitonwose.calendar.core.WeekDay
-import com.kizitonwose.calendar.core.YearMonth
-import com.kizitonwose.calendar.core.daysOfWeek
-import com.kizitonwose.calendar.core.firstDayOfWeekFromLocale
-import com.kizitonwose.calendar.core.minusYears
-import com.kizitonwose.calendar.core.plusYears
-import kotlinx.datetime.DayOfWeek
+import com.example.todoapp.screen.basicutils.components.MarkerHeading
+import com.example.todoapp.screen.diary.plan.ChipText
+import com.example.todoapp.screen.diary.plan.SmallChip
+import com.example.todoapp.screen.metrics.allmonths.AllMonthsScreen
+import com.example.todoapp.screen.metrics.allmonths.AllMonthsViewModel
+import com.example.todoapp.screen.metrics.badges.DayBadgesDialog
+import kotlinx.coroutines.cancel
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.number
-import org.jetbrains.compose.resources.painterResource
-import todoapp.shared.generated.resources.Res
-import todoapp.shared.generated.resources.circle_filled_a
-import todoapp.shared.generated.resources.circle_filled_b
-import todoapp.shared.generated.resources.crown_a
-import todoapp.shared.generated.resources.crown_background_a
-import todoapp.shared.generated.resources.crown_c
 
+/** Patterns shown before "More patterns". */
+private const val FOLDED_PATTERNS = 4
 
+/**
+ * Spec 9: the Metrics tab, one week at a time. [openDay] shows a date in the diary: a calendar day with
+ * badges lists them first (spec 9.3), and its "Open this day" goes on to the diary. The calendar's title
+ * and its "All months" chip open All months over the tab (spec 9.4), with its own view model, made only
+ * while it's open.
+ */
 @Composable
-fun MetricsScreen(
-    metricsViewModel: MetricsViewModel,
-    currentDate: LocalDate,
-    changeDate: (LocalDate) -> Unit
-) {
-    val allTasks: List<TodayTaskWithFewDetails>? by metricsViewModel.allTasks.collectAsState(emptyList())
-    var dateWiseTasks by remember { mutableStateOf<Map<MyDate, List<TodayTaskWithFewDetails>>>(mapOf()) }
-    var selectionOptions by remember { mutableStateOf<List<String>>(options) }
-     dateWiseTasks=
-        allTasks?.sortedBy { it.pillar?.pillarId }
-            ?.sortedBy { it.todayTask.taskStatus == TaskStatus.COMPLETED.value }
-            ?.groupBy { task ->  task.todayTask.taskDate }
-           ?: mapOf()
+fun MetricsScreen(viewModel: MetricsViewModel, openDay: (LocalDate) -> Unit) {
+    val state by viewModel.state.collectAsState()
+    val s = state
+    // The day whose badges are open. A new view model after midnight closes it, since today's badges change.
+    var badgeDay by remember(viewModel) { mutableStateOf<CalendarDay?>(null) }
+    // Every pattern, or the first few. A new view model folds them again.
+    var allPatterns by remember(viewModel) { mutableStateOf(false) }
+    // All months, open over the tab. A new view model after midnight closes it, since its "today" is fixed.
+    var allMonths by remember(viewModel) { mutableStateOf(false) }
+    // A new view model (after midnight, or on reopening the tab) starts at the top too.
+    val listState = key(viewModel) { rememberLazyListState() }
 
-    LaunchedEffect( Unit) {
-        metricsViewModel.loadAllTasks()
-    }
-
-    Column {
-        Box(modifier = Modifier.fillMaxWidth().wrapContentHeight()){
-            TaskTypeDropdown(
-                optionsSelected = { selectedPillars ->
-                    selectionOptions = selectedPillars
-                }
-            )
-
-        }
-        Box(modifier = Modifier.fillMaxSize()) {
-            CalendarArea(
-                selectedDate = currentDate,
-                dateWiseTasks = dateWiseTasks,
-                selectionOptions = selectionOptions,
-                onDateClicked = { date ->
-                    changeDate(date)
-                },
-            )
-        }
-    }
-}
-
-@Composable
-private fun CalendarArea(
-    selectedDate: LocalDate,
-    dateWiseTasks: Map<MyDate, List<TodayTaskWithFewDetails>?>? = null,
-    selectionOptions: List<String> ,
-    onDateClicked: (LocalDate) -> Unit,
-) {
-
-    val currentMonth = remember { YearMonth.now() }
-
-    val startMonth = remember { currentMonth.minusYears(3) }
-    val endMonth = remember { currentMonth.plusYears(3) }
-    val firstDayOfWeek = remember { firstDayOfWeekFromLocale() }
-
-    val daysOfWeek = daysOfWeek(firstDayOfWeek = DayOfWeek.SUNDAY)
-    val state = rememberCalendarState(
-        startMonth = startMonth,
-        endMonth = endMonth,
-        firstVisibleMonth = currentMonth,
-        firstDayOfWeek = firstDayOfWeek
-    )
-    Box {
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-        ) {
-            VerticalCalendar(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(),
-                state = state,
-                calendarScrollPaged = false,
-                dayContent = { day ->
-                    // The key parameter forces recomposition when dateWiseTasks changes
-                    key(day.date, dateWiseTasks) {
-                        MonthDay(
-                            day,
-                            dateWiseTasks?.get(MyDate.fromLocalDate(day.date)) ?: listOf(),
-                            selectionOptions = selectionOptions,
-                            isSelected = selectedDate == day.date,
-                            onDateClicked
-                        )
-                    }
-                },
-                monthBody = { month, content ->
-                    Box(
-                        modifier = Modifier.background(
-                            brush = Brush.verticalGradient(
-                                colors = if (month.yearMonth.month.number % 2 == 0)
-                                    listOf(CalendarGradientA, CalendarGradientB)
-                                else
-                                    listOf(CalendarGradientB, CalendarGradientA)
-                            )
-                        )
-                    ) {
-                        content()
-                    }
-                },
-                monthContainer = { month, container ->
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        MonthHeader(month)
-                        Box(modifier = Modifier.fillMaxWidth()) { container() }
-                    }
-                }
-            )
-        }
-    }
-}
-
-@Composable
-private fun MonthDay(
-    day: CalendarDay,
-    ttasks: List<TodayTaskWithFewDetails>?,
-    selectionOptions: List<String>,
-    isSelected: Boolean,
-    onDateClicked: (LocalDate) -> Unit
-) {
-    val todayTasks: List<TodayTaskWithFewDetails> = ttasks?.filter { selectionOptions.contains(it.pillar?.pillarName)}?: listOf()
-    val t3 = (todayTasks.filter { it.todayTask.taskPageTag == TaskType.TOP3.value})
-    val top3completed = t3.isNotEmpty() && t3.all{ it.todayTask.taskStatus == TaskStatus.COMPLETED.value }
-    Box(modifier = Modifier.wrapContentSize()) {
-
-        Box(
-            modifier = Modifier
-                .aspectRatio(1f)
-                .size(82.dp)
-                .testTag("MonthDay")
-                .padding(if (isSelected) 5.dp else 10.dp)
-                .clip(RoundedCornerShape(if (isSelected) 15.dp else 20.dp))
-                .border(1.dp, if( MyDate.fromLocalDate(day.date).dateString == MyDate.now().dateString) Yellow180 else Color.Transparent, RoundedCornerShape(if (isSelected) 15.dp else 20.dp))
-                .background(
-                    color = when (day.position) {
-                        DayPosition.MonthDate -> if (todayTasks.size>0 && todayTasks.all { it.todayTask.taskStatus==TaskStatus.COMPLETED.value }) LightRed80 else if (isSelected) Color.White else Color.Transparent
-                        DayPosition.InDate, DayPosition.OutDate -> Color.Transparent
-                    }
-                )
-                // Disable clicks on inDates/outDates
-                .clickable(
-                    enabled = day.position == DayPosition.MonthDate,
-                    onClick = { onDateClicked(day.date) },
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .align(Alignment.Center)
+    Box(modifier = Modifier.fillMaxSize().background(Light_Yellowww)) {
+        // Drawn only once the state is built, so it opens at the top. Drawn sooner, its bottom space would be its
+        // only item, and the list would keep that in view as the cards arrived above it.
+        if (s != null) {
+            LazyColumn(
+                state = listState,
+                // Under All months it keeps its place, but a screen reader doesn't reach it.
+                modifier = Modifier.fillMaxSize().then(if (allMonths) Modifier.clearAndSetSemantics {} else Modifier)
             ) {
-                if (todayTasks != null) {
-                    Canvas(
-                        modifier = Modifier
-                            .size(78.dp)
-                    ) {
-
-                        val strokeWidth = 24f // Thickness of the ring
-                        val startAngle = -90f // Start from the top
-                        val sweepAngle = 360f / todayTasks.size
-
-                        var currentAngle = startAngle
-                        todayTasks.forEach { task ->
-                            drawArc(
-                                color = if (task.todayTask.taskStatus == TaskStatus.COMPLETED.value) {
-                                    getDarkPillarColor(pillarName = task.pillar?.pillarName)
-                                } else Color.White,
-                                startAngle = currentAngle,
-                                sweepAngle = sweepAngle,
-                                useCenter = false,
-                                style = Stroke(width = strokeWidth),
-                                size = Size(size.width, size.height)
+                item(key = "header") {
+                    WeekHeader(s, onPrevious = viewModel::previousWeek, onNext = viewModel::nextWeek, onThisWeek = viewModel::backToThisWeek)
+                }
+                item(key = "rings") { PillarRings(s.score, weekOver = !s.isThisWeek) }
+                if (s.ahead.isNotEmpty()) item(key = "week-ahead") { WeekAheadNotes(s.aheadTitle, s.ahead) }
+                item(key = "patterns-heading") {
+                    MarkerHeading("PATTERNS", Yellow180, Modifier.padding(top = 24.dp, bottom = 4.dp))
+                }
+                // Patterns follow today, whichever week is on screen.
+                if (!s.isThisWeek) {
+                    item(key = "patterns-as-of") {
+                        Text(
+                            "As of today", fontSize = 12.sp, fontStyle = FontStyle.Italic, color = InkGray,
+                            modifier = Modifier.padding(horizontal = 22.dp)
+                        )
+                    }
+                }
+                if (s.patterns.isEmpty()) {
+                    item(key = "patterns-none") { RuledLine("Nothing stands out yet.", color = InkGray) }
+                }
+                val patterns = if (allPatterns) s.patterns else s.patterns.take(FOLDED_PATTERNS)
+                // Keyed by their words, so a line keeps its place as others come and go; a repeat falls back to its place.
+                val keys = mutableSetOf<String>()
+                patterns.forEachIndexed { i, line ->
+                    val text = "pattern:" + line.joinToString("") { it.text }
+                    item(key = if (keys.add(text)) text else "pattern-$i") { RuledLine(line) }
+                }
+                if (s.patterns.size > FOLDED_PATTERNS) {
+                    item(key = "patterns-more") {
+                        Box(modifier = Modifier.padding(start = 22.dp, top = 4.dp)) {
+                            SmallChip(
+                                if (allPatterns) "Fewer patterns" else "More patterns",
+                                modifier = Modifier.semantics { stateDescription = if (allPatterns) "expanded" else "collapsed" },
+                                onClick = { allPatterns = !allPatterns }
                             )
-                            currentAngle += sweepAngle
                         }
                     }
                 }
+                item(key = "calendar") {
+                    MonthCalendarCard(
+                        s.calendar,
+                        onDay = { day -> if (day.badges.isEmpty()) openDay(day.date) else badgeDay = day },
+                        caption = POINTS_CAPTION,
+                        onAllMonths = { allMonths = true }
+                    )
+                }
+                item(key = "missions-heading") {
+                    MarkerHeading("MISSIONS", MissionsMarker, Modifier.padding(top = 24.dp, bottom = 4.dp))
+                }
+                if (s.missions.isEmpty()) {
+                    item(key = "missions-none") { RuledLine("Missions you add show their progress here.", color = InkGray) }
+                }
+                s.missions.forEach { line -> item(key = "mission-${line.missionId}") { MissionProgressRow(line) } }
+                // The tab bar is the scaffold's own, outside this screen: a little room is enough.
+                item(key = "bottom-space") { Spacer(Modifier.height(24.dp)) }
             }
-            val textColor = when (day.position) {
-                DayPosition.MonthDate -> if (isSelected) Color.Gray else Color.Black
-                DayPosition.InDate, DayPosition.OutDate -> Color.Transparent
-            }
-            Text(
-                text = day.date.dayOfMonth.toString(),
-                color = textColor,
-                fontSize = 16.sp,
-            )
         }
+        if (allMonths) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                // Made here, so it exists only while the screen is open. Nothing owns it, so its work stops
+                // when the screen closes or the tab leaves, as the Metrics view model's does.
+                val allMonthsViewModel = remember { KoinF.di!!.get<AllMonthsViewModel>() }
+                DisposableEffect(allMonthsViewModel) {
+                    onDispose { allMonthsViewModel.viewModelScope.cancel() }
+                }
+                // "Open this day" goes straight to the diary, which leaves the tab and closes everything.
+                AllMonthsScreen(allMonthsViewModel, openDay = openDay, onClose = { allMonths = false })
+            }
+        }
+    }
+    badgeDay?.let { day ->
+        DayBadgesDialog(
+            day,
+            onOpen = {
+                badgeDay = null
+                openDay(day.date)
+            },
+            onDismiss = { badgeDay = null }
+        )
+    }
+}
 
-        if(top3completed){
-            Box(modifier = Modifier
-                .padding(start = if(isSelected) 1.dp else 5.dp, top = if(isSelected) 0.dp else 2.dp )
-                .size(if(isSelected) 28.dp else 25.dp)
-                .align(Alignment.TopStart)){
-
-                Image(
-                    painterResource(Res.drawable.crown_background_a),
-                    contentDescription = "Crown background",
-                    colorFilter = ColorFilter.tint(Color.White),
-                    modifier = Modifier
-                        .fillMaxSize()
-                )
-                Image(
-                    painterResource(Res.drawable.crown_a),
-                    contentDescription = "Crown icon",
-                    colorFilter = ColorFilter.tint(Yellow180),
-                    modifier = Modifier
-                        .fillMaxSize()
+/** "This week" and its dates, arrows a week back and forward, and "Back to this week" when away from it. */
+@Composable
+private fun WeekHeader(state: MetricsUiState, onPrevious: () -> Unit, onNext: () -> Unit, onThisWeek: () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 30.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Title and dates read as one, and are read again when the week changes.
+            Column(modifier = Modifier.weight(1f).semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }) {
+                Text(
+                    state.title, fontSize = 30.sp, fontStyle = FontStyle.Italic, letterSpacing = 0.5.sp, color = InkGray,
+                    modifier = Modifier.semantics { heading() }
                 )
             }
+            WeekArrow(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Previous week", enabled = state.canGoBack, onClick = onPrevious)
+            WeekArrow(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Next week", enabled = state.canGoForward, onClick = onNext)
+        }
+        // The dates share their row with "Back to this week", whose room stays on this week too, so the page
+        // doesn't jump when it comes and goes.
+        Row(modifier = Modifier.heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(state.range, fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray, modifier = Modifier.padding(end = 12.dp))
+            if (!state.isThisWeek) SmallChip("Back to this week", onClick = onThisWeek)
         }
     }
 }
 
+/** A 44dp arrow button; faded and inactive at either end. */
 @Composable
-private fun MonthHeader(month: CalendarMonth) {
-    Row(modifier = Modifier.fillMaxWidth().background(color =
-    if (month.yearMonth.month.number % 2 == 0) CalendarGradientA else CalendarGradientB)) {
+private fun WeekArrow(icon: ImageVector, label: String, enabled: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier.size(44.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, contentDescription = label, tint = if (enabled) InkGray else InkGray.copy(alpha = 0.3f))
+    }
+}
+
+/** One line in the diary's hand, on a ruled line (spec 9.1). */
+@Composable
+private fun RuledLine(text: String, color: Color = InkBlack) {
+    Ruled {
         Text(
-            modifier = Modifier.weight(1f),
-            textAlign = TextAlign.Center,
-            text = "${month.yearMonth.month.name} ${month.yearMonth.year}",
+            text, fontSize = 17.sp, fontStyle = FontStyle.Italic, fontWeight = FontWeight.Light, letterSpacing = 0.3.sp,
+            color = color, modifier = Modifier.padding(vertical = 6.dp)
         )
+    }
+}
+
+/** The same line, its titles on chips (spec 7.1). */
+@Composable
+private fun RuledLine(parts: List<LinePart>) {
+    Ruled {
+        // ChipText takes its weight and spacing from here, so the hand matches the plain lines'.
+        ProvideTextStyle(TextStyle(fontWeight = FontWeight.Light, letterSpacing = 0.3.sp)) {
+            ChipText(parts, fontSize = 17.sp, color = InkBlack, italic = true, modifier = Modifier.padding(vertical = 6.dp))
+        }
+    }
+}
+
+/** The ruled line a line of the diary's hand sits on. */
+@Composable
+private fun Ruled(content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp).heightIn(min = 38.dp)
+            .drawBehind {
+                val y = size.height - 1.dp.toPx()
+                drawLine(Blue80, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
+            },
+        contentAlignment = Alignment.CenterStart
+    ) {
+        content()
     }
 }

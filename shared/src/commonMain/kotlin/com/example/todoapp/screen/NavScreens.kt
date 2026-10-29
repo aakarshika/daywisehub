@@ -1,60 +1,80 @@
 package com.example.todoapp.screen
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.viewModelScope
 import com.example.todoapp.app.MyScreen
+import com.example.todoapp.reminders.ReminderLinks
 import com.example.todoapp.di.KoinF
 import com.example.todoapp.screen.diary.DiaryScreen
 import com.example.todoapp.screen.diary.DiaryViewModel
-import com.example.todoapp.screen.metrics.CalDiaryViewModel
-import com.example.todoapp.screen.metrics.MetricsScreen
 import com.example.todoapp.screen.diary.diaryitem.components.diarymood.MoodViewModel
 import com.example.todoapp.screen.diary.diaryitem.components.waterintake.WaterIntakeViewModel
+import com.example.todoapp.screen.metrics.CalDiaryViewModel
+import com.example.todoapp.screen.metrics.MetricsScreen
 import com.example.todoapp.screen.metrics.MetricsViewModel
-import com.example.todoapp.screen.metrics.bottomhighlights.BottomHighlightsViewModel
-import com.example.todoapp.screen.metrics.bottomhighlights.DateHighlights
-import com.example.todoapp.screen.missions.MissionsControllerScreen
-import com.example.todoapp.screen.missions.MissionsControllerViewModel
-import kotlinx.datetime.LocalDate
+import com.example.todoapp.screen.missions.MissionsScreen
+import com.example.todoapp.screen.missions.MissionsViewModel
+import com.example.todoapp.screen.missions.editor.MissionEditorScreen
+import com.example.todoapp.screen.missions.editor.MissionEditorViewModel
+import com.example.todoapp.screen.missions.ideas.IdeasScreen
+import kotlinx.coroutines.cancel
 import moe.tlaster.precompose.navigation.NavHost
 import moe.tlaster.precompose.navigation.NavOptions
 import moe.tlaster.precompose.navigation.PopUpTo
 import moe.tlaster.precompose.navigation.rememberNavigator
-import org.jetbrains.compose.resources.painterResource
 import org.koin.core.parameter.parametersOf
 import todoapp.shared.generated.resources.Res
 import todoapp.shared.generated.resources.diary_heart_closed
 import todoapp.shared.generated.resources.metrics_calendar
 import todoapp.shared.generated.resources.target
 
-
+/** [startOnMissions]: no missions yet, so the app opens once on Missions with the ideas library up. */
 @Composable
-fun NavScreens(calDateViewModel: CalDiaryViewModel) {
+fun NavScreens(calDateViewModel: CalDiaryViewModel, startOnMissions: Boolean = false) {
     val navigator = rememberNavigator()
     val backStackEntry by navigator.currentEntry.collectAsState(null)
-
     val currentDate by calDateViewModel.currentDate.collectAsState()
+    val today by calDateViewModel.today.collectAsState()
 
     val currentScreen = MyScreen.valueOf(
         backStackEntry?.route?.route ?: MyScreen.Diary.name
     )
 
+    // Timers pause in the background, so the day is looked at again as soon as the app is back in front.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { calDateViewModel.checkDate() }
+
     fun navigateTab(screen: MyScreen) {
+        // A tab opens on the current day, without waiting for the next timed check.
+        calDateViewModel.checkDate()
         navigator.navigate(
             screen.name,
             NavOptions(
@@ -64,106 +84,146 @@ fun NavScreens(calDateViewModel: CalDiaryViewModel) {
         )
     }
 
+    var openLibraryOnStart by remember { mutableStateOf(startOnMissions) }
+    // On top of the diary, so back from Missions lands on today.
+    LaunchedEffect(Unit) { if (startOnMissions) navigateTab(MyScreen.Missions) }
+    // A tapped notification opens the diary on its day.
+    val reminderDate by ReminderLinks.date.collectAsState()
+    LaunchedEffect(reminderDate) {
+        val date = reminderDate ?: return@LaunchedEffect
+        calDateViewModel.checkDate()
+        calDateViewModel.selectDate(date)
+        navigateTab(MyScreen.Diary)
+        ReminderLinks.consumed()
+    }
+    // The month widget opens the Metrics tab.
+    val openMetrics by ReminderLinks.metrics.collectAsState()
+    LaunchedEffect(openMetrics) {
+        if (!openMetrics) return@LaunchedEffect
+        navigateTab(MyScreen.Calendar)
+        ReminderLinks.metricsConsumed()
+    }
+
     Scaffold(
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(
                     selected = currentScreen == MyScreen.Diary,
-                    onClick = {
-                        if (currentScreen != MyScreen.Diary) {
-                            navigateTab(MyScreen.Diary)
-                        }
-                    },
+                    onClick = { if (currentScreen != MyScreen.Diary) navigateTab(MyScreen.Diary) },
                     label = { Text("Diary") },
-                    icon = { Icon(painterResource(Res.drawable.diary_heart_closed), tint = Color.Gray,
+                    icon = { Icon(DiaryTabIcon, tint = Color.Gray,
                         contentDescription = "Diary", modifier = Modifier.size(30.dp)) }
                 )
                 NavigationBarItem(
                     selected = currentScreen == MyScreen.Missions,
-                    onClick = {
-                        if(currentScreen != MyScreen.Missions) {
-                            navigateTab(MyScreen.Missions)
-                        }
-                    },
+                    onClick = { if (currentScreen != MyScreen.Missions) navigateTab(MyScreen.Missions) },
                     label = { Text("Missions") },
-                    icon = { Icon(painterResource(Res.drawable.target),tint = Color.Gray,modifier = Modifier.size(30.dp), contentDescription = "Missions") }
+                    icon = { Icon(MissionsTabIcon, tint = Color.Gray,
+                        contentDescription = "Missions", modifier = Modifier.size(30.dp)) }
                 )
                 NavigationBarItem(
                     selected = currentScreen == MyScreen.Calendar,
-                    onClick = {
-                        if (currentScreen != MyScreen.Calendar) {
-                            navigateTab(MyScreen.Calendar)
-                        }
-                    },
+                    onClick = { if (currentScreen != MyScreen.Calendar) navigateTab(MyScreen.Calendar) },
                     label = { Text("Metrics") },
-                    icon = { Icon(painterResource(Res.drawable.metrics_calendar),tint = Color.Gray,modifier = Modifier.size(30.dp), contentDescription = "Metrics") }
+                    icon = { Icon(MetricsTabIcon, tint = Color.Gray,
+                        contentDescription = "Metrics", modifier = Modifier.size(30.dp)) }
                 )
             }
         }
     ) { innerPadding ->
-
-        Box(modifier = Modifier) {
+        Box(modifier = Modifier.padding(innerPadding)) {
             NavHost(
                 navigator = navigator,
                 initialRoute = MyScreen.Diary.name
             ) {
-                scene(
-                    route = MyScreen.Missions.name
-                ) {
-                    MissionsControllerScreen(KoinF.di?.get<MissionsControllerViewModel>()!!)
+                scene(route = MyScreen.Missions.name) {
+                    // A new one after midnight, so its "today" follows the date, as the Metrics tab's does.
+                    var missionsDay by remember { mutableStateOf(today) }
+                    val missionsViewModel = remember(missionsDay) { KoinF.di!!.get<MissionsViewModel>() }
+                    DisposableEffect(missionsViewModel) {
+                        onDispose { missionsViewModel.viewModelScope.cancel() }
+                    }
+                    LaunchedEffect(missionsViewModel) {
+                        if (openLibraryOnStart) {
+                            openLibraryOnStart = false
+                            missionsViewModel.openNew()
+                        }
+                    }
+                    // Held here, so the list keeps its place while the editor is open.
+                    val missionsList = rememberLazyListState()
+                    val editor by missionsViewModel.editor.collectAsState()
+                    val libraryOpen by missionsViewModel.libraryOpen.collectAsState()
+                    val target = editor
+                    // The open editor lives in the view model, so a new day waits for it to close rather than
+                    // dropping a draft. Each opening makes a fresh editor, which reads the date then.
+                    LaunchedEffect(today, target) { if (target == null) missionsDay = today }
+                    if (target == null) {
+                        if (libraryOpen) IdeasScreen(missionsViewModel) else MissionsScreen(missionsViewModel, missionsList)
+                    } else {
+                        // A fresh editor for each opening; its saves can't be cancelled, so closing mid-save is safe.
+                        val editorViewModel = remember(target) {
+                            KoinF.di!!.get<MissionEditorViewModel> { parametersOf(target) }
+                        }
+                        DisposableEffect(editorViewModel) {
+                            onDispose { editorViewModel.viewModelScope.cancel() }
+                        }
+                        MissionEditorScreen(editorViewModel, onClose = { missionsViewModel.closeEditor(saved = editorViewModel.finished.value) })
+                    }
                 }
                 scene(route = MyScreen.Diary.name) {
-                    Scaffold(
-                        topBar = {}
-                    ){
-                        DiaryScreen(
-                            KoinF.di?.get<DiaryViewModel> {
-                                parametersOf(currentDate)
-                            } ?: error("DiaryViewModel not found"),
-                            KoinF.di?.get<MoodViewModel> { parametersOf(currentDate) }!!,
-                            KoinF.di?.get<WaterIntakeViewModel> { parametersOf(currentDate) }!!,
-                            currentDate,
-                            changeDate={ date:LocalDate ->
-                                calDateViewModel.selectDate(date)
+                    // Each day is its own page: a later day slides in over this one, an earlier day is uncovered from beneath it.
+                    AnimatedContent(
+                        targetState = currentDate,
+                        transitionSpec = {
+                            val spec = tween<IntOffset>(350)
+                            if (targetState > initialState) {
+                                (slideInHorizontally(spec) { it } togetherWith
+                                    slideOutHorizontally(spec) { -it / 4 } + fadeOut(tween(350), targetAlpha = 0.6f))
+                            } else {
+                                (slideInHorizontally(spec) { -it / 4 } + fadeIn(tween(350), initialAlpha = 0.6f) togetherWith
+                                    slideOutHorizontally(spec) { it }).apply { targetContentZIndex = -1f }
                             }
+                        }
+                    ) { date ->
+                        val diaryViewModel = remember(date) {
+                            KoinF.di!!.get<DiaryViewModel> { parametersOf(date) }
+                        }
+                        val moodViewModel = remember(date) {
+                            KoinF.di!!.get<MoodViewModel> { parametersOf(date) }
+                        }
+                        val waterIntakeViewModel = remember(date) {
+                            KoinF.di!!.get<WaterIntakeViewModel> { parametersOf(date) }
+                        }
+                        // Nothing owns these view models, so stop their work when the page leaves or the diary leaves the screen.
+                        DisposableEffect(diaryViewModel, moodViewModel, waterIntakeViewModel) {
+                            onDispose {
+                                diaryViewModel.viewModelScope.cancel()
+                                moodViewModel.viewModelScope.cancel()
+                                waterIntakeViewModel.viewModelScope.cancel()
+                            }
+                        }
+                        DiaryScreen(
+                            diaryViewModel,
+                            moodViewModel,
+                            waterIntakeViewModel,
+                            date,
+                            changeDate = { calDateViewModel.selectDate(it) },
+                            openMissions = { navigateTab(MyScreen.Missions) }
                         )
                     }
                 }
-                scene(
-                    route = MyScreen.Calendar.name
-                ) {
-                    Scaffold(
-                        bottomBar = {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth().wrapContentHeight()
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .wrapContentSize()
-                                        .align(Alignment.BottomCenter)
-                                ) {
-                                    DateHighlights(
-                                        KoinF.di?.get<BottomHighlightsViewModel> {
-                                            parametersOf(currentDate)
-                                        } ?: error("BottomHighlightsViewModel not found"),
-                                        currentDate,
-                                        goToDiary = {
-                                            navigateTab(MyScreen.Diary)
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    ) {
-                        MetricsScreen(
-                            KoinF.di?.get<MetricsViewModel>()!!,
-                            currentDate,
-                            changeDate = { date: LocalDate ->
-                                calDateViewModel.selectDate(date)
-                            }
-                        )
+                scene(route = MyScreen.Calendar.name) {
+                    // A new one after midnight, so its "today" and "this week" follow the date.
+                    val metricsViewModel = remember(today) { KoinF.di!!.get<MetricsViewModel>() }
+                    // Nothing owns this view model either, so stop its work when the date changes or the tab leaves the screen.
+                    DisposableEffect(metricsViewModel) {
+                        onDispose { metricsViewModel.viewModelScope.cancel() }
                     }
+                    MetricsScreen(metricsViewModel, openDay = { date ->
+                        // The diary shows the date the shared CalDiaryViewModel holds.
+                        calDateViewModel.selectDate(date)
+                        navigateTab(MyScreen.Diary)
+                    })
                 }
             }
         }

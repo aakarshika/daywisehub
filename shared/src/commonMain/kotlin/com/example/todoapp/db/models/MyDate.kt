@@ -1,7 +1,7 @@
 package com.example.todoapp.db.models
 
+import com.example.todoapp.app.AppClock
 import com.kizitonwose.calendar.core.minusDays
-import com.kizitonwose.calendar.core.now
 import com.kizitonwose.calendar.core.plusDays
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.daysUntil
@@ -15,7 +15,7 @@ data class MyDate(
             return date1.toLocalDate().daysUntil(date2.toLocalDate())
         }
         fun now(): MyDate {
-            return fromLocalDate(LocalDate.now())
+            return fromLocalDate(AppClock.today())
         }
         fun fromLocalDate(date: LocalDate): MyDate {
             val m = date.monthNumber.toString().padStart(2, '0')
@@ -30,10 +30,6 @@ data class MyDate(
         return fromLocalDate(toLocalDate().minusDays(days))
     }
     fun toLocalDate(): LocalDate {
-        val parts = dateString.split("-").map { it.toInt() }
-        val year = parts[0]
-        val month = parts[1]
-        val day = parts[2]
-        return LocalDate(year, month, day)
+        return LocalDate.parse(dateString)
     }
 }

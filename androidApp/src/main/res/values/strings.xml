@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Inbalance</string>
+    <string name="widget_today_desc">Your week\'s balance see-saw. Switches to all done, rest, evening mood and plan-my-day by itself.</string>
+    <string name="widget_water_mood_desc">Add a glass of water and tap today\'s mood.</string>
+    <string name="widget_next_up_desc">One open task with a Done button. Arrows step through today\'s list.</string>
+    <string name="widget_stickers_desc">This week\'s day stickers and your run.</string>
+    <string name="widget_week_ahead_desc">The next seven days: big, slow or rest, and the light day.</string>
+    <string name="widget_diary_desc">Today\'s page: pillars, tasks you can tick, water and mood.</string>
+    <string name="widget_month_desc">The month\'s stickers and crowns, as on Metrics.</string>
+</resources>

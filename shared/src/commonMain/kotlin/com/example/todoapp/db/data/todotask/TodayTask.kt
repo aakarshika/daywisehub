@@ -1,4 +1,5 @@
 package com.example.todoapp.db.data.todotask
+
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
@@ -6,30 +7,36 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.models.MyDate
-import com.example.todoapp.db.models.TaskType
 
+/**
+ * One mission on one day. [state] stores a TaskState name. [reasonCode] and [reasonArgs]
+ * hold the reason line (domain/ReasonLines.kt), so it can be redrawn later. [autoTicked] is true
+ * for a fixed block the evening check ticked ("Ticked for you"); any change by hand clears it.
+ * [progress] is how much got done, 0 to 100 (spec 6.5); read it through TaskProgress.shown, which
+ * covers did-somes saved before it was stored.
+ */
 @Entity(
     tableName = "today_task",
     foreignKeys = [ForeignKey(
         entity = Mission::class,
         parentColumns = ["mission_id"],
-        childColumns = ["task_mission_id"]
+        childColumns = ["task_mission_id"],
+        onDelete = ForeignKey.CASCADE
     )],
-    indices = [Index(value = ["task_mission_id"])]
+    indices = [Index(value = ["task_mission_id"]), Index(value = ["task_date"])]
 )
 data class TodayTask(
     @PrimaryKey(autoGenerate = true) @ColumnInfo(name = "today_task_id") val todayTaskId: Long = 0,
-    @ColumnInfo(name = "task_user_id") val userId: Long,
     @ColumnInfo(name = "task_mission_id") val missionId: Long,
     @ColumnInfo(name = "task_date") val taskDate: MyDate,
-
-    @ColumnInfo(name = "task_status") val taskStatus: String?,//suggested, rejected, added, in progress, refreshed, completed.
-    @ColumnInfo(name = "task_progress_val") val taskProgressVal: Float,
-    @ColumnInfo(name = "task_page_tag") val taskPageTag: String? = TaskType.TODO.value,
-
-    @ColumnInfo(name = "task_type") val taskType: String,// comment, today task, highlight, system generated.
-    @ColumnInfo(name = "task_text") val taskText: String?, //task text, picture, link, - for system generated task.
-    @ColumnInfo(name = "task_picture_url") val taskPictureUrl: String?,
-    @ColumnInfo(name = "task_link") val taskLink: String?,
-    @ColumnInfo(name = "task_active") val active: String = "Y"
-    )
+    @ColumnInfo(name = "task_state") val state: String = "PLANNED",
+    @ColumnInfo(name = "task_points") val pointsEarned: Int = 0,
+    @ColumnInfo(name = "task_fixed_block") val isFixedBlock: Boolean = false,
+    @ColumnInfo(name = "task_crowned") val crowned: Boolean = false,
+    @ColumnInfo(name = "task_moved_from") val movedFromDate: MyDate? = null,
+    @ColumnInfo(name = "task_reason_code") val reasonCode: String,
+    @ColumnInfo(name = "task_reason_args") val reasonArgs: String = "",
+    @ColumnInfo(name = "task_order") val sortOrder: Int = 0,
+    @ColumnInfo(name = "task_auto_ticked", defaultValue = "0") val autoTicked: Boolean = false,
+    @ColumnInfo(name = "task_progress", defaultValue = "0") val progress: Int = 0,
+)

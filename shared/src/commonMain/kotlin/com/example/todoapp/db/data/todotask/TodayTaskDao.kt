@@ -2,157 +2,73 @@ package com.example.todoapp.db.data.todotask
 
 import androidx.room.Dao
 import androidx.room.Insert
-import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
-import com.example.todoapp.screen.diary.ComboTask
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TodayTaskDao {
 
-    //insert
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertTodayTask(todayTask: TodayTask): Long
+    @Insert
+    suspend fun insert(task: TodayTask): Long
+
+    @Insert
+    suspend fun insertAll(tasks: List<TodayTask>)
 
     @Update
-    suspend fun updateTodayTask(todayTask: TodayTask)
+    suspend fun update(task: TodayTask)
 
-    //insert today task reminder
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertTodayTaskReminder(todayTaskReminder: TodayTaskReminder): Long
+    @Query("DELETE FROM today_task WHERE today_task_id = :taskId")
+    suspend fun delete(taskId: Long)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertSubTask(subTask: SubTask): Long
-
-
-    @Query("""SELECT tt.*,tr.*,m.*,p.*,mf.* 
-        FROM today_task  tt
-        LEFT JOIN today_task_reminder tr ON tt.today_task_id = tr.rem_task_id
-        LEFT JOIN mission m ON tt.task_mission_id = m.mission_id
-        LEFT JOIN mission_pillar_mapping mp ON m.mission_id = mp.mission_mapping_id 
-        LEFT JOIN pillar p ON mp.pillar_mapping_id = p.pillar_id
-        LEFT JOIN mission_frequency mf ON tt.task_mission_id = mf.fs_mission_id
-        WHERE m.mission_id = :missionId
-        """)
-    fun getAllTasksForMission(missionId: Long): Flow<List<TodayTaskWithFewDetails>>
-
-
-    @Query("""SELECT tt.*,tr.*,m.*,p.*,mf.* 
-        FROM today_task  tt
-        LEFT JOIN today_task_reminder tr ON tt.today_task_id = tr.rem_task_id
-        LEFT JOIN mission m ON tt.task_mission_id = m.mission_id
-        LEFT JOIN mission_pillar_mapping mp ON m.mission_id = mp.mission_mapping_id 
-        LEFT JOIN pillar p ON mp.pillar_mapping_id = p.pillar_id
-        LEFT JOIN mission_frequency mf ON tt.task_mission_id = mf.fs_mission_id
-        """)
-    fun getTodayTaskWithDetails(): Flow<List<TodayTaskWithFewDetails>>
-
-
-
-    @Query("""SELECT tt.*,tr.*,m.*,p.*,mf.* 
-        FROM today_task  tt
-        LEFT JOIN today_task_reminder tr ON tt.today_task_id = tr.rem_task_id
-        LEFT JOIN mission m ON tt.task_mission_id = m.mission_id
-        LEFT JOIN mission_pillar_mapping mp ON m.mission_id = mp.mission_mapping_id 
-        LEFT JOIN pillar p ON mp.pillar_mapping_id = p.pillar_id
-        LEFT JOIN mission_frequency mf ON tt.task_mission_id = mf.fs_mission_id
-        where tt.task_date = :date and tt.task_active <> 'N'
-        """)
-    fun getAllTasksForDate1(date: String): Flow<List<ComboTask>>
-
-    @Query("""SELECT tt.*
-        FROM today_task tt
-        WHERE tt.task_date >= :sinceDate
-        """)
-    fun getTasksPastMonth(sinceDate: String): Flow<List<TodayTask>>
-
-
-    @Query("""SELECT tt.*
-        FROM today_task  tt 
-        JOIN mission m ON tt.task_mission_id = m.mission_id
-        where m.mission_id = :missionId and tt.task_date between :dateString and :dateString1
-        """)
-    fun getTaskProgressForPastAround(
-        missionId: Long,
-        dateString: String, dateString1: String): Flow<List<TodayTask>>
-
-
-    @Query("""SELECT tt.*,tr.*,m.*,p.*,mf.* 
-        FROM today_task  tt
-        LEFT JOIN today_task_reminder tr ON tt.today_task_id = tr.rem_task_id
-        LEFT JOIN mission m ON tt.task_mission_id = m.mission_id
-        LEFT JOIN mission_pillar_mapping mp ON m.mission_id = mp.mission_mapping_id 
-        LEFT JOIN pillar p ON mp.pillar_mapping_id = p.pillar_id
-        LEFT JOIN mission_frequency mf ON tt.task_mission_id = mf.fs_mission_id
-        where tt.task_date = :date 
-        """)
-    fun getAllTasksForDate2(date: String): Flow<List<TodayTaskWithFewDetails>>
-
-
-
-    @Query("""
-        SELECT m.mission_id
-        FROM mission m
-        LEFT JOIN mission_frequency mf ON m.mission_id = mf.fs_mission_id
-        WHERE mf.is_daily_habit = false
-        AND m.mission_id NOT IN (
-                SELECT DISTINCT task_mission_id
-                FROM today_task
-                WHERE task_date = :currentDate )
-        ORDER BY RANDOM()
-        LIMIT 1
-    """)
-    suspend fun getNewMissionForDay(currentDate: String): Long
-
-    @Query("""
-        update  today_task
-        set task_active = 'Y'
-        WHERE today_task_id = :todayTaskId
-    """)
-    suspend fun activateTaskForToday(todayTaskId: Long)
-
-
-
-    @Query("""
-        update  today_task
-        set task_active = 'N'
-        WHERE today_task_id = :todayTaskId
-    """)
-    suspend fun deleteTaskForToday(todayTaskId: Long)
-
-
-    //update task status by id
-    @Query("""
-        UPDATE today_task
-        SET task_status = :status
-        WHERE today_task_id = :todayTaskId
-    """)
-    suspend fun updateTaskStatusById(todayTaskId: Long, status: String)
-
-    //update task tag by id
-    @Query("""
-        UPDATE today_task
-        SET task_page_tag = :tag
-        WHERE today_task_id = :todayTaskId
-    """)
-    suspend fun updateTaskTagById(todayTaskId: Long, tag: String)
-
+    /** A move: the copy goes in on its new day and the item is marked moved, both or neither. */
     @Transaction
-    suspend fun insertFullTask(task: TodayTaskWithFewDetails): Long {
-        if (task.todayTask.todayTaskId > 0L) {
-            updateTodayTask(task.todayTask)
-            upsertTodayTaskReminder(task.todayTaskReminder!!)
-            return task.todayTask.todayTaskId
-        } else {
-            val todayTaskId = insertTodayTask(task.todayTask)
-            val rem = task.todayTaskReminder!!.copy(
-                todayTaskId = todayTaskId
-            )
-            upsertTodayTaskReminder(rem)
-            return todayTaskId
-        }
+    suspend fun move(copy: TodayTask, moved: TodayTask) {
+        insert(copy)
+        update(moved)
     }
 
+    /** Taking a move back: the moved item is done on its own day and its planned copy goes, both or neither. */
+    @Transaction
+    suspend fun takeBack(done: TodayTask, copyId: Long) {
+        update(done)
+        delete(copyId)
+    }
+
+    /** A swap: the item [oldId] goes and [task] comes in its place, both or neither. */
+    @Transaction
+    suspend fun replace(oldId: Long, task: TodayTask) {
+        delete(oldId)
+        insert(task)
+    }
+
+    /** A mission's still-planned items from [from] on. Dates are yyyy-MM-dd, so text order is date order. */
+    @Query("DELETE FROM today_task WHERE task_mission_id = :missionId AND task_date >= :from AND task_state = 'PLANNED'")
+    suspend fun deletePlannedFrom(missionId: Long, from: String)
+
+    @Query("SELECT * FROM today_task WHERE today_task_id = :taskId")
+    suspend fun get(taskId: Long): TodayTask?
+
+    /** The earliest day with any item, or null on an empty install. */
+    @Query("SELECT MIN(task_date) FROM today_task")
+    suspend fun getFirstDate(): String?
+
+    /** [getFirstDate], as it changes: an item added on an earlier day moves it back. */
+    @Query("SELECT MIN(task_date) FROM today_task")
+    fun observeFirstDate(): Flow<String?>
+
+    /** Items still planned on a day before [date], newest day first. */
+    @Query("SELECT * FROM today_task WHERE task_date < :date AND task_state = 'PLANNED' ORDER BY task_date DESC, task_order")
+    suspend fun getPlannedBefore(date: String): List<TodayTask>
+
+    @Query("SELECT * FROM today_task WHERE task_date BETWEEN :from AND :to ORDER BY task_date, task_order")
+    suspend fun getBetween(from: String, to: String): List<TodayTask>
+
+    @Query("SELECT * FROM today_task WHERE task_date BETWEEN :from AND :to ORDER BY task_date, task_order")
+    fun observeBetween(from: String, to: String): Flow<List<TodayTask>>
+
+    /** Rewrites a day's rows unchanged, so this process's queries on them run again (the iPhone widget writes from another process). */
+    @Query("UPDATE today_task SET task_state = task_state WHERE task_date = :date")
+    suspend fun touchDay(date: String)
 }
