@@ -34,8 +34,6 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.todoapp.domain.PillarType
-import com.example.todoapp.screen.basicutils.CardCream
 import com.example.todoapp.screen.basicutils.InkBlack
 import com.example.todoapp.screen.basicutils.InkGray
 import com.example.todoapp.screen.basicutils.Orange180
@@ -44,15 +42,10 @@ import com.example.todoapp.screen.basicutils.PeachText
 import com.example.todoapp.screen.basicutils.StickyYellow
 import com.example.todoapp.screen.diary.DiaryUiState
 import com.example.todoapp.screen.diary.DidntFitRow
-import kotlinx.datetime.LocalDate
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import todoapp.shared.generated.resources.Res
-import todoapp.shared.generated.resources.crown_a
-import todoapp.shared.generated.resources.diary_heart_closed
 import todoapp.shared.generated.resources.flag_open
-import todoapp.shared.generated.resources.heart_filled
-import todoapp.shared.generated.resources.star_filled
 
 /** Slightly tilted sticky note, like the mission cards. A screen reader reads it as one group. */
 @Composable
@@ -116,45 +109,6 @@ internal fun PlanButton(text: String, filled: Boolean, onClick: () -> Unit) {
     ) {
         Text(text, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = if (filled) PeachInk else PeachText)
     }
-}
-
-/** The evening card, in the style of the old metrics highlights. Never interprets titles. */
-@Composable
-fun DayHighlightsCard(state: DiaryUiState, date: LocalDate) {
-    Column(
-        modifier = Modifier.fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 12.dp)
-            .shadow(4.dp, RoundedCornerShape(16.dp))
-            .background(CardCream, RoundedCornerShape(16.dp))
-            .padding(horizontal = 18.dp, vertical = 14.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                "${date.dayOfMonth} ${date.month.name}",
-                fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF3A3A3A),
-                modifier = Modifier.weight(1f)
-            )
-            Image(
-                painterResource(Res.drawable.diary_heart_closed), contentDescription = null,
-                colorFilter = ColorFilter.tint(Color(0xFF6B6B6B)), modifier = Modifier.size(30.dp)
-            )
-        }
-        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).height(1.dp).background(Color(0xFFDDD6C2)))
-        HighlightLine(Res.drawable.star_filled, "+${state.pointsToday} points")
-        HighlightLine(
-            Res.drawable.heart_filled,
-            "${state.pillarsTouched} of ${PillarType.scoredPillars.size} pillars got something."
-        )
-        HighlightLine(
-            Res.drawable.crown_a,
-            if (state.crownedTotal == 0) "No crowns today." else "${state.crownedDone} of ${state.crownedTotal} crowned done."
-        )
-    }
-}
-
-@Composable
-private fun HighlightLine(icon: DrawableResource, text: String) {
-    HighlightRow(icon) { Text(text, fontSize = 15.sp, color = InkBlack) }
 }
 
 /** One line of a highlights card: an icon (a quiet dot without one), then [content]. */

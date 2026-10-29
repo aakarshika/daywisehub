@@ -8,6 +8,7 @@ import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.week.WeekSummary
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.domain.BadgeInput
+import com.example.todoapp.domain.DayLogs
 import com.example.todoapp.domain.DayBadges
 import com.example.todoapp.domain.EarnedBadge
 import com.example.todoapp.domain.Energy
@@ -17,6 +18,9 @@ import com.example.todoapp.domain.PaceOffers
 import com.example.todoapp.domain.Pick
 import com.example.todoapp.domain.PillarType
 import com.example.todoapp.domain.Points
+import com.example.todoapp.domain.Projection
+import com.example.todoapp.domain.Reason
+import com.example.todoapp.domain.ReasonCode
 import com.example.todoapp.domain.ReasonLines
 import com.example.todoapp.domain.TaskProgress
 import com.example.todoapp.domain.TaskState
@@ -25,6 +29,7 @@ import com.example.todoapp.domain.WeekScores
 import com.example.todoapp.domain.date
 import com.example.todoapp.domain.pillarType
 import com.example.todoapp.domain.scored
+import com.example.todoapp.domain.shows
 import com.example.todoapp.domain.shortLabel
 import com.example.todoapp.domain.target
 import com.example.todoapp.domain.taskState
@@ -46,6 +51,8 @@ data class PillarProgress(val pillar: PillarType, val earned: Int, val target: I
 
 data class PlanRow(
     val taskId: Long,
+    /** Its mission, so the mission's milestones can sit under it. */
+    val missionId: Long = 0,
     val title: String,
     val pillar: PillarType,
     val minutes: Int,
@@ -83,17 +90,29 @@ data class BadgeExtras(
     val milestones: List<Milestone>,
     /** The first stored item's day; null on an empty install. */
     val firstDay: LocalDate?,
+    /** The page's mood and water. */
+    val logs: DayLogs,
 )
 
 /** One mission in the pencil's list, with its reason line. */
-data class AddOption(val missionId: Long, val title: String, val pillar: PillarType, val minutes: Int, val reason: String) {
+/** A row in the pencil's list; [recommended] puts it in the day's recommendations, at the top. */
+data class AddOption(
+    val missionId: Long,
+    val title: String,
+    val pillar: PillarType,
+    val minutes: Int,
+    val reason: String,
+    val recommended: Boolean,
+) {
     companion object {
-        fun from(pick: Pick) = AddOption(
+        fun from(pick: Pick, recommended: Boolean) = AddOption(
+            recommended = recommended,
             missionId = pick.mission.missionId,
             title = pick.mission.title,
             pillar = pick.mission.pillarType,
             minutes = pick.mission.durationMinutes,
-            reason = ReasonLines.render(pick.reason),
+            // "Added by you" says nothing in the pencil's list.
+            reason = if (pick.reason.code == ReasonCode.ADDED) "" else ReasonLines.render(pick.reason),
         )
     }
 }
@@ -130,6 +149,8 @@ data class DiaryUiState(
     val freshStart: Boolean,
     /** The page's badges, rarest first (spec 9.3), as the Metrics calendar has them. Today's are those earned so far. */
     val badges: List<EarnedBadge>,
+    /** In the first week since the first stored item: the list explains ticking and swiping. */
+    val newUser: Boolean,
 ) {
     /** Every open scored pick resolved as done or did-some; drives the confetti. */
     val allPicksDone: Boolean
@@ -173,7 +194,7 @@ object DiaryStateBuilder {
                 earned = Points.earnedInWeek(allMissions, tasks, pillar, weekStart),
                 target = stored?.target(pillar) ?: Points.weeklyTarget(missions, pillar, weekStart, history),
             )
-        }
+        }.filter { it.pillar.shows(missions, it.earned, it.target) }
         val todayTasks = tasks.filter { it.date == date }.sortedWith(compareBy({ it.sortOrder }, { it.todayTaskId }))
         // "Move it" names its day, found the way PlanRepository.moveToNextRoom finds it. The 7 days it looks at
         // are sliced out once, and only when a planned flexible row needs them.
@@ -181,7 +202,9 @@ object DiaryStateBuilder {
         val naming = namesMoves(date, today) && todayTasks.any { it.taskState == TaskState.PLANNED && !it.isFixedBlock }
         val ahead = if (naming) {
             val last = anchor.plus(7, DateTimeUnit.DAY)
-            tasks.filter { task -> task.date.let { it > anchor && it <= last } }
+            // Projected guesses don't take room, as in PlanRepository.moveTask.
+            val projected = extras.plans.filter { it.projected }.mapTo(mutableSetOf()) { it.date }
+            Projection.kept(tasks.filter { task -> task.date.let { it > anchor && it <= last } }, projected)
         } else emptyList()
         val room = if (naming) {
             Moves.roomByDay(anchor, missions.associate { it.missionId to it.durationMinutes }, ahead) { day -> freeOn(day, extras) }
@@ -218,6 +241,7 @@ object DiaryStateBuilder {
             weekLabel = weekTitle(weekStart, thisWeek).uppercase(),
             freshStart = date == today && lastWeek != null && pillars.all { it.earned == 0 },
             badges = badges(date, today, allMissions, history, plan, stored, badgeExtras),
+            newUser = badgeExtras.firstDay.let { it == null || it > today.minus(7, DateTimeUnit.DAY) },
         )
     }
 
@@ -240,6 +264,7 @@ object DiaryStateBuilder {
             milestones = extras.milestones,
             summaries = stored?.let { mapOf(WeekMath.weekStart(date) to it) }.orEmpty(),
             firstDay = extras.firstDay,
+            logs = extras.logs,
             lookBackDays = PlanRepository.HISTORY_DAYS, maxCrowns = PlanRepository.MAX_CROWNS,
         )
     ).on(date)
@@ -263,12 +288,13 @@ object DiaryStateBuilder {
         val copy = if (moved) Moves.copyOf(task, history.tasksFor(task.missionId)) else null
         return PlanRow(
             taskId = task.todayTaskId,
+            missionId = mission.missionId,
             title = mission.title,
             pillar = mission.pillarType,
             minutes = mission.durationMinutes,
             points = if (mission.scored) mission.weight else 0,
             pointsEarned = task.pointsEarned,
-            reason = ReasonLines.render(task.reasonCode, task.reasonArgs, on = task.date),
+            reason = ReasonLines.render(task.reasonCode, quotaArgs(task), on = task.date),
             state = task.taskState,
             crowned = task.crowned,
             isFixedBlock = task.isFixedBlock,
@@ -279,6 +305,14 @@ object DiaryStateBuilder {
             canTakeBack = Moves.canTakeBack(task, copy),
             progress = TaskProgress.shown(task),
         )
+    }
+
+    /** A quota's "done" count is saved at planning time, before the day; this item's own tick counts too. */
+    private fun quotaArgs(task: TodayTask): String {
+        if (task.reasonCode != ReasonCode.QUOTA.name || !task.taskState.countsAsDone) return task.reasonArgs
+        val args = task.reasonArgs.split(Reason.SEPARATOR).toMutableList()
+        args[0] = ((args[0].toIntOrNull() ?: 0) + 1).toString()
+        return args.joinToString(Reason.SEPARATOR)
     }
 
     /** "Thursday", or "next Thursday" when it is the same weekday as [from], so a week on isn't read as [from] itself. */

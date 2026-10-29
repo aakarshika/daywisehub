@@ -12,6 +12,13 @@ val Mission.periodUnit: Period get() = Period.valueOf(period)
 val Mission.intervalPeriod: Period get() = Period.valueOf(intervalUnit)
 val Mission.scored: Boolean get() = pillarType.scored
 
+/**
+ * The diary and Metrics hide a pillar with no active mission, unless the week shown has points due or
+ * earned in it (a mission archived mid-week keeps its pillar there).
+ */
+fun PillarType.shows(missions: List<Mission>, earned: Int, target: Int): Boolean =
+    earned > 0 || target > 0 || missions.any { it.active && it.pillarType == this }
+
 /** ISO weekday numbers: fixed days for blocks, preferred days for habits. */
 val Mission.daySet: Set<Int> get() = weekDays.split(",").mapNotNull { it.trim().toIntOrNull() }.toSet()
 

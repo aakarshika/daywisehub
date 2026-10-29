@@ -1,6 +1,5 @@
 package com.example.todoapp.screen.diary
 
-import KottieAnimation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
@@ -9,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -17,9 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -30,34 +28,30 @@ import com.example.todoapp.db.data.mood.TodayMoodWithDetails
 import com.example.todoapp.db.data.water.WaterIntake
 import com.example.todoapp.screen.basicutils.Blue80
 import com.example.todoapp.screen.basicutils.InkGray
-import com.example.todoapp.screen.basicutils.Light_Yellowww
+import com.example.todoapp.screen.basicutils.DiaryBackground
+import com.example.todoapp.db.data.factor.DayFactors
+import com.example.todoapp.screen.basicutils.GREEN80
 import com.example.todoapp.screen.basicutils.Orange80
 import com.example.todoapp.screen.basicutils.Red80
 import com.example.todoapp.screen.basicutils.Yellow180
-import com.example.todoapp.screen.diary.diaryitem.components.DiaryMilestoneSection
+import com.example.todoapp.screen.diary.diaryitem.components.diarymood.DayFactorRow
 import com.example.todoapp.screen.diary.diaryitem.components.diarymood.MoodViewModel
 import com.example.todoapp.screen.diary.diaryitem.components.waterintake.WaterIntakeViewModel
 import com.example.todoapp.screen.diary.plan.AddMissionDialog
 import com.example.todoapp.screen.diary.plan.DayCapacityDialog
-import com.example.todoapp.screen.diary.plan.DayHighlightsCard
+import com.example.todoapp.screen.diary.plan.MilestoneOfferDialog
 import com.example.todoapp.screen.diary.plan.DidntFitNote
-import com.example.todoapp.screen.diary.plan.LastWeekCard
+import com.example.todoapp.screen.diary.plan.LastWeekNotes
 import com.example.todoapp.screen.diary.plan.PaceOfferNote
 import com.example.todoapp.screen.diary.plan.PillarWeekStrip
 import com.example.todoapp.screen.diary.plan.PlanActions
 import com.example.todoapp.screen.diary.plan.PlanRowActions
 import com.example.todoapp.screen.diary.plan.PlanSection
 import com.example.todoapp.screen.diary.plan.PlanSubline
-import com.example.todoapp.screen.metrics.badges.DayBadgesRow
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
-import kottieAnimationState.KottieAnimationState
-import kottieComposition.KottieCompositionSpec
-import kottieComposition.animateKottieCompositionAsState
-import kottieComposition.rememberKottieComposition
-import org.jetbrains.compose.resources.ExperimentalResourceApi
-import todoapp.shared.generated.resources.Res
+import kotlinx.datetime.plus
 
-@OptIn(ExperimentalResourceApi::class)
 @Composable
 fun DiaryScreen(
     diaryViewModel: DiaryViewModel,
@@ -71,10 +65,17 @@ fun DiaryScreen(
     val addOptions by diaryViewModel.addOptions.collectAsState()
     val milestones by diaryViewModel.milestones.collectAsState()
     val todayMoodList: List<TodayMoodWithDetails>? by moodViewModel.todayMoodStatuses.collectAsState(emptyList())
+    val dayFactors by moodViewModel.dayFactors.collectAsState(emptyList())
+    val moodNotes = remember(todayMoodList) {
+        moodNoteLines(todayMoodList.orEmpty().filter { it.todayMood?.tmMoodStatus == "ACTIVE" }.map { it.mood.moodIcon })
+    }
+    val factorNotes = remember(dayFactors) { factorNoteLines(DayFactors.all.map { it.first }.filter { it in dayFactors }) }
     val waterIntake: WaterIntake? by waterIntakeViewModel.waterIntake.collectAsState()
 
     val evening by diaryViewModel.eveningOpen.collectAsState()
+    val tomorrowPlanned by diaryViewModel.tomorrowPlanned.collectAsState()
     val notice by diaryViewModel.notice.collectAsState()
+    val milestoneOffer by diaryViewModel.milestoneOffer.collectAsState()
     var editMode by remember(selection) { mutableStateOf(false) }
     var showCapacity by remember { mutableStateOf(false) }
     // Swap mode never shows over the evening check, not even for the frame before the effect clears it.
@@ -86,18 +87,15 @@ fun DiaryScreen(
         }
     }
 
-    var confettiJson by remember { mutableStateOf("") }
-    var waterJson by remember { mutableStateOf("") }
+    val listState = rememberLazyListState()
     var confettiPlaying by remember { mutableStateOf(false) }
     var waterPlaying by remember { mutableStateOf(false) }
+    var waterRowY by remember { mutableStateOf<Float?>(null) }
 
     LaunchedEffect(selection) {
         moodViewModel.loadDailyMoodStatus(selection)
+        moodViewModel.loadDayFactors(selection)
         waterIntakeViewModel.loadWaterIntake(selection)
-    }
-    LaunchedEffect(Unit) {
-        confettiJson = Res.readBytes("files/confetti-big-animation.json").decodeToString()
-        waterJson = Res.readBytes("files/water-bubbles-animation.json").decodeToString()
     }
     // Confetti when the last open pick gets done in this session, not when opening a finished day.
     var lastDone by remember(selection) { mutableStateOf<Int?>(null) }
@@ -108,13 +106,6 @@ fun DiaryScreen(
         wasAllDone = s.allPicksDone
         lastDone = s.donePicks
     }
-
-    val confetti = rememberKottieComposition(spec = KottieCompositionSpec.File(confettiJson))
-    val confettiState by animateKottieCompositionAsState(composition = confetti, speed = 2.5f, isPlaying = confettiPlaying)
-    val water = rememberKottieComposition(spec = KottieCompositionSpec.File(waterJson))
-    val waterState by animateKottieCompositionAsState(composition = water, speed = 2.5f, isPlaying = waterPlaying)
-    LaunchedEffect(confettiState.isCompleted) { if (confettiState.isCompleted) confettiPlaying = false }
-    LaunchedEffect(waterState.isCompleted) { if (waterState.isCompleted) waterPlaying = false }
 
     val actions = remember(diaryViewModel) {
         PlanRowActions(
@@ -129,12 +120,12 @@ fun DiaryScreen(
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Light_Yellowww)) {
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().background(DiaryBackground)) {
+        LazyColumn(modifier = Modifier.fillMaxSize(), state = listState) {
             DateHeaderItem(selection, changeDate = changeDate)
             state?.let { s ->
                 item(key = "week-strip") { PillarWeekStrip(s.pillars, label = s.weekLabel, freshStart = s.freshStart) }
-                s.lastWeek?.let { card -> item(key = "last-week") { LastWeekCard(card) } }
+                s.lastWeek?.let { notes -> item(key = "last-week") { LastWeekNotes(notes) } }
                 s.offers.forEach { note ->
                     item(key = "offer-${note.offerId}") {
                         // Tilt follows the offer, not its place in the list, so the one left doesn't jump after an answer.
@@ -145,25 +136,42 @@ fun DiaryScreen(
                     }
                 }
             }
-            HeadingText("MOOD", Red80)
-            MoodHeaderItem(todayMoodList, selection, upsertMood = { moodViewModel.upsertTodayMood(it) })
+            CheckInItem(
+                selection, todayMoodList, upsertMood = { moodViewModel.upsertTodayMood(it) },
+                dayFactors = dayFactors, onFactor = { icon, picked -> moodViewModel.setDayFactor(selection, icon, picked) },
+                waterIntake = waterIntake,
+                upsertWaterIntake = { waterIntakeViewModel.upsertWaterIntake(it) },
+                waterIntakeCompleted = { done ->
+                    // Bubbles start from the check-in card, wherever it sits on screen right now.
+                    if (done) waterRowY = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == "check-in" }
+                        ?.let { (it.offset + it.size / 2).toFloat() }
+                    waterPlaying = done
+                },
+                notes = moodNotes + factorNotes,
+            )
             ToDoListHeader(
-                "TO DO LIST", Orange80,
-                addLabel = if (diaryViewModel.isToday) "Add to today" else "Add to this day",
+                "TO DO", Orange80,
+                addLabel = when {
+                    diaryViewModel.isToday -> "Add to today"
+                    diaryViewModel.isTomorrow -> "Add to tomorrow"
+                    else -> "Add to this day"
+                },
                 editClicked = { diaryViewModel.openAdd() }
             )
             state?.let { s ->
-                if (s.hasPlan && s.hasMissions && diaryViewModel.isToday && !evening) {
+                if (s.hasPlan && s.hasMissions && diaryViewModel.canPlan && !evening) {
                     item(key = "plan-subline") { PlanSubline(s, onChange = { showCapacity = true }) }
                 }
                 item(key = "plan-section") {
                     PlanSection(
-                        s, isToday = diaryViewModel.isToday, evening = evening, editMode = swapping, actions = actions,
-                        onToggleEvening = {
-                            editMode = false
-                            diaryViewModel.toggleEveningCheck()
-                        },
-                        onOpenMissions = openMissions
+                        s, isToday = diaryViewModel.isToday, isTomorrow = diaryViewModel.isTomorrow,
+                        evening = evening, editMode = swapping, actions = actions,
+                        tomorrowPlanned = tomorrowPlanned,
+                        onPlanTomorrow = { changeDate(selection.plus(1, DateTimeUnit.DAY)) },
+                        onOpenMissions = openMissions,
+                        milestones = milestones,
+                        page = selection,
+                        onMilestone = { m, achieved -> diaryViewModel.updateMilestoneStatus(m.milestone, achieved, selection) }
                     )
                 }
                 notice?.let { text ->
@@ -177,7 +185,7 @@ fun DiaryScreen(
                     }
                 }
                 s.didntFit?.let { row -> item(key = "didnt-fit") { DidntFitNote(row) } }
-                if (diaryViewModel.isToday && !evening && s.hasMissions) {
+                if (diaryViewModel.canPlan && !evening && s.hasMissions) {
                     item(key = "plan-actions") {
                         PlanActions(
                             editMode = swapping,
@@ -191,32 +199,13 @@ fun DiaryScreen(
                         )
                     }
                 }
-                if (evening && (s.hasPlan || s.picks.isNotEmpty() || s.fixed.isNotEmpty())) {
-                    item(key = "highlights") { DayHighlightsCard(s, selection) }
-                    // The day's badges, under its card (spec 9.3).
-                    if (s.badges.isNotEmpty()) {
-                        item(key = "badges") { DayBadgesRow(s.badges, selection, isToday = diaryViewModel.isToday) }
-                    }
-                }
-            }
-            HeadingText("WATER INTAKE", Blue80)
-            WaterIntakeHeaderItem(
-                waterIntake, selection,
-                upsertWaterIntake = { waterIntakeViewModel.upsertWaterIntake(it) },
-                waterIntakeCompleted = { waterPlaying = it }
-            )
-            if (milestones.isNotEmpty()) {
-                HeadingText("MILESTONE", Orange80)
-                DiaryMilestoneSection(milestones = milestones, onMilestoneChecked = { mwd, achieved ->
-                    diaryViewModel.updateMilestoneStatus(mwd.milestone, achieved, selection)
-                })
             }
             HeadingText("NOTES", Yellow180)
             Notes(waterIntake, selection, upsertWaterIntake = { waterIntakeViewModel.upsertWaterIntake(it) })
             item(key = "bottom-space") { Spacer(Modifier.height(120.dp)) }
         }
-        if (confettiPlaying) AnimationConfetti(confetti, confettiState)
-        if (waterPlaying) AnimationWater(water, waterState)
+        if (confettiPlaying) ConfettiBurst(onDone = { confettiPlaying = false })
+        if (waterPlaying) WaterBubbles(waterRowY, onDone = { waterPlaying = false })
     }
 
     state?.let { s ->
@@ -231,6 +220,13 @@ fun DiaryScreen(
                 onDismiss = { showCapacity = false }
             )
         }
+        milestoneOffer?.let { offer ->
+            MilestoneOfferDialog(
+                offer = offer,
+                onYes = { diaryViewModel.acceptMilestoneOffer() },
+                onDismiss = { diaryViewModel.dismissMilestoneOffer() }
+            )
+        }
         addOptions?.let { options ->
             AddMissionDialog(
                 options = options,
@@ -241,27 +237,5 @@ fun DiaryScreen(
                 onDismiss = { diaryViewModel.closeAdd() }
             )
         }
-    }
-}
-
-@Composable
-private fun AnimationWater(composition: Any?, animationState: KottieAnimationState) {
-    Box(modifier = Modifier.fillMaxSize().background(Color.Transparent), contentAlignment = Alignment.Center) {
-        KottieAnimation(
-            composition = composition,
-            progress = { animationState.progress },
-            modifier = Modifier.fillMaxSize().background(Color.Transparent)
-        )
-    }
-}
-
-@Composable
-private fun AnimationConfetti(composition: Any?, animationState: KottieAnimationState) {
-    Box(modifier = Modifier.fillMaxSize().background(Color.Transparent), contentAlignment = Alignment.Center) {
-        KottieAnimation(
-            composition = composition,
-            progress = { animationState.progress },
-            modifier = Modifier.fillMaxSize()
-        )
     }
 }

@@ -1,4 +1,4 @@
-package com.example.todoapp.db
+package com.example.todoapp.db.sample
 
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.models.MyDate
@@ -17,12 +17,9 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
 /**
- * Five more weeks of history for the Metrics tab, on top of SampleData's missions. It runs only with
- * SEED_SAMPLE_MISSIONS on an empty database. Turn both on to try the rings, crowns, patterns and calendar
- * without weeks of ticking. Leave it off in a release.
+ * Five more weeks of history for the Metrics tab, on top of SampleData's missions, to try the rings,
+ * crowns, patterns and calendar without weeks of ticking.
  */
-const val SEED_METRICS_HISTORY = false
-
 object MetricsSample {
 
     /** Weeks written before this one. */

@@ -31,6 +31,9 @@ data class DidntFit(val missionId: Long, val due: LocalDate, val roomDay: LocalD
 
 data class PlanResult(val picks: List<Pick>, val didntFit: DidntFit?)
 
+/** The pencil's list: the day's recommendations in pick order, some already on the list, then every other live mission. */
+data class AddChoices(val recommended: List<Pick>, val rest: List<Pick>)
+
 /** Spec section 6.2. */
 object Planner {
 
@@ -85,19 +88,22 @@ object Planner {
     }
 
     /**
-     * Spec 6.3, the pencil: every live mission that isn't a fixed block and isn't on the day's list yet,
-     * each with its reason line. Today's candidates come first, in pick order; the rest say where they stand.
-     * It ignores the day's time budget, its energy and swapped-out missions on purpose: the list is for
-     * adding by hand, so the owner decides what fits. Paused and not-yet-started missions aren't live, so they're left out.
+     * Spec 6.3, the pencil: every live mission that isn't a fixed block, each with its reason line. The day's
+     * recommendations come first, in pick order, those already on the day's list too; then the rest that
+     * aren't on it, saying where they stand. It ignores the day's time budget, its energy and swapped-out
+     * missions on purpose: the list is for adding by hand, so the owner decides what fits. Paused and
+     * not-yet-started missions aren't live, so they're left out.
      */
-    fun options(input: PlanInput): List<Pick> {
-        val ranked = candidates(input, fixedBlocks(input)).map { Pick(it.mission, it.reason, isFixedBlock = false) }
-        val rankedIds = ranked.map { it.mission.missionId }.toSet()
+    fun options(input: PlanInput): AddChoices {
+        // Only the fixed blocks stay on the list, so the day's own picks are recommended too.
+        val blocksOnly = input.copy(todayTasks = input.todayTasks.filter { it.isFixedBlock })
+        val recommended = candidates(blocksOnly, fixedBlocks(input)).map { Pick(it.mission, it.reason, isFixedBlock = false) }
+        val recommendedIds = recommended.map { it.mission.missionId }.toSet()
         val rest = input.missions
-            .filter { it.missionKind != MissionKind.BLOCK && it.isLiveOn(input.date) && it.missionId !in rankedIds }
+            .filter { it.missionKind != MissionKind.BLOCK && it.isLiveOn(input.date) && it.missionId !in recommendedIds }
             .filter { mission -> input.todayTasks.none { it.missionId == mission.missionId } }
             .map { Pick(it, standing(it, input), isFixedBlock = false) }
-        return ranked + rest
+        return AddChoices(recommended, rest)
     }
 
     /** The reason line for a mission that isn't a candidate today: this week's count, or the last time it was done. */

@@ -4,6 +4,8 @@ import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import com.example.todoapp.db.data.factor.DayFactor
+import com.example.todoapp.db.data.factor.DayFactorDao
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.mission.MissionDao
 import com.example.todoapp.db.data.mission.milestone.Milestone
@@ -14,6 +16,8 @@ import com.example.todoapp.db.data.mood.TodayMoodDao
 import com.example.todoapp.db.data.plan.DayPlan
 import com.example.todoapp.db.data.plan.DaySettings
 import com.example.todoapp.db.data.plan.PlanDao
+import com.example.todoapp.db.data.reminder.ReminderDao
+import com.example.todoapp.db.data.reminder.ReminderSettings
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.todotask.TodayTaskDao
 import com.example.todoapp.db.data.water.WaterIntake
@@ -29,6 +33,7 @@ import com.example.todoapp.db.data.week.WeekSummary
  * From version 5 on, data is kept: each new version adds an auto migration from the one before,
  * generated from the exported schemas in shared/schemas. Version 6 adds the week tables, the
  * mission's pace-since day and the task's auto-ticked flag. Version 7 adds the task's progress.
+ * Version 8 adds the day factors. Version 9 adds the plan's projected flag. Version 10 adds the reminder settings.
  *
  * Rules for version 8 and later:
  * - A new column must be nullable, or have `@ColumnInfo(defaultValue = ...)`, so the auto migration can add it.
@@ -47,9 +52,17 @@ import com.example.todoapp.db.data.week.WeekSummary
         TodayMood::class,
         WaterIntake::class,
         WeekSummary::class,
-        PaceOffer::class],
-    version = 7,
-    autoMigrations = [AutoMigration(from = 5, to = 6), AutoMigration(from = 6, to = 7)]
+        PaceOffer::class,
+        DayFactor::class,
+        ReminderSettings::class],
+    version = 10,
+    autoMigrations = [
+        AutoMigration(from = 5, to = 6),
+        AutoMigration(from = 6, to = 7),
+        AutoMigration(from = 7, to = 8),
+        AutoMigration(from = 8, to = 9),
+        AutoMigration(from = 9, to = 10),
+    ]
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -60,4 +73,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun getTodayMoodDao(): TodayMoodDao
     abstract fun getWaterIntakeDao(): WaterIntakeDao
     abstract fun getWeekDao(): WeekDao
+    abstract fun getDayFactorDao(): DayFactorDao
+    abstract fun getReminderDao(): ReminderDao
 }

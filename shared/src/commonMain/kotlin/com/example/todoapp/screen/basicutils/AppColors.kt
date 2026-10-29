@@ -32,6 +32,8 @@ val Blue180 = Color(0xFFC7E4FF)
 val Yellow80 = Color(0xFFFAE8BC)
 val Yellow180 = Color(0xFFFAE0A0)
 val Light_Yellowww = Color(0xFFFCF9ED)
+/** The diary's page: a lighter shade of the app icon's sunny yellow (#FFF1D2). */
+val DiaryBackground = Color(0xFFFFF8E6)
 
 // Green shades
 val GREEN60 = Color(0xFFEAF3E7)
@@ -84,24 +86,15 @@ val MissionsMarker = Color(0xFFE8DEF8)
 val CalendarTint = Color(0xFFF4F0FA)
 val SelectedWeekTint = Color(0xFFE9E1F6)
 val CalendarTitleInk = Color(0xFF4A4A4A)
-/** The edge of a day ring with points or with nothing done: about 3:1 on both tints and on white. */
-val DayRingEdge = Color(0xFF887CA1)
-/** A past day with nothing on it: one thin line, plainer than an edged ring but visible on the week on screen. */
-val EmptyDayRing = Color(0xFFB3A6C8)
 /** The outline around today on the calendar, at least 3:1 on both tints. */
 val TodayOutline = Color(0xFF7A6E94)
 
 // Day badges (spec 9.3)
-/** Sticker fills by tier: everyday cream, good-day peach, rare lilac, rarest gold. */
-val BadgeEveryday = Color(0xFFEFE6CF)
-val BadgeGoodDay = Color(0xFFFFD9BF)
-val BadgeRare = Color(0xFFE3D7F7)
-val BadgeRarest = Color(0xFFF8D98A)
-/** "Recharging day" only: calm and set apart, so it comes to read as a day with nothing on it. */
-val BadgeQuiet = Color(0xFFE4E0EC)
-/** A sticker's light rim. */
-val StickerRim = Color(0xFFFFFDF6)
-/** A sticker's icon: at least 6:1 on every fill. */
+/** The diary's mood and water line drawings: a soft grey, not black. */
+val SketchInk = Color(0xFF8A8580)
+/** The calendar's flag on a day a milestone is due. */
+val MilestoneFlag = Color(0xFFD9475A)
+/** A sticker's shadow. The stickers' own colours are in BadgeArt.kt. */
 val BadgeInk = Color(0xFF3B3226)
 
 /** Headings, chips and highlights. */
@@ -120,6 +113,15 @@ fun pillarStrong(pillar: PillarType): Color = when (pillar) {
     PillarType.LOVE -> Color(0xFFF7A9B5)
     PillarType.LIFE -> Color(0xFFA9D1F5)
     PillarType.RECHARGE -> Color(0xFFC4C4C4)
+}
+
+/** The blueprint's dots: deep enough to read at a few dp, still soft. */
+fun pillarDot(pillar: PillarType): Color = when (pillar) {
+    PillarType.HEALTH -> Color(0xFFC98BDB)
+    PillarType.WEALTH -> Color(0xFFEE9A63)
+    PillarType.LOVE -> Color(0xFFE9808F)
+    PillarType.LIFE -> Color(0xFF7FB6E6)
+    PillarType.RECHARGE -> Color(0xFFA0A0A0)
 }
 
 /** Text on a pillar-light background. */

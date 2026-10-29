@@ -2,6 +2,7 @@ package com.example.todoapp.screen.metrics
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.todoapp.app.AppClock
 import com.example.todoapp.db.models.MyDate
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +30,8 @@ class CalDiaryViewModel : ViewModel() {
                 checkDate()
             }
         }
+        // The dev clock moving acts like midnight passing.
+        viewModelScope.launch { AppClock.ahead.collect { checkDate() } }
     }
 
     /** Moves to the new day if the date has changed since the last look. Main thread only, like every caller. */

@@ -55,11 +55,10 @@ class MissionRepository(private val database: AppDatabase) {
         val updated = mutableListOf<Milestone>()
         val added = mutableListOf<Milestone>()
         kept.forEachIndexed { order, draft ->
-            val due = MyDate.fromLocalDate(dates[order])
+            val due = MyDate.fromLocalDate(draft.due ?: dates[order])
             val old = existing.firstOrNull { draft.milestoneId != 0L && it.milestoneId == draft.milestoneId }
             if (old != null) {
-                val keptDue = if (old.status == TaskStatus.COMPLETED.value) old.expectedCompletionDate else due
-                updated += old.copy(text = draft.text, milestoneOrder = order, expectedCompletionDate = keptDue)
+                updated += old.copy(text = draft.text, milestoneOrder = order, expectedCompletionDate = due)
             } else {
                 added += Milestone(
                     // The transaction sets the saved mission's id, which a new mission doesn't have yet.

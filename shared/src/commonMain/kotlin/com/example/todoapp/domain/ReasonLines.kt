@@ -45,7 +45,8 @@ object ReasonLines {
                 if (days > 0) "Every day · $days-day streak" else "Every day"
             }
             ReasonCode.QUOTA ->
-                "${arg(0)} of ${arg(1)} this week · " + if (arg(2) == "1") "last day" else "${arg(2)} days left"
+                // Days left only on the last one: it's the one that changes what to do.
+                "${arg(0)} of ${arg(1)} this week" + if (arg(2) == "1") " · last day" else ""
             ReasonCode.RHYTHM_DUE ->
                 (if (arg(0) == "1") "Last done yesterday" else "Last done ${arg(0)} days ago") + " · you aim for every ${arg(1)}"
             ReasonCode.RHYTHM_FIRST -> "First one · you aim for every ${arg(0)}"

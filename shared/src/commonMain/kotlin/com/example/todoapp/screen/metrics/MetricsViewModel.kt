@@ -8,6 +8,8 @@ import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.domain.Patterns
 import com.example.todoapp.domain.WeekMath
+import com.example.todoapp.domain.DayLogs
+import com.example.todoapp.repo.DayLogRepository
 import com.example.todoapp.repo.MilestoneRepository
 import com.example.todoapp.repo.MissionRepository
 import com.example.todoapp.repo.PlanRepository
@@ -46,6 +48,7 @@ class MetricsViewModel(
     milestoneRepository: MilestoneRepository,
     weekRepository: WeekRepository,
     planRepository: PlanRepository,
+    dayLogRepository: DayLogRepository,
 ) : ViewModel() {
 
     /** Fixed for this view model's life; NavScreens makes a new one when the date changes. */
@@ -66,7 +69,7 @@ class MetricsViewModel(
      * Tasks and day plans from [from] on, so a week's state is built only once its window covers it, and
      * the first stored day, where day badges start.
      */
-    private class Window(val from: LocalDate, val tasks: List<TodayTask>, val plans: List<DayPlan>, val firstDay: LocalDate?)
+    private class Window(val from: LocalDate, val tasks: List<TodayTask>, val plans: List<DayPlan>, val firstDay: LocalDate?, val logs: DayLogs)
 
     /**
      * Tasks and plans from a year before today (or earlier, when an older week's month needs it) to the
@@ -81,7 +84,8 @@ class MetricsViewModel(
                 todayTaskRepository.observeBetween(from, to),
                 planRepository.observePlans(from, to),
                 todayTaskRepository.observeFirstDate(),
-            ) { tasks, plans, first -> Window(from, tasks, plans, first) }
+                dayLogRepository.observe(from, to),
+            ) { tasks, plans, first, logs -> Window(from, tasks, plans, first, logs) }
         }
 
     /**
@@ -101,7 +105,7 @@ class MetricsViewModel(
         if (window.from > firstDay(week)) return@combine null
         // One bad build is skipped, so the flow goes on and the last state stays.
         try {
-            MetricsStateBuilder.build(MetricsInput(today, week, missions, window.tasks, summaries, milestones, window.plans, window.firstDay))
+            MetricsStateBuilder.build(MetricsInput(today, week, missions, window.tasks, summaries, milestones, window.plans, window.firstDay, window.logs))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

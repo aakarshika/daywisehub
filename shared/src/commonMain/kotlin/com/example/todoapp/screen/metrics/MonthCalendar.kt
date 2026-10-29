@@ -18,14 +18,20 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.Icon
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.PathFillType
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -43,8 +49,7 @@ import com.example.todoapp.domain.MonthCalendar
 import com.example.todoapp.screen.basicutils.CalendarTint
 import com.example.todoapp.screen.basicutils.CalendarTitleInk
 import com.example.todoapp.screen.basicutils.CrownGold
-import com.example.todoapp.screen.basicutils.DayRingEdge
-import com.example.todoapp.screen.basicutils.EmptyDayRing
+import com.example.todoapp.screen.basicutils.MilestoneFlag
 import com.example.todoapp.screen.basicutils.InkGray
 import com.example.todoapp.screen.basicutils.NoteInk
 import com.example.todoapp.screen.basicutils.SelectedWeekTint
@@ -53,6 +58,7 @@ import com.example.todoapp.screen.basicutils.pillarLight
 import com.example.todoapp.screen.basicutils.pillarStrong
 import com.example.todoapp.screen.diary.plan.SmallChip
 import com.example.todoapp.screen.metrics.badges.BadgeSticker
+import com.example.todoapp.screen.metrics.badges.badgeLines
 import org.jetbrains.compose.resources.painterResource
 import todoapp.shared.generated.resources.Res
 import todoapp.shared.generated.resources.crown_a
@@ -83,7 +89,7 @@ fun MonthCalendarCard(
     onAllMonths: (() -> Unit)? = null,
 ) {
     Column(
-        // The same inset as the highlights card.
+        // The same inset as the rings.
         modifier = Modifier.fillMaxWidth()
             .padding(horizontal = 14.dp, vertical = 12.dp)
             .background(CalendarTint, RoundedCornerShape(12.dp))
@@ -193,7 +199,7 @@ private fun DayCell(day: CalendarDay, modifier: Modifier, onClick: () -> Unit) {
         if (top == null || corner) {
             Text(
                 "${day.date.dayOfMonth}",
-                fontSize = 13.sp,
+                fontSize = 15.sp,
                 fontWeight = if (day.isToday) FontWeight.Bold else FontWeight.Normal,
                 color = if (day.inMonth) NoteInk else InkGray.copy(alpha = 0.6f),
                 modifier = Modifier.clearAndSetSemantics {}
@@ -202,50 +208,54 @@ private fun DayCell(day: CalendarDay, modifier: Modifier, onClick: () -> Unit) {
         when {
             top == null -> Unit
             corner -> BadgeSticker(
-                top, day.date, 20.dp,
-                Modifier.offset(11.dp, 11.dp).then(if (day.inMonth) Modifier else Modifier.alpha(0.6f))
+                top, day.date, 22.dp,
+                Modifier.offset(11.dp, 11.dp).then(if (day.inMonth) Modifier else Modifier.alpha(0.6f)),
+                byRarity = false
             )
-            else -> BadgeSticker(top, day.date, 26.dp)
+            // The rarer ones spill over the ring.
+            else -> BadgeSticker(top, day.date, 46.dp)
+        }
+        // An open milestone due this day: a small red flag in the top corner. Done, it's the day's badge instead.
+        if (day.milestoneDue) {
+            Icon(
+                badgeLines(Badge.MILESTONE), contentDescription = null, tint = MilestoneFlag,
+                modifier = Modifier.align(Alignment.TopEnd).offset(x = 2.dp, y = (-2).dp).size(18.dp)
+            )
         }
     }
 }
 
 /**
- * Slices in pillar order from the top, sized by points (or by items, with a filter on), then white for
- * what didn't happen, between two thin edges, so a day with nothing done still reads as a ring. A closed
- * day draws what didn't happen as each pillar's light slice instead, in pillar order, so it reads as
- * done. A day with nothing on it is one plain line.
+ * The old app's ring: a rounded square outside with a round hole inside, so the band is thin at the sides
+ * and full at the corners, with no outline. Slices in pillar order from the top, sized by points (or by
+ * items, with a filter on), then white for what didn't happen. A closed day draws what didn't happen as
+ * each pillar's light slice instead, in pillar order, so it reads as done. A day with nothing on it has no ring.
  */
 @Composable
 private fun DayRing(day: CalendarDay) {
     Canvas(modifier = Modifier.size(38.dp)) {
-        val stroke = 6.dp.toPx()
-        val edge = 1.dp.toPx()
-        val outer = size.minDimension / 2
-        val band = outer - edge - stroke / 2
         val total = day.slices.sumOf { it.points } + day.notDone
-        if (total == 0) {
-            drawCircle(EmptyDayRing, radius = band, style = Stroke(1.5.dp.toPx()))
-            return@Canvas
+        if (total == 0) return@Canvas
+        val hole = size.minDimension / 2 - 4.dp.toPx()
+        val band = Path().apply {
+            addRoundRect(RoundRect(Rect(Offset.Zero, size), CornerRadius(12.dp.toPx())))
+            addOval(Rect(center, hole))
+            fillType = PathFillType.EvenOdd
         }
-        val topLeft = Offset(center.x - band, center.y - band)
-        val arc = Size(band * 2, band * 2)
-        var start = -90f
-        day.slices.forEach { slice ->
-            val sweep = 360f * slice.points / total
-            drawArc(pillarStrong(slice.pillar), start, sweep, useCenter = false, topLeft = topLeft, size = arc, style = Stroke(stroke))
-            start += sweep
-        }
-        if (day.closed) {
-            day.missed.forEach { slice ->
-                val sweep = 360f * slice.points / total
-                drawArc(pillarLight(slice.pillar), start, sweep, useCenter = false, topLeft = topLeft, size = arc, style = Stroke(stroke))
+        // Pie slices big enough to reach the corners, cut to the band.
+        val reach = size.maxDimension
+        val topLeft = Offset(center.x - reach, center.y - reach)
+        val pie = Size(reach * 2, reach * 2)
+        clipPath(band) {
+            var start = -90f
+            fun slice(color: Color, points: Int) {
+                val sweep = 360f * points / total
+                drawArc(color, start, sweep, useCenter = true, topLeft = topLeft, size = pie)
                 start += sweep
             }
-        } else if (day.notDone > 0) {
-            drawArc(Color.White, start, 360f * day.notDone / total, useCenter = false, topLeft = topLeft, size = arc, style = Stroke(stroke))
+            day.slices.forEach { slice(pillarStrong(it.pillar), it.points) }
+            if (day.closed) day.missed.forEach { slice(pillarLight(it.pillar), it.points) }
+            else if (day.notDone > 0) slice(Color.White, day.notDone)
         }
-        drawCircle(DayRingEdge, radius = outer - edge / 2, style = Stroke(edge))
-        drawCircle(DayRingEdge, radius = band - stroke / 2 - edge / 2, style = Stroke(edge))
     }
 }

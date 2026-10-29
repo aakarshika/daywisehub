@@ -3,7 +3,7 @@ package com.example.todoapp.domain
 /** A piece of the mission sentence. An answer carries its [step]; [placeholder] is the blank being asked now. */
 data class SentencePart(val text: String, val step: EditorStep? = null, val placeholder: Boolean = false)
 
-/** Spec 4.1: "I want to ⟨learn guitar⟩ for my ⟨Life⟩. It's ⟨something I keep doing⟩, ⟨about 3 times a week⟩, …" */
+/** Spec 4.1: "I want to ⟨learn guitar⟩ for ⟨Life⟩ points. It's ⟨something I keep doing⟩, ⟨about 3 times a week⟩, …" */
 object MissionSentence {
 
     /**
@@ -30,7 +30,7 @@ object MissionSentence {
 
     private fun lead(draft: MissionDraft, step: EditorStep): String = when (step) {
         EditorStep.TITLE -> "I want to "
-        EditorStep.PILLAR -> " for my "
+        EditorStep.PILLAR -> " for "
         EditorStep.KIND -> ". It's "
         EditorStep.PACE -> if (draft.kind == MissionKind.BLOCK && !MissionWords.isEveryDay(draft.weekDays)) ", on " else ", "
         EditorStep.DURATION -> ", "
@@ -42,7 +42,7 @@ object MissionSentence {
 
     private fun answer(draft: MissionDraft, step: EditorStep): List<SentencePart> = when (step) {
         EditorStep.TITLE -> listOf(SentencePart(draft.title.trim(), step))
-        EditorStep.PILLAR -> listOf(SentencePart(draft.pillar.title, step))
+        EditorStep.PILLAR -> listOf(SentencePart(draft.pillar.title, step), SentencePart(" points"))
         EditorStep.KIND -> listOf(SentencePart(draft.kind?.let { MissionWords.kindPhrase(it) }.orEmpty(), step))
         EditorStep.PACE -> pace(draft)
         EditorStep.DURATION -> listOf(SentencePart(MissionWords.durationWords(draft.durationMinutes), step), SentencePart(" each"))

@@ -24,6 +24,14 @@ enum class BadgeTier { EVERYDAY, GOOD_DAY, RARE, RAREST }
  */
 enum class Badge(val title: String, val tier: BadgeTier) {
     RECHARGING_DAY("Recharging day", BadgeTier.EVERYDAY),
+    // A day with nothing done by hand still shows what was logged on it, above "Recharging day".
+    DRANK_UP("Drank up", BadgeTier.EVERYDAY),
+    FELT_HAPPY("Felt happy", BadgeTier.EVERYDAY),
+    FELT_SAD("Felt sad", BadgeTier.EVERYDAY),
+    FELT_ANGRY("Felt angry", BadgeTier.EVERYDAY),
+    FELT_DREAMY("Felt dreamy", BadgeTier.EVERYDAY),
+    FELT_BORED("Felt bored", BadgeTier.EVERYDAY),
+    FELT_CONFUSED("Felt confused", BadgeTier.EVERYDAY),
     DID_SOME("Did some", BadgeTier.EVERYDAY),
     FIRST_ONE("First one", BadgeTier.EVERYDAY),
     STRONG_START("Strong start", BadgeTier.EVERYDAY),
@@ -51,13 +59,19 @@ enum class Badge(val title: String, val tier: BadgeTier) {
     SEVEN_DAY_RUN("7-day run", BadgeTier.RARE),
     FINISH_LINE("Finish line", BadgeTier.RAREST),
     RE_RETURN("The re-return", BadgeTier.RAREST),
-    WEEK_MAKER("Week maker", BadgeTier.RAREST),
+    CONQUEROR("Conqueror", BadgeTier.RAREST),
     THIRTY_DAY_RUN("30-day run", BadgeTier.RAREST),
     PERSONAL_BEST("Personal best", BadgeTier.RAREST),
 }
 
 /** A badge with the line under it, built from stored facts only. A mission title sits on a chip (spec 7.1). */
 data class EarnedBadge(val badge: Badge, val reason: List<LinePart>)
+
+/**
+ * What was logged on days besides tasks: the moods picked (by their icon name, "happy") and the days all
+ * the water glasses were filled.
+ */
+data class DayLogs(val moods: Map<LocalDate, List<String>> = emptyMap(), val fullWater: Set<LocalDate> = emptySet())
 
 /** What a day's badges read. [DayBadges.book] reads it once, then answers any day from [from] to [to]. */
 data class BadgeInput(
@@ -87,6 +101,8 @@ data class BadgeInput(
     val lookBackDays: Int,
     /** PlanRepository.MAX_CROWNS. */
     val maxCrowns: Int,
+    /** Moods and water over [from] to [to], for a day with nothing done. */
+    val logs: DayLogs = DayLogs(),
 )
 
 /** Spec 9.3: badges for a day, worked out from what the app already stores. */
@@ -95,7 +111,21 @@ object DayBadges {
     /** The shortest cycle, in days, that can earn "The return" and "The re-return". */
     const val RETURN_MIN_CYCLE = 28
 
+    /**
+     * Quiet days in a row that make a break: the first this many after something done earn "Recharging
+     * day", later ones stay blank, and the day that ends a break this long earns "Back at it".
+     */
+    const val BREAK_DAYS = 3
+
     fun book(input: BadgeInput): DayBadgeBook = DayBadgeBook(input)
+
+    /** The sticker for a mood, by MoodHeader's icon name ("happy"). */
+    fun moodBadge(icon: String): Badge? = moodBadges[icon]
+
+    private val moodBadges = mapOf(
+        "happy" to Badge.FELT_HAPPY, "sad" to Badge.FELT_SAD, "angry" to Badge.FELT_ANGRY,
+        "dreamy" to Badge.FELT_DREAMY, "bored" to Badge.FELT_BORED, "confused" to Badge.FELT_CONFUSED,
+    )
 }
 
 /** Daily habits, the way the planner's streak line counts them. */
@@ -145,7 +175,8 @@ class DayBadgeBook internal constructor(private val input: BadgeInput) {
             val date = task.date
             rows.getOrPut(date) { mutableListOf() } += task
             val state = task.taskState
-            if (!state.countsAsDone) continue
+            // A deleted mission's items earn nothing, so they don't make the day busy either.
+            if (!state.countsAsDone || task.missionId !in byId) continue
             doneDays.getOrPut(task.missionId) { mutableSetOf() } += date
             // The evening check's ticks ("Ticked for you") aren't done by hand, or a work block would fill every weekday.
             if (!task.autoTicked) {
@@ -170,16 +201,18 @@ class DayBadgeBook internal constructor(private val input: BadgeInput) {
 
     /**
      * [date]'s badges, rarest first. A finished day with nothing done by hand and no milestone reached gets
-     * only "Recharging day",
-     * and so does an away week's day: its quiet shows without a word about missing anything. Today has
-     * the ones earned so far and never "Recharging day". Days after today, days before the first stored
-     * item and days outside the input's range get none.
+     * only "Recharging day" when it's one of the first [DayBadges.BREAK_DAYS] after something done, an away
+     * week's day too: a rest from something. Later quiet days get none, so a long gap stays blank. Today
+     * has the ones earned so far and never "Recharging day". Such a day also gets a sticker for each mood
+     * picked and one for a full glass, today too. Days after today, days before the first stored item and
+     * days outside the input's range get none.
      */
     fun on(date: LocalDate): List<EarnedBadge> {
         val first = input.firstDay ?: return emptyList()
         if (date < first || date > today || date < input.from || date > input.to) return emptyList()
         if (date !in handDays) {
-            return if (date < today) listOf(EarnedBadge(Badge.RECHARGING_DAY, words("A quiet day"))) else emptyList()
+            val resting = date < today && (1..DayBadges.BREAK_DAYS).any { date.minus(it, DateTimeUnit.DAY) in handDays }
+            return quietDay(date, resting)
         }
         val day = rows[date].orEmpty().filter { it.missionId in byId }
         val earned = mutableListOf<EarnedBadge>()
@@ -281,7 +314,7 @@ class DayBadgeBook internal constructor(private val input: BadgeInput) {
         returns.filter { it.cyclesMissed >= 2 }.maxByOrNull { it.days }?.let { add(Badge.RE_RETURN, it.line(lookBack)) }
         if (fill.maker == dayIndex) {
             val all = "All ${PillarType.scoredPillars.size} pillars full"
-            add(Badge.WEEK_MAKER, words(if (fill.finished) "$all, a balanced week" else "$all so far"))
+            add(Badge.CONQUEROR, words(if (fill.finished) "$all, a balanced week" else "$all so far"))
         }
         runs.filterValues { it == 30 }.keys.toList().takeIf { it.isNotEmpty() }?.let {
             add(Badge.THIRTY_DAY_RUN, about("", it, " 30 days running", many = { n -> "$n habits 30 days running" }))
@@ -290,8 +323,18 @@ class DayBadgeBook internal constructor(private val input: BadgeInput) {
             add(Badge.PERSONAL_BEST, listOf(chip(mission), LinePart(" $run days running, past its best of $best")))
         }
         // A safeguard: every finished day keeps at least one badge, though each act above already earns one.
-        if (earned.isEmpty() && date < today) return listOf(EarnedBadge(Badge.RECHARGING_DAY, words("A quiet day")))
+        if (earned.isEmpty()) return quietDay(date, resting = date < today)
         return earned.sortedByDescending { it.badge.ordinal }
+    }
+
+    /** A day with nothing to show: a sticker for each mood picked and a full glass, and "Recharging day" when [resting]. */
+    private fun quietDay(date: LocalDate, resting: Boolean): List<EarnedBadge> {
+        val logged = input.logs.moods[date].orEmpty().mapNotNull { mood ->
+            DayBadges.moodBadge(mood)?.let { EarnedBadge(it, words("Felt $mood")) }
+        }.distinctBy { it.badge }
+        val water = if (date in input.logs.fullWater) listOf(EarnedBadge(Badge.DRANK_UP, words("All the water glasses filled"))) else emptyList()
+        val rest = if (resting) listOf(EarnedBadge(Badge.RECHARGING_DAY, words("A quiet day"))) else emptyList()
+        return (logged + water + rest).sortedByDescending { it.badge.ordinal }
     }
 
     /**
@@ -330,7 +373,7 @@ class DayBadgeBook internal constructor(private val input: BadgeInput) {
             quiet++
             day = day.minus(1, DateTimeUnit.DAY)
         }
-        if (quiet < 3) return null
+        if (quiet < DayBadges.BREAK_DAYS) return null
         if (day >= from) return "Back after $quiet quiet days"
         return if (first < from) "Back after a long break" else null
     }
@@ -455,6 +498,7 @@ class DayBadgeBook internal constructor(private val input: BadgeInput) {
     }
 
     private companion object {
+
         /**
          * [prefix], one or two missions on chips, then [suffix]: "Did ⟨Run⟩ and ⟨Swim⟩ after a move". Three
          * or more are counted instead ([many]), so the line stays short.

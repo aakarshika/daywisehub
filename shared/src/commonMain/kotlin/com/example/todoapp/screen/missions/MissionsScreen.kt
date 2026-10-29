@@ -19,6 +19,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -37,11 +43,15 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.todoapp.di.KoinF
 import com.example.todoapp.domain.MissionWords
+import com.example.todoapp.reminders.ReminderSync
 import com.example.todoapp.screen.basicutils.InkBlack
 import com.example.todoapp.screen.basicutils.InkGray
 import com.example.todoapp.screen.basicutils.Light_Yellowww
@@ -50,8 +60,9 @@ import com.example.todoapp.screen.basicutils.PeachText
 import com.example.todoapp.screen.basicutils.components.MarkerHeading
 import com.example.todoapp.screen.basicutils.pillarInk
 import com.example.todoapp.screen.basicutils.pillarLight
-import com.example.todoapp.screen.diary.plan.SmallChip
 import com.example.todoapp.screen.diary.plan.StickyNote
+import com.example.todoapp.screen.missions.blueprint.BlueprintScreen
+import com.example.todoapp.screen.missions.blueprint.BlueprintStrip
 import org.jetbrains.compose.resources.painterResource
 import todoapp.shared.generated.resources.Res
 import todoapp.shared.generated.resources.flag_open
@@ -66,16 +77,46 @@ fun MissionsScreen(viewModel: MissionsViewModel, listState: LazyListState) {
     val state by viewModel.state.collectAsState()
     val notice by viewModel.notice.collectAsState()
     var showFreeTime by remember { mutableStateOf(false) }
+    var showReminders by remember { mutableStateOf(false) }
+    var showBackup by remember { mutableStateOf(false) }
+    val backupNote by viewModel.backupNote.collectAsState()
+    val pendingRestore by viewModel.pendingRestore.collectAsState()
+    val backupFiles = rememberBackupFiles(onSaved = viewModel::backupSaved, onOpened = viewModel::readBackup)
+    val reminders by viewModel.reminders.collectAsState()
+    val blocks by viewModel.blocks.collectAsState()
+    val blueprint by viewModel.blueprint.collectAsState()
+    var showBlueprint by remember { mutableStateOf(false) }
     val s = state
 
     Box(modifier = Modifier.fillMaxSize().background(Light_Yellowww)) {
         LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
             item(key = "title") {
-                Column(modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 30.dp)) {
-                    Text("Missions", fontSize = 30.sp, fontStyle = FontStyle.Italic, letterSpacing = 0.5.sp, color = InkGray)
+                Column(modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 30.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "Missions", fontSize = 30.sp, fontStyle = FontStyle.Italic, letterSpacing = 0.5.sp, color = InkGray,
+                            modifier = Modifier.weight(1f)
+                        )
+                        // Up here rather than floating, so it never covers a card.
+                        AddButton { viewModel.openNew() }
+                        if (s != null) {
+                            SettingsMenu(
+                                freeTimeLabel = "Free time · ${MissionWords.hoursNumber(s.weeklyFreeMinutes)} h a week",
+                                onFreeTime = { showFreeTime = true },
+                                onReminders = {
+                                    // Asked here or after the first mission, not when the app first opens.
+                                    KoinF.di?.get<ReminderSync>()?.askPermission()
+                                    showReminders = true
+                                },
+                                onBackup = {
+                                    viewModel.clearBackupNote()
+                                    showBackup = true
+                                },
+                            )
+                        }
+                    }
                     if (s != null) {
-                        Text(s.summary, fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray, modifier = Modifier.padding(top = 4.dp))
-                        SmallChip("Free time · ${MissionWords.hoursNumber(s.weeklyFreeMinutes)} h a week") { showFreeTime = true }
+                        Text(s.summary, fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray, modifier = Modifier.padding(top = 4.dp, end = 8.dp))
                         notice?.let { text ->
                             Text(
                                 text, fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray,
@@ -95,6 +136,10 @@ fun MissionsScreen(viewModel: MissionsViewModel, listState: LazyListState) {
                         )
                     }
                 }
+            }
+            val plan = blueprint
+            if (s != null && !s.isEmpty && plan != null) {
+                item(key = "blueprint") { BlueprintStrip(plan) { showBlueprint = true } }
             }
             if (s != null && !s.isEmpty) {
                 s.groups.forEach { group ->
@@ -127,11 +172,36 @@ fun MissionsScreen(viewModel: MissionsViewModel, listState: LazyListState) {
                     }
                 }
             }
-            item(key = "bottom-space") { Spacer(Modifier.height(120.dp)) }
+            item(key = "about") { AboutLinks() }
+            item(key = "bottom-space") { Spacer(Modifier.height(24.dp)) }
         }
-        AddButton(Modifier.align(Alignment.BottomEnd).padding(end = 18.dp, bottom = 20.dp)) { viewModel.openNew() }
+        val plan = blueprint
+        if (showBlueprint && plan != null) BlueprintScreen(plan, onClose = { showBlueprint = false })
     }
 
+    val r = reminders
+    if (showReminders && r != null) {
+        RemindersDialog(
+            settings = r,
+            blocks = blocks,
+            onSave = {
+                showReminders = false
+                viewModel.saveReminders(it)
+            },
+            onDismiss = { showReminders = false }
+        )
+    }
+    if (showBackup) {
+        BackupDialog(
+            note = backupNote,
+            onSave = { viewModel.exportBackup(backupFiles::save) },
+            onRestore = backupFiles::open,
+            onDismiss = { showBackup = false }
+        )
+    }
+    pendingRestore?.let { backup ->
+        RestoreConfirmDialog(backup, onConfirm = viewModel::confirmRestore, onDismiss = viewModel::cancelRestore)
+    }
     if (showFreeTime && s != null) {
         FreeTimeDialog(
             minutesByWeekday = s.freeMinutes,
@@ -178,16 +248,58 @@ private fun MissionCard(card: MissionCardRow, modifier: Modifier, onClick: () ->
 }
 
 @Composable
-private fun AddButton(modifier: Modifier, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(16.dp)
-    Box(
-        modifier = modifier.size(56.dp).shadow(6.dp, shape).clip(shape).background(Orange80)
-            .clickable(role = Role.Button, onClickLabel = "Add a mission") { onClick() },
-        contentAlignment = Alignment.Center
+private fun AddButton(onClick: () -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier.size(40.dp).shadow(3.dp, shape).clip(shape).background(Orange80)
+                .clickable(role = Role.Button, onClickLabel = "Add a mission") { onClick() },
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                painterResource(Res.drawable.plus_sign), contentDescription = "Add a mission",
+                colorFilter = ColorFilter.tint(PeachText), modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+
+/** The gear: free time, reminders and backup, which are settings rather than missions. */
+@Composable
+private fun SettingsMenu(freeTimeLabel: String, onFreeTime: () -> Unit, onReminders: () -> Unit, onBackup: () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }) {
+            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = InkGray)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = Color.White) {
+            listOf(freeTimeLabel to onFreeTime, "Reminders" to onReminders, "Backup" to onBackup).forEach { (label, action) ->
+                DropdownMenuItem(
+                    text = { Text(label, fontSize = 15.sp, color = InkBlack) },
+                    onClick = {
+                        open = false
+                        action()
+                    }
+                )
+            }
+        }
+    }
+}
+
+/** The stores want the privacy policy reachable from inside the app. */
+@Composable
+private fun AboutLinks() {
+    val uri = LocalUriHandler.current
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 40.dp),
+        horizontalArrangement = Arrangement.Center
     ) {
-        Image(
-            painterResource(Res.drawable.plus_sign), contentDescription = "Add a mission",
-            colorFilter = ColorFilter.tint(PeachText), modifier = Modifier.size(22.dp)
-        )
+        listOf("Privacy policy" to "https://ideeya.com/inbalance/privacy/", "Help" to "https://ideeya.com/inbalance/")
+            .forEach { (label, url) ->
+                Text(
+                    label, fontSize = 13.sp, color = InkGray, textDecoration = TextDecoration.Underline,
+                    modifier = Modifier.clickable(role = Role.Button) { uri.openUri(url) }.padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+            }
     }
 }

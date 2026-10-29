@@ -6,6 +6,7 @@ import com.example.todoapp.db.data.plan.DayPlan
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.week.WeekSummary
 import com.example.todoapp.domain.BadgeInput
+import com.example.todoapp.domain.DayLogs
 import com.example.todoapp.domain.CalendarFilter
 import com.example.todoapp.domain.DayBadgeBook
 import com.example.todoapp.domain.DayBadges
@@ -41,6 +42,8 @@ data class AllMonthsInput(
     val plans: List<DayPlan>,
     /** The first stored item's day, where the months start; null on an empty install. */
     val firstDay: LocalDate?,
+    /** Moods and water over the same window, for the badges of days with nothing done. */
+    val logs: DayLogs = DayLogs(),
 )
 
 /**
@@ -90,7 +93,7 @@ object AllMonthsStateBuilder {
             BadgeInput(
                 today = today, from = MonthGrid.span(firstMonth).start, to = MonthGrid.span(thisMonth).endInclusive,
                 allMissions = input.allMissions, history = History(input.tasks), plans = input.plans,
-                milestones = input.milestones, summaries = byWeek, firstDay = input.firstDay,
+                milestones = input.milestones, summaries = byWeek, firstDay = input.firstDay, logs = input.logs,
                 lookBackDays = PlanRepository.HISTORY_DAYS, maxCrowns = PlanRepository.MAX_CROWNS,
             )
         )
@@ -137,7 +140,10 @@ object AllMonthsStateBuilder {
         val months = mutableListOf<MonthCalendar>()
         var month = LocalDate(input.today.year, input.today.month, 1)
         while (month >= firstMonth) {
-            months += MonthGrid.build(month, input.today, input.allMissions, days, byWeek, opened, badges, selected = null, filter = filter)
+            months += MonthGrid.build(
+                month, input.today, input.allMissions, days, byWeek, opened, badges, selected = null, filter = filter,
+                milestonesDue = MonthGrid.openMilestoneDays(input.milestones, input.allMissions),
+            )
             month = month.minus(1, DateTimeUnit.MONTH)
         }
         return months

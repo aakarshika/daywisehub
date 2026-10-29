@@ -31,6 +31,27 @@ class MoodViewModel(
         }
     }
 
+    private val _dayFactors: MutableSharedFlow<List<String>> = MutableSharedFlow(1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val dayFactors: SharedFlow<List<String>> = _dayFactors
+
+    fun loadDayFactors(cDate: LocalDate) {
+        viewModelScope.launch {
+            todayMoodRepository.getDayFactors(cDate).collectLatest { _dayFactors.tryEmit(it) }
+        }
+    }
+
+    fun setDayFactor(cDate: LocalDate, icon: String, picked: Boolean) {
+        viewModelScope.launch {
+            try {
+                withContext(NonCancellable) { todayMoodRepository.setDayFactor(cDate, icon, picked) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Logger.w(e) { "The day factor didn't save." }
+            }
+        }
+    }
+
     /** A failed save is logged, not thrown, so it can't close the app. */
     fun upsertTodayMood(todayMood: TodayMood) {
         viewModelScope.launch {

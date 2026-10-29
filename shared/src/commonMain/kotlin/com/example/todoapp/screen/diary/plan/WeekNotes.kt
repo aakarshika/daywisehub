@@ -1,7 +1,6 @@
 package com.example.todoapp.screen.diary.plan
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,7 +24,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -40,7 +37,6 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.TextUnit
@@ -49,7 +45,6 @@ import androidx.compose.ui.unit.sp
 import com.example.todoapp.domain.LinePart
 import com.example.todoapp.domain.OfferResponse
 import com.example.todoapp.domain.PillarType
-import com.example.todoapp.screen.basicutils.CardCream
 import com.example.todoapp.screen.basicutils.InkBlack
 import com.example.todoapp.screen.basicutils.InkGray
 import com.example.todoapp.screen.basicutils.StickyBlue
@@ -61,10 +56,7 @@ import com.example.todoapp.screen.diary.LastWeekState
 import com.example.todoapp.screen.diary.OfferNote
 import org.jetbrains.compose.resources.painterResource
 import todoapp.shared.generated.resources.Res
-import todoapp.shared.generated.resources.crown_a
 import todoapp.shared.generated.resources.flag_open
-import todoapp.shared.generated.resources.heart_filled
-import todoapp.shared.generated.resources.star_filled
 import todoapp.shared.generated.resources.wand
 import kotlin.math.abs
 
@@ -125,32 +117,23 @@ fun ChipText(parts: List<LinePart>, fontSize: TextUnit, color: Color, italic: Bo
     )
 }
 
-/** Monday's look back, in the style of the evening highlights card (spec 9). */
+/**
+ * Monday's look back, under the week strip (spec 9): last week in one quiet line, then what the app
+ * moved into this week with the wand. "Nothing to catch up on." is left out here; Metrics says it.
+ */
 @Composable
-fun LastWeekCard(state: LastWeekState) {
-    Column(
-        modifier = Modifier.fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 12.dp)
-            .shadow(4.dp, RoundedCornerShape(16.dp))
-            .background(CardCream, RoundedCornerShape(16.dp))
-            .padding(horizontal = 18.dp, vertical = 14.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                "LAST WEEK",
-                fontSize = 20.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.3.sp, color = Color(0xFF3A3A3A),
-                modifier = Modifier.weight(1f).semantics { heading() }
-            )
-            Text(state.range, fontSize = 13.sp, color = InkGray)
-        }
-        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).height(1.dp).background(Color(0xFFDDD6C2)))
-        HighlightRow(Res.drawable.star_filled) { Text(state.points, fontSize = 15.sp, color = InkBlack) }
-        HighlightRow(if (state.balanced) Res.drawable.crown_a else Res.drawable.heart_filled) {
-            Text(state.pillars, fontSize = 15.sp, color = InkBlack)
-        }
-        // The wand always means "the app adjusted something" (spec 9.1), so "Nothing to catch up on." gets a quiet dot.
-        state.adjusted.forEach { line ->
-            HighlightRow(if (line.adjusted) Res.drawable.wand else null) { ChipText(line.parts, fontSize = 15.sp, color = InkBlack) }
+fun LastWeekNotes(state: LastWeekState) {
+    Column(modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 8.dp)) {
+        Text(state.recap, fontSize = 12.sp, fontStyle = FontStyle.Italic, color = InkGray)
+        state.adjusted.filter { it.adjusted }.forEach { line ->
+            Row(modifier = Modifier.padding(top = 4.dp), verticalAlignment = Alignment.Top) {
+                Image(
+                    painterResource(Res.drawable.wand), contentDescription = null,
+                    colorFilter = ColorFilter.tint(InkGray), modifier = Modifier.padding(top = 2.dp).size(16.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                ChipText(line.parts, fontSize = 13.sp, color = InkBlack, italic = true)
+            }
         }
     }
 }

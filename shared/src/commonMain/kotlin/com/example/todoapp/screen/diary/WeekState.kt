@@ -19,7 +19,8 @@ import com.example.todoapp.domain.WeekAhead
 import com.example.todoapp.domain.WeekMath
 import com.example.todoapp.domain.chip
 import com.example.todoapp.domain.earned
-import com.example.todoapp.domain.pillarsFull
+import com.example.todoapp.domain.Points
+import com.example.todoapp.domain.shows
 import com.example.todoapp.domain.shortLabel
 import com.example.todoapp.domain.target
 import com.example.todoapp.domain.weekStartDate
@@ -28,22 +29,13 @@ import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
 
-/** Monday's "Last week" card (spec 9), from last week's stored summary. */
+/** Monday's look back (spec 9): one line under the week strip, then what the app adjusted. */
 data class LastWeekState(
-    /** "Oct 26 to Nov 1" */
-    val range: String,
     /**
-     * "54 of 62 points", with " · +4 extra" when a pillar went past its target; just "+4 extra" when no pillar
-     * had a target, and "No points to count." when the diary wasn't opened that week.
+     * "Last week: 54 of 62 points · 3 of 4 pillars full", with "+4 extra" when a pillar went past its target
+     * and "all 4 pillars full, a balanced week" when it was one; "The diary wasn't opened last week." for an away week.
      */
-    val points: String,
-    /**
-     * "3 of 4 pillars full", "All 4 pillars full · a balanced week", "Nothing was due that week.", or
-     * "The diary wasn't opened that week.", as on the Metrics tab.
-     */
-    val pillars: String,
-    /** Shows the crown on the pillars line; never on a week the diary wasn't opened in. */
-    val balanced: Boolean,
+    val recap: String,
     /**
      * What the app adjusted, each line naming its mission on a chip. Never empty on today's page. Empty on
      * an earlier day's, which can't say what was adjusted: that reads today's missions. Only an adjusted
@@ -75,23 +67,24 @@ object WeekStateBuilder {
      * True when [date] opens its week in the diary: Monday, or the first day of its week that has a plan
      * (the diary was opened on it) when no earlier day of that week has one. A day that was never opened
      * and isn't Monday doesn't open the week, so the "Last week" card isn't repeated there. [plans] start
-     * at the week's Monday. The card shows on such days.
+     * at the week's Monday. The card shows on such days. A projected plan wasn't opened, so it doesn't count.
      */
     fun opensWeek(date: LocalDate, plans: List<DayPlan>): Boolean {
         val key = MyDate.fromLocalDate(date).dateString
-        if (plans.any { it.date < key }) return false
-        return date == WeekMath.weekStart(date) || plans.any { it.date == key }
+        val opened = plans.filter { !it.projected }
+        if (opened.any { it.date < key }) return false
+        return date == WeekMath.weekStart(date) || opened.any { it.date == key }
     }
 
     /**
      * Null without a summary, or when last week had nothing due and nothing done. [away] is true when the
-     * diary wasn't opened that week (WeekScores.isAway): its zeros aren't misses, so the card shows no
-     * numbers and no crown, as the Metrics tab does; the adjusted lines stay. [withAdjusted] is false on
+     * diary wasn't opened that week (WeekScores.isAway): its zeros aren't misses, so the recap shows no
+     * numbers, as the Metrics tab does; the adjusted lines stay. [withAdjusted] is false on
      * an earlier day's page: what the app adjusted reads today's missions, so that page leaves it out.
      */
     fun lastWeek(summary: WeekSummary?, away: Boolean, missions: List<Mission>, history: History, withAdjusted: Boolean): LastWeekState? {
         summary ?: return null
-        val pillars = PillarType.scoredPillars
+        val pillars = PillarType.scoredPillars.filter { it.shows(missions, summary.earned(it), summary.target(it)) }
         val target = pillars.sumOf { summary.target(it) }
         val earned = pillars.sumOf { summary.earned(it) }
         if (target == 0 && earned == 0) return null
@@ -99,21 +92,17 @@ object WeekStateBuilder {
         val counted = pillars.sumOf { minOf(summary.earned(it), summary.target(it)) }
         val extra = earned - counted
         val start = summary.weekStartDate
+        val points = when {
+            target == 0 -> "nothing was due, +$extra extra"
+            else -> "$counted of ${MissionWords.pointsPhrase(target)}" + if (extra > 0) ", +$extra extra" else ""
+        }
+        val full = when {
+            target == 0 -> null
+            summary.balanced -> "all ${pillars.size} pillars full, a balanced week"
+            else -> "${pillars.count { Points.isFull(summary.earned(it), summary.target(it)) }} of ${pillars.size} pillars full"
+        }
         return LastWeekState(
-            range = "${start.shortLabel()} to ${start.plus(6, DateTimeUnit.DAY).shortLabel()}",
-            points = when {
-                away -> "No points to count."
-                target == 0 -> "+$extra extra"
-                else -> "$counted of ${MissionWords.pointsPhrase(target)}" + if (extra > 0) " · +$extra extra" else ""
-            },
-            // The same lines as the Metrics tab's highlights card (WeekHighlightsBuilder).
-            pillars = when {
-                away -> "The diary wasn't opened that week."
-                target == 0 -> "Nothing was due that week."
-                summary.balanced -> "All ${pillars.size} pillars full · a balanced week"
-                else -> "${summary.pillarsFull()} of ${pillars.size} pillars full"
-            },
-            balanced = summary.balanced && !away,
+            recap = if (away) "The diary wasn't opened last week." else "Last week: " + listOfNotNull(points, full).joinToString(" · "),
             adjusted = if (withAdjusted) adjusted(start, missions, history) else emptyList(),
         )
     }

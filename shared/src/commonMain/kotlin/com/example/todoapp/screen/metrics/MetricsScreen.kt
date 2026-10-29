@@ -99,9 +99,8 @@ fun MetricsScreen(viewModel: MetricsViewModel, openDay: (LocalDate) -> Unit) {
                 item(key = "header") {
                     WeekHeader(s, onPrevious = viewModel::previousWeek, onNext = viewModel::nextWeek, onThisWeek = viewModel::backToThisWeek)
                 }
-                item(key = "rings") { PillarRings(s.score) }
-                item(key = "week-ahead") { WeekAheadNotes(s.aheadTitle, s.ahead) }
-                item(key = "highlights") { WeekHighlightsCard(s.highlights) }
+                item(key = "rings") { PillarRings(s.score, weekOver = !s.isThisWeek) }
+                if (s.ahead.isNotEmpty()) item(key = "week-ahead") { WeekAheadNotes(s.aheadTitle, s.ahead) }
                 item(key = "patterns-heading") {
                     MarkerHeading("PATTERNS", Yellow180, Modifier.padding(top = 24.dp, bottom = 4.dp))
                 }
@@ -190,13 +189,14 @@ private fun WeekHeader(state: MetricsUiState, onPrevious: () -> Unit, onNext: ()
                     state.title, fontSize = 30.sp, fontStyle = FontStyle.Italic, letterSpacing = 0.5.sp, color = InkGray,
                     modifier = Modifier.semantics { heading() }
                 )
-                Text(state.range, fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray, modifier = Modifier.padding(top = 4.dp))
             }
             WeekArrow(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "Previous week", enabled = state.canGoBack, onClick = onPrevious)
             WeekArrow(Icons.AutoMirrored.Filled.KeyboardArrowRight, "Next week", enabled = state.canGoForward, onClick = onNext)
         }
-        // The chip's room stays on this week too, so the page doesn't jump when it comes and goes.
-        Box(modifier = Modifier.heightIn(min = 44.dp)) {
+        // The dates share their row with "Back to this week", whose room stays on this week too, so the page
+        // doesn't jump when it comes and goes.
+        Row(modifier = Modifier.heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(state.range, fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray, modifier = Modifier.padding(end = 12.dp))
             if (!state.isThisWeek) SmallChip("Back to this week", onClick = onThisWeek)
         }
     }

@@ -1,103 +1,111 @@
 package com.example.todoapp.screen.metrics.badges
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.todoapp.domain.Badge
 import com.example.todoapp.domain.BadgeTier
 import com.example.todoapp.domain.CalendarDay
-import com.example.todoapp.domain.EarnedBadge
-import com.example.todoapp.screen.basicutils.BadgeEveryday
-import com.example.todoapp.screen.basicutils.BadgeGoodDay
 import com.example.todoapp.screen.basicutils.BadgeInk
-import com.example.todoapp.screen.basicutils.BadgeQuiet
-import com.example.todoapp.screen.basicutils.BadgeRare
-import com.example.todoapp.screen.basicutils.BadgeRarest
-import com.example.todoapp.screen.basicutils.CardHeadInk
 import com.example.todoapp.screen.basicutils.InkBlack
 import com.example.todoapp.screen.basicutils.InkGray
 import com.example.todoapp.screen.basicutils.Light_Yellowww
-import com.example.todoapp.screen.basicutils.NoteInk
 import com.example.todoapp.screen.basicutils.PeachText
-import com.example.todoapp.screen.basicutils.StickerRim
 import com.example.todoapp.screen.diary.plan.ChipText
 import com.example.todoapp.screen.diary.plan.PlanButton
 import kotlinx.datetime.LocalDate
 
-/** A sticker's fill: its tier's, or "Recharging day"'s own quiet grey-lilac. */
-fun badgeFill(badge: Badge): Color = if (badge == Badge.RECHARGING_DAY) BadgeQuiet else when (badge.tier) {
-    BadgeTier.EVERYDAY -> BadgeEveryday
-    BadgeTier.GOOD_DAY -> BadgeGoodDay
-    BadgeTier.RARE -> BadgeRare
-    BadgeTier.RAREST -> BadgeRarest
+/**
+ * How much of its space a badge fills: the rarer, the bigger. Everyday and good-day stickers stay small,
+ * Milestone is the one rare sticker, and the framed badges take the most room.
+ */
+private fun drawnShare(badge: Badge): Float = when {
+    badge == Badge.RECHARGING_DAY -> 0.58f
+    badge.tier == BadgeTier.EVERYDAY -> 0.62f
+    badge.tier == BadgeTier.GOOD_DAY -> 0.7f
+    badge.tier == BadgeTier.RARE -> if (isSticker(badge)) 0.76f else 0.88f
+    else -> 1f
 }
 
 /**
- * A badge as a small round sticker in the notebook's style (spec 9.3): its fill inside a 2dp light rim, a
- * soft shadow, and a slight tilt that follows [date] and the badge, so a row looks placed by hand. The
- * icon takes 70% of [size] in dark ink. It says nothing to a screen reader; whatever shows it names it.
+ * A badge as a kid's reward sticker: a die-cut toon with a white edge and a soft shadow, or for the rare
+ * ones a framed badge. It takes [size] and draws inside it by its rarity, unless [byRarity] is false; a
+ * slight tilt follows [date] and the badge, so a row looks placed by hand. It says nothing to a screen
+ * reader; whatever shows it names it.
  */
 @Composable
-fun BadgeSticker(badge: Badge, date: LocalDate, size: Dp, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier.size(size)
-            .rotate(tilt(badge, date))
-            .shadow(if (size < 24.dp) 1.5.dp else 3.dp, CircleShape)
-            .background(StickerRim, CircleShape)
-            .padding(2.dp)
-            .background(badgeFill(badge), CircleShape),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(badgeIcon(badge), contentDescription = null, tint = BadgeInk, modifier = Modifier.size(size * 0.7f))
+fun BadgeSticker(badge: Badge, date: LocalDate, size: Dp, modifier: Modifier = Modifier, byRarity: Boolean = true) {
+    val drawn = if (byRarity) size * drawnShare(badge) else size
+    Sticker(badgeArt(badge), badgeOutline(badge), tilt(badge, date), size, drawn, modifier)
+}
+
+/** Water glass [variant] as a sticker, tilted by [tilt] degrees. */
+@Composable
+fun WaterGlassSticker(variant: Int, tilt: Float, size: Dp, modifier: Modifier = Modifier) {
+    Sticker(waterGlassArt(variant), waterGlassOutline(variant), tilt, size, size, modifier)
+}
+
+/** A day factor ("guests") as a sticker, tilted by [tilt] degrees. Nothing for a name with no drawing. */
+@Composable
+fun DayFactorSticker(icon: String, tilt: Float, size: Dp, modifier: Modifier = Modifier) {
+    val art = dayFactorArt(icon) ?: return
+    Sticker(art, dayFactorOutline(icon), tilt, size, size, modifier)
+}
+
+/** [art] at [drawn] inside [size], tilted, over [outline]'s soft shadow when it has one. */
+@Composable
+private fun Sticker(art: ImageVector, outline: ImageVector?, tilt: Float, size: Dp, drawn: Dp, modifier: Modifier) {
+    Box(modifier = modifier.size(size), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.size(drawn).rotate(tilt)) {
+            outline?.let {
+                Image(
+                    rememberVectorPainter(it), contentDescription = null,
+                    modifier = Modifier.matchParentSize().offset(y = drawn * (1.6f / 52f)),
+                    alpha = 0.16f, colorFilter = ColorFilter.tint(BadgeInk)
+                )
+            }
+            Image(rememberVectorPainter(art), contentDescription = null, modifier = Modifier.matchParentSize())
+        }
     }
 }
 
 /** -7° to 7°, the same each time for a day and badge. */
-private fun tilt(badge: Badge, date: LocalDate): Float = ((date.dayOfYear * 7 + badge.ordinal * 5) % 11 - 5) * 1.4f
-
-/** "Recharging day. A quiet day." A row of stickers reads each one this way. */
-private fun EarnedBadge.spoken(): String = "${badge.title}. ${reason.joinToString("") { it.text }}."
+internal fun tilt(badge: Badge, date: LocalDate): Float = ((date.dayOfYear * 7 + badge.ordinal * 5) % 11 - 5) * 1.4f
 
 /**
- * Spec 9.3: a calendar day's badges, rarest first, each with its line. "Open this day" does what a tap on
- * a day without badges does.
+ * Spec 9.3: a calendar day's badges. The rarest shows as its sticker with its line; the rest follow as a
+ * plain bulleted list, rarest first. "Open this day" does what a tap on a day without badges does.
  */
 @Composable
 fun DayBadgesDialog(day: CalendarDay, onOpen: () -> Unit, onDismiss: () -> Unit) {
+    val top = day.badges.firstOrNull()
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = { PlanButton("Open this day", filled = true, onClick = onOpen) },
@@ -107,16 +115,22 @@ fun DayBadgesDialog(day: CalendarDay, onOpen: () -> Unit, onDismiss: () -> Unit)
         title = { Text(day.title, modifier = Modifier.semantics { heading() }) },
         text = {
             LazyColumn(modifier = Modifier.heightIn(max = 420.dp)) {
-                items(day.badges, key = { it.badge.name }) { earned ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).semantics(mergeDescendants = true) {},
-                        verticalAlignment = Alignment.CenterVertically
+                if (top != null) item(key = "top") {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp).semantics(mergeDescendants = true) {},
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        BadgeSticker(earned.badge, day.date, 32.dp)
-                        Spacer(Modifier.width(14.dp))
+                        BadgeSticker(top.badge, day.date, 96.dp)
+                        Text(top.badge.title, fontSize = 18.sp, fontWeight = FontWeight.Medium, color = InkBlack, modifier = Modifier.padding(top = 6.dp))
+                        ChipText(top.reason, fontSize = 13.sp, color = InkGray, italic = true)
+                    }
+                }
+                items(day.badges.drop(1), key = { it.badge.name }) { earned ->
+                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp).semantics(mergeDescendants = true) {}) {
+                        Text("•", fontSize = 14.sp, color = InkBlack, modifier = Modifier.width(16.dp))
                         Column {
-                            Text(earned.badge.title, fontSize = 16.sp, fontWeight = FontWeight.Medium, color = InkBlack)
-                            ChipText(earned.reason, fontSize = 13.sp, color = InkGray, italic = true)
+                            Text(earned.badge.title, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = InkBlack)
+                            ChipText(earned.reason, fontSize = 12.sp, color = InkGray, italic = true)
                         }
                     }
                 }
@@ -124,41 +138,4 @@ fun DayBadgesDialog(day: CalendarDay, onOpen: () -> Unit, onDismiss: () -> Unit)
         },
         containerColor = Light_Yellowww
     )
-}
-
-/**
- * Spec 9.3: the stickers under the diary's day card, rarest first, each named underneath. Today's row is
- * "TODAY SO FAR". A sticker's line is what a screen reader says for it; the Metrics calendar shows it.
- */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-fun DayBadgesRow(badges: List<EarnedBadge>, date: LocalDate, isToday: Boolean) {
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp)) {
-        Text(
-            if (isToday) "TODAY SO FAR" else "BADGES",
-            fontSize = 11.sp, letterSpacing = 1.2.sp, color = CardHeadInk,
-            modifier = Modifier.padding(start = 12.dp).semantics { heading() }
-        )
-        FlowRow(
-            modifier = Modifier.padding(top = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            badges.forEach { earned ->
-                key(earned.badge) {
-                    Column(
-                        modifier = Modifier.width(76.dp).clearAndSetSemantics { contentDescription = earned.spoken() },
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        BadgeSticker(earned.badge, date, 36.dp)
-                        Text(
-                            earned.badge.title,
-                            fontSize = 12.sp, lineHeight = 15.sp, color = NoteInk, textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(top = 6.dp)
-                        )
-                    }
-                }
-            }
-        }
-    }
 }

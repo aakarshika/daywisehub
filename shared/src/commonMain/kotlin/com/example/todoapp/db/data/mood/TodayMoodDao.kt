@@ -25,6 +25,15 @@ interface TodayMoodDao {
         """)
     fun getTodayMood(selectedDate: String): Flow<List<TodayMoodWithDetails>>
 
+    /** The moods picked on each day from [from] to [to], by icon name. */
+    @Query("""
+        SELECT m.mood_icon AS icon, tm.tm_date AS date
+        FROM today_mood tm
+        JOIN mood m ON m.mood_id = tm.tm_mood_id
+        WHERE tm.tm_mood_status = 'ACTIVE' AND tm.tm_date BETWEEN :from AND :to
+        """)
+    fun observeActiveBetween(from: String, to: String): Flow<List<DayMood>>
+
     @Query("""
         SELECT * 
         FROM mood m 
@@ -32,4 +41,8 @@ interface TodayMoodDao {
         """)
     fun getAllMoods(): Flow<List<TodayMoodWithDetails>>
 
+
+    /** As TodayTaskDao.touchDay. */
+    @Query("UPDATE today_mood SET tm_mood_status = tm_mood_status WHERE tm_date = :date")
+    suspend fun touchDay(date: String)
 }

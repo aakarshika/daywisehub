@@ -4,7 +4,10 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-/** Today's planning state. A row exists once the day's list has been built. Dates are yyyy-MM-dd. */
+/**
+ * A day's planning state. A row exists once the day's list has been built. Dates are yyyy-MM-dd.
+ * A [projected] day is one after today, built ahead as the planner's guess (see Projection).
+ */
 @Entity(tableName = "day_plan")
 data class DayPlan(
     @PrimaryKey @ColumnInfo(name = "plan_date") val date: String,
@@ -15,4 +18,5 @@ data class DayPlan(
     @ColumnInfo(name = "plan_didnt_fit_mission") val didntFitMissionId: Long? = null,
     @ColumnInfo(name = "plan_didnt_fit_due") val didntFitDue: String? = null,
     @ColumnInfo(name = "plan_didnt_fit_room") val didntFitRoomDay: String? = null,
+    @ColumnInfo(name = "plan_projected", defaultValue = "0") val projected: Boolean = false,
 )

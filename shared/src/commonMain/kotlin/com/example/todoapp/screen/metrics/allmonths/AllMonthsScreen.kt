@@ -77,7 +77,7 @@ fun AllMonthsScreen(viewModel: AllMonthsViewModel, openDay: (LocalDate) -> Unit,
     ) {
         TopBar(onClose)
         if (s != null) {
-            FilterChips(s.filter, onPillar = viewModel::togglePillar, onMissions = { picking = true }, onClear = viewModel::clear)
+            FilterChips(s.filter, s.choices.mapTo(mutableSetOf()) { it.pillar }, onPillar = viewModel::togglePillar, onMissions = { picking = true }, onClear = viewModel::clear)
             LazyColumn(
                 // The first items sit at the bottom: the caption, the summary just above it, then this month, so
                 // the screen opens on it, with older months above.
@@ -150,12 +150,13 @@ private fun TopBar(onClose: () -> Unit) {
     }
 }
 
-/** A chip for each pillar and one for missions ("2 missions" once some are picked), then "Clear" while anything is. */
+/** A chip for each pillar with a mission and one for missions ("2 missions" once some are picked), then "Clear" while anything is. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun FilterChips(filter: CalendarFilter, onPillar: (PillarType) -> Unit, onMissions: () -> Unit, onClear: () -> Unit) {
+private fun FilterChips(filter: CalendarFilter, withMissions: Set<PillarType>, onPillar: (PillarType) -> Unit, onMissions: () -> Unit, onClear: () -> Unit) {
     FlowRow(modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 4.dp)) {
-        PillarType.entries.forEach { pillar ->
+        // A pillar with no mission, active or archived, has nothing to filter by. A picked one stays to unpick.
+        PillarType.entries.filter { it in withMissions || it in filter.pillars }.forEach { pillar ->
             SmallChip(pillar.title, selected = pillar in filter.pillars, onClick = { onPillar(pillar) })
         }
         val picked = filter.missionIds.size

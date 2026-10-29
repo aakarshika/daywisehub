@@ -1,4 +1,4 @@
-# DayWiseHub 📱
+# Inbalance 📱
 
 A modern, cross-platform productivity and wellness app built with **Kotlin Multiplatform** that helps users track their daily tasks, mood, water intake, and personal missions across iOS and Android platforms.
 

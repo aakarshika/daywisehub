@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.example.todoapp.app.AppClock
 import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.screen.basicutils.components.WriteText
 import com.example.todoapp.screen.basicutils.Orange40
@@ -46,6 +47,7 @@ import com.kizitonwose.calendar.core.atStartOfMonth
 import com.kizitonwose.calendar.core.daysOfWeek
 import com.kizitonwose.calendar.core.minusYears
 import com.kizitonwose.calendar.core.plusYears
+import com.kizitonwose.calendar.core.yearMonth
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
@@ -87,7 +89,7 @@ private fun CalendarArea(
     changeToMonth: () -> Unit,
     diaryViewMode: String
 ) {
-    val currentMonth = remember { YearMonth.now() }
+    val currentMonth = remember { AppClock.today().yearMonth }
     val startMonth = remember { currentMonth.minusYears(3) }
     val endMonth = remember { currentMonth.plusYears(3) }
     // Weeks start on Monday everywhere in the app, as in the week row below and the Metrics calendar.
@@ -126,7 +128,10 @@ private fun CalendarArea(
                             )
                         },
                     state = weekState,
-                    calendarScrollPaged = false,
+                    // Paged, a week fills the row with its 7 days, so the next week's days don't peek in cut off.
+                    calendarScrollPaged = true,
+                    // A sideways swipe on the header turns the day; the strip just follows the date.
+                    userScrollEnabled = false,
                     dayContent = { day ->
                         WeekDayGola(
                             day,

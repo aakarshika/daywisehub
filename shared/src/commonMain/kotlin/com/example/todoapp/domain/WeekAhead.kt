@@ -81,7 +81,7 @@ object WeekAhead {
                 } else {
                     // Not carried yet: it can still be done this week.
                     val overdue = Points.dueDate(item.mission, history, week) < today
-                    line(item.mission, if (overdue) " is still due. If it waits, it moves into next week." else " is due this week. If it waits, it moves into next week.", adjusted = false)
+                    line(item.mission, if (overdue) " is overdue. If it waits, it moves into next week." else " isn't done yet. If it waits, it moves into next week.", adjusted = false)
                 }
             }
         }
@@ -99,7 +99,7 @@ object WeekAhead {
                 .filter { mission -> mission.pausedUntil?.toLocalDate()?.let { it in next..nextEnd } == true }
                 .forEach { add(it, " is back next week.") }
         }
-        return lines.take(MAX_LINES).ifEmpty { listOf(AheadLine(listOf(LinePart("Nothing to catch up on.")), adjusted = false)) }
+        return lines.take(MAX_LINES)
     }
 
     private fun line(mission: Mission, words: String, adjusted: Boolean) =

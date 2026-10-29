@@ -1,10 +1,14 @@
 package com.example.todoapp.di
 
+import com.example.todoapp.db.backup.BackupRepository
 import com.example.todoapp.repo.MilestoneRepository
 import com.example.todoapp.repo.MissionRepository
+import com.example.todoapp.reminders.ReminderSync
 import com.example.todoapp.repo.PlanRepository
+import com.example.todoapp.repo.ReminderRepository
 import com.example.todoapp.repo.TodayMoodRepository
 import com.example.todoapp.repo.TodayTaskRepository
+import com.example.todoapp.repo.DayLogRepository
 import com.example.todoapp.repo.WaterIntakeRepository
 import com.example.todoapp.repo.WeekRepository
 import com.example.todoapp.screen.diary.DiaryViewModel
@@ -15,7 +19,10 @@ import com.example.todoapp.screen.metrics.CalDiaryViewModel
 import com.example.todoapp.screen.metrics.MetricsViewModel
 import com.example.todoapp.screen.metrics.allmonths.AllMonthsViewModel
 import com.example.todoapp.screen.missions.MissionsViewModel
+import com.example.todoapp.screen.missions.EditorTarget
 import com.example.todoapp.screen.missions.editor.MissionEditorViewModel
+import com.example.todoapp.widget.WidgetData
+import com.example.todoapp.widget.WidgetSync
 import kotlinx.datetime.LocalDate
 import org.koin.core.Koin
 import org.koin.core.context.startKoin
@@ -34,18 +41,26 @@ fun vmModule(): Module {
         single { TodayMoodRepository(get()) }
         single { WaterIntakeRepository(get()) }
         single { WeekRepository(get()) }
+        single { DayLogRepository(get()) }
         single { PlanRepository(get(), get(), get(), get(), get()) }
+        single { ReminderRepository(get()) }
+        single { BackupRepository(get()) }
+        single { ReminderSync(get(), get(), get(), get(), get()) }
+        single { WidgetData(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+        single { WidgetSync(get(), get(), get(), get()) }
 
         // ViewModels
-        single { InitViewModel(get(), get(), get(), get()) }
+        single { InitViewModel(get(), get(), get(), get(), get()) }
         single { CalDiaryViewModel() }
-        factory { (day: LocalDate) -> DiaryViewModel(get(), get(), get(), get(), get(), day) }
+        factory { (day: LocalDate) -> DiaryViewModel(get(), get(), get(), get(), get(), get(), day) }
         factory { (day: LocalDate) -> MoodViewModel(get()) }
         factory { (day: LocalDate) -> WaterIntakeViewModel(get()) }
-        factory { MissionsViewModel(get(), get(), get(), get()) }
-        factory { (missionId: Long) -> MissionEditorViewModel(get(), get(), get(), get(), missionId) }
-        factory { MetricsViewModel(get(), get(), get(), get(), get()) }
-        factory { AllMonthsViewModel(get(), get(), get(), get(), get()) }
+        factory { MissionsViewModel(get(), get(), get(), get(), get(), get()) }
+        factory { (target: EditorTarget) ->
+            MissionEditorViewModel(get(), get(), get(), get(), target.missionId, target.seed, target.ideaTitle)
+        }
+        factory { MetricsViewModel(get(), get(), get(), get(), get(), get()) }
+        factory { AllMonthsViewModel(get(), get(), get(), get(), get(), get()) }
     }
 }
 

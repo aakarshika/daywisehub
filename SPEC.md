@@ -1,12 +1,12 @@
-# DayWiseHub — Project Spec & Cleanup Plan
+# Inbalance — Project Spec & Cleanup Plan
 
 > Living document. Last updated: 2026-02-22
 
 ---
 
-## 1. What Is DayWiseHub?
+## 1. What Is Inbalance?
 
-DayWiseHub is a **Kotlin Multiplatform** (KMP) personal productivity and wellness app for **Android and iOS**. It helps users track their daily tasks (tied to long-term missions), mood, and water intake — all organized around a diary-style daily view.
+Inbalance is a **Kotlin Multiplatform** (KMP) personal productivity and wellness app for **Android and iOS**. It helps users track their daily tasks (tied to long-term missions), mood, and water intake — all organized around a diary-style daily view.
 
 **Core features:**
 - **Daily Diary** — View and manage today's tasks, track mood, log water intake, take notes

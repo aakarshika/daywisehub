@@ -1,6 +1,7 @@
 package com.example.todoapp.repo
 
 import com.example.todoapp.db.AppDatabase
+import com.example.todoapp.db.data.factor.DayFactor
 import com.example.todoapp.db.data.mood.Mood
 import com.example.todoapp.db.data.mood.TodayMood
 import com.example.todoapp.db.data.mood.TodayMoodDao
@@ -25,6 +26,15 @@ class TodayMoodRepository(private val database: AppDatabase) {
     suspend fun getTodayMood(date: LocalDate): Flow<List<TodayMoodWithDetails>> {
         val selected_date = MyDate.fromLocalDate(date).dateString
         return todayMoodDao.getTodayMood(selected_date)
+    }
+
+    fun getDayFactors(date: LocalDate): Flow<List<String>> =
+        database.getDayFactorDao().observeForDay(MyDate.fromLocalDate(date).dateString)
+
+    suspend fun setDayFactor(date: LocalDate, icon: String, picked: Boolean) {
+        val dao = database.getDayFactorDao()
+        val myDate = MyDate.fromLocalDate(date)
+        if (picked) dao.insert(DayFactor(myDate, icon)) else dao.delete(myDate.dateString, icon)
     }
 
     suspend fun insertDefaultMoods(userId: Long) {

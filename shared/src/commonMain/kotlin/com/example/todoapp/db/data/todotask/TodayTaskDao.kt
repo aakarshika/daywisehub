@@ -67,4 +67,8 @@ interface TodayTaskDao {
 
     @Query("SELECT * FROM today_task WHERE task_date BETWEEN :from AND :to ORDER BY task_date, task_order")
     fun observeBetween(from: String, to: String): Flow<List<TodayTask>>
+
+    /** Rewrites a day's rows unchanged, so this process's queries on them run again (the iPhone widget writes from another process). */
+    @Query("UPDATE today_task SET task_state = task_state WHERE task_date = :date")
+    suspend fun touchDay(date: String)
 }

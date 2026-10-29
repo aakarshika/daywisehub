@@ -40,27 +40,28 @@ private val RingStroke = 9.dp
 
 /**
  * Spec 9: the week's four pillar rings, each with its points of target and "full" or "light" at the
- * 80% rule. A ring that's close enough closes (spec 9.2): the rest of it fills in the pillar's light
+ * 80% rule. "light" waits for the week to be over ([weekOver]), so a Wednesday isn't judged. A ring that's close enough closes (spec 9.2): the rest of it fills in the pillar's light
  * color, and one closed by its item count under 80% reads "nearly". A week the diary wasn't opened in
  * reads "away" instead, with no numbers and no arc, so its zeros don't look like misses.
  */
 @Composable
-fun PillarRings(week: WeekScore) {
+fun PillarRings(week: WeekScore, weekOver: Boolean) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 20.dp),
+        modifier = Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        week.pillars.forEach { score -> PillarRing(score, away = week.away, Modifier.weight(1f)) }
+        week.pillars.forEach { score -> PillarRing(score, away = week.away, weekOver, Modifier.weight(1f)) }
     }
 }
 
 @Composable
-private fun PillarRing(score: PillarScore, away: Boolean, modifier: Modifier) {
+private fun PillarRing(score: PillarScore, away: Boolean, weekOver: Boolean, modifier: Modifier) {
     val state = when {
         away -> "away"
         score.full -> "full"
         score.nearly -> "nearly"
-        else -> "light"
+        weekOver -> "light"
+        else -> ""
     }
     val extra = if (!away && score.extra > 0) ", +${score.extra} extra" else ""
     Column(
@@ -68,7 +69,7 @@ private fun PillarRing(score: PillarScore, away: Boolean, modifier: Modifier) {
             contentDescription = if (away) {
                 "${score.pillar.title}, away"
             } else {
-                "${score.pillar.title}, ${score.earned} of ${MissionWords.pointsPhrase(score.target)}, $state$extra"
+                "${score.pillar.title}, ${score.earned} of ${MissionWords.pointsPhrase(score.target)}${if (state.isEmpty()) "" else ", $state"}$extra"
             }
         },
         horizontalAlignment = Alignment.CenterHorizontally
@@ -104,7 +105,7 @@ private fun PillarRing(score: PillarScore, away: Boolean, modifier: Modifier) {
         }
         Text(score.pillar.title, fontSize = 13.sp, color = CardHeadInk, modifier = Modifier.padding(top = 4.dp))
         // A closed ring's word is in the pillar's ink, as it reads done.
-        Text(state, fontSize = 12.sp, fontStyle = FontStyle.Italic, color = if ((score.full || score.closed) && !away) pillarInk(score.pillar) else InkGray)
+        if (state.isNotEmpty()) Text(state, fontSize = 12.sp, fontStyle = FontStyle.Italic, color = if ((score.full || score.closed) && !away) pillarInk(score.pillar) else InkGray)
         if (!away && score.extra > 0) Text("+${score.extra} extra", fontSize = 11.sp, color = pillarInk(score.pillar))
     }
 }

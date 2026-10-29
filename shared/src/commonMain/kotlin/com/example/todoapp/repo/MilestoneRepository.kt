@@ -17,6 +17,8 @@ class MilestoneRepository(private val database: AppDatabase) {
     fun observeInRange(startDate: MyDate, endDate: MyDate): Flow<List<MilestoneWithDetails>> =
         milestoneDao.observeInRange(startDate.dateString, endDate.dateString)
 
+    fun observeActiveWithDetails(): Flow<List<MilestoneWithDetails>> = milestoneDao.observeActiveWithDetails()
+
     suspend fun getAll(): List<Milestone> = milestoneDao.getAll()
 
     fun observeAll(): Flow<List<Milestone>> = milestoneDao.observeAll()

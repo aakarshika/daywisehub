@@ -1,5 +1,7 @@
 package com.example.todoapp.domain
 
+import com.example.todoapp.db.models.TaskStatus
+import com.example.todoapp.db.data.mission.milestone.Milestone
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.week.WeekSummary
 import kotlinx.datetime.DateTimeUnit
@@ -53,6 +55,8 @@ data class CalendarDay(
     val title: String,
     /** What a screen reader says for the day. */
     val description: String,
+    /** An open milestone is due this day. Once done, it shows only as its badge on the day it was done. */
+    val milestoneDue: Boolean = false,
 )
 
 data class CalendarWeek(
@@ -101,6 +105,8 @@ object MonthGrid {
         badges: DayBadgeBook?,
         selected: LocalDate?,
         filter: CalendarFilter? = null,
+        /** Days an open milestone is due ([openMilestoneDays]). */
+        milestonesDue: Set<LocalDate> = emptySet(),
     ): MonthCalendar {
         val first = LocalDate(month.year, month.month, 1)
         val last = first.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY)
@@ -118,8 +124,9 @@ object MonthGrid {
                 weekStart = monday,
                 days = (0..6).map {
                     val date = monday.plus(it, DateTimeUnit.DAY)
-                    if (counted != null) itemDay(date, first.month, today, byId, days, ringed = !away, counted)
+                    val day = if (counted != null) itemDay(date, first.month, today, byId, days, ringed = !away, counted)
                     else day(date, first.month, today, byId, days, ringed = !away, badges?.on(date).orEmpty())
+                    if (date in milestonesDue) day.copy(milestoneDue = true, description = "${day.description} A milestone is due.") else day
                 },
                 crowned = counted == null && finished && summary?.balanced == true,
                 crownDescription = "Balanced week of ${monday.shortLabel()}",
@@ -242,6 +249,14 @@ object MonthGrid {
             title = title(date, today),
             description = describeItems(date, today, done, inPart, items = done + inPart + notDone + open),
         )
+    }
+
+    /** The due days of active missions' open milestones. */
+    fun openMilestoneDays(milestones: List<Milestone>, allMissions: List<Mission>): Set<LocalDate> {
+        val active = allMissions.filter { it.active }.map { it.missionId }.toSet()
+        return milestones
+            .filter { it.missionId in active && it.status != TaskStatus.COMPLETED.value }
+            .mapTo(mutableSetOf()) { it.expectedCompletionDate.toLocalDate() }
     }
 
     /** "Tuesday, Oct 20", with the year in another year than this week's. */

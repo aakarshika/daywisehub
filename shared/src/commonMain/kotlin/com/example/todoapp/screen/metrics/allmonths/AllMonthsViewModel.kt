@@ -9,6 +9,8 @@ import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.domain.CalendarFilter
 import com.example.todoapp.domain.PillarType
 import com.example.todoapp.domain.WeekMath
+import com.example.todoapp.domain.DayLogs
+import com.example.todoapp.repo.DayLogRepository
 import com.example.todoapp.repo.MilestoneRepository
 import com.example.todoapp.repo.MissionRepository
 import com.example.todoapp.repo.PlanRepository
@@ -43,6 +45,7 @@ class AllMonthsViewModel(
     milestoneRepository: MilestoneRepository,
     weekRepository: WeekRepository,
     planRepository: PlanRepository,
+    dayLogRepository: DayLogRepository,
 ) : ViewModel() {
 
     /** Fixed for this view model's life; a new day closes the screen with the Metrics tab's view model. */
@@ -51,7 +54,7 @@ class AllMonthsViewModel(
     private val filter = MutableStateFlow(CalendarFilter())
 
     /** Tasks and day plans for every month shown, and the first stored day they start from. */
-    private class Window(val firstDay: LocalDate?, val tasks: List<TodayTask>, val plans: List<DayPlan>)
+    private class Window(val firstDay: LocalDate?, val tasks: List<TodayTask>, val plans: List<DayPlan>, val logs: DayLogs)
 
     /**
      * From the first stored day's month grid, less the badges' look-back (for due dates and badges), to the
@@ -65,7 +68,8 @@ class AllMonthsViewModel(
             combine(
                 todayTaskRepository.observeBetween(from, to),
                 planRepository.observePlans(from, to),
-            ) { tasks, plans -> Window(first, tasks, plans) }
+                dayLogRepository.observe(from, to),
+            ) { tasks, plans, logs -> Window(first, tasks, plans, logs) }
         }
 
     /**
@@ -80,7 +84,7 @@ class AllMonthsViewModel(
         milestoneRepository.observeIncludingArchived(),
     ) { missions, window, summaries, milestones ->
         try {
-            AllMonthsStateBuilder.data(AllMonthsInput(today, missions, window.tasks, summaries, milestones, window.plans, window.firstDay))
+            AllMonthsStateBuilder.data(AllMonthsInput(today, missions, window.tasks, summaries, milestones, window.plans, window.firstDay, window.logs))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

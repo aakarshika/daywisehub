@@ -1,4 +1,4 @@
-package com.example.todoapp.db
+package com.example.todoapp.db.sample
 
 import com.example.todoapp.db.data.mission.Mission
 import com.example.todoapp.db.data.todotask.TodayTask
@@ -20,12 +20,7 @@ import kotlinx.datetime.isoDayNumber
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 
-/**
- * Seeds the mockups' example missions on an empty database. Off since missions can be created in the app;
- * turn it on to try the diary with history without typing missions in.
- */
-const val SEED_SAMPLE_MISSIONS = false
-
+/** The mockups' example missions, to try the diary with history without typing missions in. */
 object SampleData {
 
     suspend fun seed(missionRepository: MissionRepository, todayTaskRepository: TodayTaskRepository) {

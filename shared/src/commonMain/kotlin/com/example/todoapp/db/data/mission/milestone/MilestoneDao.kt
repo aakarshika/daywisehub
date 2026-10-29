@@ -31,6 +31,15 @@ interface MilestoneDao {
     """)
     fun observeInRange(startDate: String, endDate: String): Flow<List<MilestoneWithDetails>>
 
+    /** Every milestone of an active mission, with its mission: the diary picks a page's own from these. */
+    @Query("""
+        SELECT mls.*, m.* FROM milestone mls
+        JOIN mission m ON m.mission_id = mls.mile_mission_id
+        WHERE m.mission_active = 1
+        ORDER BY mls.expected_completion_date ASC
+    """)
+    fun observeActiveWithDetails(): Flow<List<MilestoneWithDetails>>
+
     @Query("SELECT * FROM milestone")
     suspend fun getAll(): List<Milestone>
 

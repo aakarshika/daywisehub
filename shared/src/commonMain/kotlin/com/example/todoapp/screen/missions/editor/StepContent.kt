@@ -1,6 +1,21 @@
 package com.example.todoapp.screen.missions.editor
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import com.example.todoapp.domain.Idea
+import com.example.todoapp.domain.IdeaMatch
+import com.example.todoapp.domain.Ideas
+import com.example.todoapp.screen.basicutils.pillarInk
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -21,6 +36,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +55,8 @@ import com.example.todoapp.screen.basicutils.Blue80
 import com.example.todoapp.screen.basicutils.InkBlack
 import com.example.todoapp.screen.basicutils.InkGray
 import com.example.todoapp.screen.basicutils.PeachText
+import com.example.todoapp.screen.basicutils.components.TypingPlaceholder
+import com.example.todoapp.screen.basicutils.components.focusAndShowKeyboard
 import com.example.todoapp.screen.basicutils.pillarStrong
 import com.example.todoapp.screen.diary.plan.SmallChip
 import todoapp.shared.generated.resources.Res
@@ -73,7 +91,11 @@ fun StepQuestion(step: EditorStep, state: EditorUiState, viewModel: MissionEdito
     val draft = state.draft
     val answered = step in state.answered
     when (step) {
-        EditorStep.TITLE -> TitleField(draft.title, viewModel::setTitle, viewModel::confirmTitle)
+        EditorStep.TITLE -> {
+            TitleField(draft.title, viewModel::setTitle, viewModel::confirmTitle)
+            val suggestions by viewModel.suggestions.collectAsState()
+            IdeaSuggestions(suggestions, viewModel::useIdea)
+        }
         EditorStep.PILLAR -> PillarType.scoredPillars.forEachIndexed { i, pillar ->
             ChoiceCard(
                 pillar.title, pillarExample(pillar), answered && draft.pillarChoice == pillar, cardTilts[i % cardTilts.size],
@@ -149,7 +171,8 @@ private fun pillarExample(pillar: PillarType): String = when (pillar) {
 @Composable
 private fun TitleField(title: String, onChange: (String) -> Unit, onNext: () -> Unit) {
     val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focus.requestFocus() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    LaunchedEffect(Unit) { focusAndShowKeyboard(focus, keyboard) }
     BasicTextField(
         value = title,
         onValueChange = onChange,
@@ -170,9 +193,9 @@ private fun TitleField(title: String, onChange: (String) -> Unit, onNext: () -> 
                 contentAlignment = Alignment.CenterStart
             ) {
                 if (title.isEmpty()) {
-                    Text(
-                        "Learn guitar", fontSize = 22.sp, fontStyle = FontStyle.Italic, fontWeight = FontWeight.Light,
-                        color = InkGray.copy(alpha = 0.6f)
+                    TypingPlaceholder(
+                        titleExamples,
+                        TextStyle(fontSize = 22.sp, fontStyle = FontStyle.Italic, fontWeight = FontWeight.Light, color = InkGray.copy(alpha = 0.6f))
                     )
                 }
                 inner()
@@ -180,6 +203,12 @@ private fun TitleField(title: String, onChange: (String) -> Unit, onNext: () -> 
         }
     )
 }
+
+private val titleExamples = listOf(
+    "Learn guitar", "Go to the gym", "Call Grandma", "Read before bed", "Run a 10K", "Cook at home more",
+    "Learn Spanish", "Meditate", "Write a short story", "Plan a trip", "Walk after dinner", "Date night",
+    "Practice piano", "Save for a house", "Stretch in the morning", "Finish the side project", "Paint",
+)
 
 /** Step 5: the spec's choices, plus a saved length that isn't one of them. */
 @OptIn(ExperimentalLayoutApi::class)
@@ -196,6 +225,35 @@ private fun DurationChoices(current: Int, answered: Boolean, onPick: (Int) -> Un
                 MissionWords.durationWords(minutes).replaceFirstChar { it.uppercase() },
                 selected = answered && minutes == current
             ) { onPick(minutes) }
+        }
+    }
+}
+
+/** Spec 8.3: matching ideas under the title. Tapping one borrows its answers; Next answers step by step instead. */
+@Composable
+private fun IdeaSuggestions(matches: List<IdeaMatch>, onPick: (Idea) -> Unit) {
+    if (matches.isEmpty()) return
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 8.dp)) {
+        Text("Fill the rest from an idea", fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray)
+        matches.forEach { match ->
+            val idea = match.idea
+            val shape = RoundedCornerShape(8.dp)
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp).clip(shape).background(Color.White)
+                    .border(1.dp, if (match.best) pillarStrong(idea.pillar) else Color(0xFFE6DFD0), shape)
+                    .clickable(role = Role.Button, onClickLabel = "Use ${idea.displayTitle}") { onPick(idea) }
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(idea.displayTitle, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = InkBlack, modifier = Modifier.weight(1f))
+                    if (match.best) Text("Best match", fontSize = 11.sp, fontStyle = FontStyle.Italic, color = PeachText)
+                }
+                Text(
+                    "${idea.pillar.title} · ${Ideas.preset(idea)}",
+                    fontSize = 12.sp, color = InkGray, modifier = Modifier.padding(top = 2.dp)
+                )
+                match.reason?.let { Text(it, fontSize = 12.sp, fontStyle = FontStyle.Italic, color = pillarInk(idea.pillar), modifier = Modifier.padding(top = 2.dp)) }
+            }
         }
     }
 }

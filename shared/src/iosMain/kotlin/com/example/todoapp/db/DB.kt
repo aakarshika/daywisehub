@@ -12,8 +12,13 @@ import platform.Foundation.NSHomeDirectory
 import platform.Foundation.NSUserDomainMask
 
 
+/** Shared with the widget extension; the app and the extension both carry this group in their entitlements. */
+const val APP_GROUP = "group.com.ideeya.inbalance"
+
+private const val DB_NAME = "my_room.db"
+
 fun getDatabaseBuilder(): RoomDatabase.Builder<AppDatabase> {
-    val dbFilePath = documentDirectory() + "/my_room.db"
+    val dbFilePath = databasePath()
     return Room.databaseBuilder<AppDatabase>(
         name = dbFilePath,
         factory =  { AppDatabase::class.instantiateImpl() }
@@ -31,6 +36,13 @@ fun getDatabase(): AppDatabase {
     return getDatabaseBuilder().build()
 }
 
+
+/** The database lives in the App Group container, so the widgets read and write the same one. Without the group (an unsigned build), it's in Documents. */
+@OptIn(ExperimentalForeignApi::class)
+private fun databasePath(): String {
+    val group = NSFileManager.defaultManager.containerURLForSecurityApplicationGroupIdentifier(APP_GROUP)?.path
+    return (group ?: documentDirectory()) + "/" + DB_NAME
+}
 
 @OptIn(ExperimentalForeignApi::class)
 private fun documentDirectory(): String {

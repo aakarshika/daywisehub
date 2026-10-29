@@ -88,12 +88,14 @@ fun NotesItem(
                         editing.value = true
                     }
                 ) {
-                    if(editing.value) {
-                        NotesEdit(nn, editing.value, upsertWaterIntake, textArranged, editDone={
-                            editing.value = false
-                        })
-                    } else {
-                        NotesView(water,upsertWaterIntake, textArranged)
+                    Column {
+                        if(editing.value) {
+                            NotesEdit(nn, editing.value, upsertWaterIntake, textArranged, editDone={
+                                editing.value = false
+                            })
+                        } else {
+                            NotesView(water,upsertWaterIntake, textArranged)
+                        }
                     }
                 }
             }

@@ -54,7 +54,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodel)
             api(libs.precompose)
             implementation(libs.kermit)
-            implementation(libs.kottie)
+            implementation(libs.serialization.json)
         }
         androidMain.dependencies {
             implementation(libs.koin.android)
@@ -66,7 +66,7 @@ kotlin {
 
 android {
     namespace = "com.example.todoapp"
-    compileSdk = 34
+    compileSdk = 36
     defaultConfig {
         minSdk = 24
     }

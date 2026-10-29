@@ -1,5 +1,9 @@
 package com.example.todoapp.screen.diary.plan
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -8,6 +12,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -19,7 +24,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,12 +43,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.Role
@@ -56,13 +66,18 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
 import com.example.todoapp.domain.Energy
 import com.example.todoapp.domain.TaskProgress
 import com.example.todoapp.domain.TaskState
 import com.example.todoapp.domain.minutesLabel
 import com.example.todoapp.screen.basicutils.Blue80
+import com.example.todoapp.screen.diary.diaryitem.components.MilestoneLine
+import kotlinx.datetime.LocalDate
 import com.example.todoapp.screen.basicutils.ChipBorder
 import com.example.todoapp.screen.basicutils.CrownGold
 import com.example.todoapp.screen.basicutils.InkBlack
@@ -83,6 +98,7 @@ import todoapp.shared.generated.resources.check_square
 import todoapp.shared.generated.resources.crown_a
 import todoapp.shared.generated.resources.square_b
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 class PlanRowActions(
     val onToggle: (Long) -> Unit,
@@ -104,59 +120,85 @@ private val TrackStart = BoxSize + RowPadding
 private const val LET_GO_HOLD_MILLIS = 3_000L
 /** How far the finger must end up sideways from where it went down for letting go to save. */
 private val MinSwipe = 24.dp
+/** The width a swipe left uncovers per chip (Reset, Move, Skip). */
+private val ChipWidth = 74.dp
 
 /** "Picked for you · 2 h 15 min of your 2½ h free" and a link to change the day. */
 @Composable
 fun PlanSubline(state: DiaryUiState, onChange: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        val energy = if (state.energy == Energy.LOW) " · low energy" else ""
-        Text(
-            "Picked for you · ${minutesLabel(state.plannedMinutes)} of your ${minutesLabel(state.freeMinutes)} free$energy",
-            fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray, textAlign = TextAlign.Center
-        )
-        Box(
-            modifier = Modifier.heightIn(min = 44.dp).widthIn(min = 44.dp).clickable(role = Role.Button) { onChange() },
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                "change",
-                fontSize = 13.sp, fontStyle = FontStyle.Italic, color = PeachText,
-                textDecoration = TextDecoration.Underline,
-                modifier = Modifier.padding(horizontal = 12.dp)
-            )
-        }
-    }
+//    Column(
+//        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 4.dp),
+//        horizontalAlignment = Alignment.CenterHorizontally
+//    ) {
+//        val energy = if (state.energy == Energy.LOW) " · low energy" else ""
+//        Text(
+//            "Picked for you · ${minutesLabel(state.plannedMinutes)} of your ${minutesLabel(state.freeMinutes)} free$energy",
+//            fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray, textAlign = TextAlign.Center
+//        )
+//        Box(
+//            modifier = Modifier.heightIn(min = 44.dp).widthIn(min = 44.dp).clickable(role = Role.Button) { onChange() },
+//            contentAlignment = Alignment.Center
+//        ) {
+//            Text(
+//                "change",
+//                fontSize = 13.sp, fontStyle = FontStyle.Italic, color = PeachText,
+//                textDecoration = TextDecoration.Underline,
+//                modifier = Modifier.padding(horizontal = 12.dp)
+//            )
+//        }
+//    }
 }
 
 @Composable
 fun PlanSection(
     state: DiaryUiState,
     isToday: Boolean,
+    isTomorrow: Boolean = false,
     evening: Boolean,
     editMode: Boolean,
     actions: PlanRowActions,
-    onToggleEvening: () -> Unit,
+    /** The evening check's second step: tomorrow's page, to plan it the night before. */
+    tomorrowPlanned: Boolean = false,
+    onPlanTomorrow: () -> Unit = {},
     onOpenMissions: () -> Unit,
+    /** The page's milestones: each under its mission's item, the rest after the items. */
+    milestones: List<MilestoneWithDetails> = emptyList(),
+    page: LocalDate,
+    onMilestone: (MilestoneWithDetails, Boolean) -> Unit = { _, _ -> },
 ) {
+    val byMission = milestones.groupBy { it.mission.missionId }
+    val onTheList = (state.fixed + state.picks).map { it.missionId }.toSet()
+    @Composable
+    fun under(row: PlanRow) = byMission[row.missionId].orEmpty().forEach { m ->
+        key("m-${m.milestone.milestoneId}") { MilestoneLine(m, page, indent = true) { onMilestone(m, it) } }
+    }
     Column(
         modifier = Modifier.fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 6.dp)
-            .border(1.dp, LineBlueBorder, RoundedCornerShape(8.dp))
-            .padding(start = 14.dp, end = 14.dp, top = 2.dp, bottom = 10.dp)
     ) {
+        if (isToday && state.newUser) {
+            Text(
+                "Tick what got done. Swipe right for some of it, left to move or skip.",
+                fontSize = 12.sp, fontStyle = FontStyle.Italic, color = InkGray, lineHeight = 16.sp
+            )
+        }
         if (state.fixed.isNotEmpty()) {
             GroupLabel("ALREADY IN YOUR DAY")
-            state.fixed.forEach { key(it.taskId) { PlanRowItem(it, evening, editMode, actions) } }
+            state.fixed.forEach { key(it.taskId) { PlanRowItem(it, evening, editMode, actions, answers = isToday) }; under(it) }
         }
-        GroupLabel(if (!isToday) "THIS DAY" else if (evening) "TODAY" else "PICKED FOR TODAY")
+        GroupLabel(
+            when {
+                isTomorrow -> "PICKED FOR TOMORROW"
+                !isToday -> "THIS DAY"
+                evening -> "TODAY"
+                else -> "PICKED FOR TODAY"
+            }
+        )
         if (state.picks.isEmpty()) {
             Text(
                 when {
                     !state.hasMissions -> "No missions yet. Add a few on the Missions tab, and each morning the diary picks from them."
-                    isToday -> "Nothing picked yet. Tap the pencil to see what can be added."
+                    isToday || isTomorrow -> "Nothing picked yet. Tap the pencil to see what can be added."
                     else -> "Nothing was planned for this day."
                 },
                 fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray,
@@ -164,15 +206,21 @@ fun PlanSection(
             )
             if (!state.hasMissions) SmallChip("Go to Missions") { onOpenMissions() }
         }
-        state.picks.forEach { key(it.taskId) { PlanRowItem(it, evening, editMode, actions) } }
-        if (isToday && !evening && state.picks.isNotEmpty()) {
+        state.picks.forEach { key(it.taskId) { PlanRowItem(it, evening, editMode, actions, answers = isToday) }; under(it) }
+        // Milestones whose mission has no item on this day.
+        val alone = milestones.filter { it.mission.missionId !in onTheList }
+        if (alone.isNotEmpty()) {
+            GroupLabel("MILESTONES")
+            alone.forEach { m -> key("m-${m.milestone.milestoneId}") { MilestoneLine(m, page, indent = false) { onMilestone(m, it) } } }
+        }
+        if ((isToday || isTomorrow) && !evening && state.picks.isNotEmpty()) {
             Text(
                 "Hold a title to crown it.",
                 fontSize = 11.sp, color = InkGray, modifier = Modifier.padding(top = 8.dp)
             )
         }
-        if (isToday) {
-            SmallChip(if (evening) "Back to the plan" else "Evening check") { onToggleEvening() }
+        if (isToday && evening) {
+            SmallChip(if (tomorrowPlanned) "Tomorrow is planned ✓" else "Plan tomorrow →") { onPlanTomorrow() }
         }
     }
 }
@@ -188,10 +236,14 @@ private fun GroupLabel(text: String) {
  * letting go saves, once the finger is at least [MinSwipe] sideways from where it went down. A shorter
  * drag, such as a scroll that slips sideways, puts the line back as a cancel does and saves nothing. Only
  * a done item looks ticked; a did-some keeps its open box, its line and its percent.
+ *
+ * On today's page, a drag that starts leftward on an open, did-some or done item slides it left instead, to
+ * show Reset (once some is done), Move (while nothing is) and Skip; a fixed block gets Reset only. Past halfway it stays open; a drag right
+ * or an answer closes it.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actions: PlanRowActions) {
+private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actions: PlanRowActions, answers: Boolean) {
     // "If filled completely, it gets ticked off": a did-some isn't ticked.
     val ticked = row.state == TaskState.DONE
     val closed = !row.state.isOpen
@@ -199,6 +251,22 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
     val moved = row.state == TaskState.MOVED
     val draggable = !moved && !editMode
     val crownable = !row.isFixedBlock && row.state.isOpen
+    // A fixed block can only be reset: it isn't moved or skipped.
+    val chips = listOfNotNull(
+        "reset".takeIf { row.progress > 0 },
+        "move".takeIf { row.state == TaskState.PLANNED && !row.isFixedBlock && row.moveTo != null },
+        "skip".takeIf { !row.isFixedBlock },
+    )
+    val answerable = answers && row.state.let { it == TaskState.PLANNED || it == TaskState.PARTIAL || it == TaskState.DONE } && chips.isNotEmpty()
+    val actionsWidth = ChipWidth * chips.size
+    val latestActionsWidth by rememberUpdatedState(actionsWidth)
+    // How far the item is slid left to show Move and Skip: 0, or down to minus the actions' width.
+    var slideX by remember { mutableFloatStateOf(0f) }
+    var sliding by remember { mutableStateOf(false) }
+    val settledX by animateFloatAsState(slideX, label = "slide")
+    val shownX = if (sliding) slideX else settledX
+    LaunchedEffect(answerable) { if (!answerable) slideX = 0f }
+    val latestAnswerable by rememberUpdatedState(answerable)
     // The percent under the finger, while dragging; null otherwise.
     var dragPercent by remember { mutableStateOf<Int?>(null) }
     // Where the finger went down, for how far a drag went: the drag only reports where it passed the slop.
@@ -230,8 +298,9 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
         return true
     }
 
-    Row(
-        modifier = Modifier.fillMaxWidth()
+    Column(
+        // The evening buttons fold away once one is used, instead of the rows below jumping up.
+        modifier = Modifier.fillMaxWidth().animateContentSize()
             .then(
                 if (draggable) {
                     Modifier.pointerInput(row.taskId) {
@@ -244,13 +313,25 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
                             return TaskProgress.rounded((x - start) / (size.width - start).coerceAtLeast(1f) * 100)
                         }
                         var lastX = 0f
+                        var slide = false
+                        fun settle() {
+                            val full = latestActionsWidth.toPx()
+                            sliding = false
+                            slideX = if (slideX < -full / 2) -full else 0f
+                        }
                         try {
                             detectHorizontalDragGestures(
                                 onDragStart = {
-                                    lastX = it.x
-                                    dragPercent = percentAt(it.x)
+                                    slide = latestAnswerable && (slideX < 0f || it.x < downX)
+                                    if (slide) {
+                                        sliding = true
+                                    } else {
+                                        lastX = it.x
+                                        dragPercent = percentAt(it.x)
+                                    }
                                 },
                                 onDragEnd = {
+                                    if (slide) return@detectHorizontalDragGestures settle()
                                     val end = dragPercent
                                     dragPercent = null
                                     // A slip isn't a swipe: too short, and it ends as a cancel does.
@@ -261,14 +342,19 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
                                         onProgress(latestRow.taskId, end)
                                     }
                                 },
-                                onDragCancel = { dragPercent = null },
-                            ) { change, _ ->
-                                lastX = change.position.x
-                                dragPercent = percentAt(lastX)
+                                onDragCancel = { if (slide) settle() else dragPercent = null },
+                            ) { change, amount ->
+                                if (slide) {
+                                    slideX = (slideX + amount).coerceIn(-latestActionsWidth.toPx(), 0f)
+                                } else {
+                                    lastX = change.position.x
+                                    dragPercent = percentAt(lastX)
+                                }
                             }
                         } finally {
                             // The row stopped being draggable mid-drag (it moved, or swap mode came on): nothing is saved.
                             dragPercent = null
+                            if (sliding) settle()
                         }
                     }
                 } else Modifier
@@ -307,99 +393,149 @@ private fun PlanRowItem(row: PlanRow, evening: Boolean, editMode: Boolean, actio
                 }
             }
             .padding(vertical = 9.dp, horizontal = RowPadding),
-        verticalAlignment = Alignment.Top
     ) {
-        // A moved item can't be ticked, unless its copy is still planned: then ticking takes the move back,
-        // and the box is less faded, so it doesn't look off.
-        val boxAlpha = if (moved && row.canTakeBack) 0.7f else if (closed) 0.4f else 1f
-        Box(
-            modifier = Modifier.size(BoxSize)
-                .clickable(enabled = !moved || row.canTakeBack, role = Role.Checkbox) { actions.onToggle(row.taskId) },
-            contentAlignment = Alignment.Center
-        ) {
-            Image(
-                painter = painterResource(if (ticked) Res.drawable.check_square else Res.drawable.square_b),
-                contentDescription = when {
-                    moved && row.canTakeBack -> "Take back the move of ${row.title}"
-                    moved -> "${row.title}, moved"
-                    ticked -> "Untick ${row.title}"
-                    else -> "Tick ${row.title}"
-                },
-                colorFilter = ColorFilter.tint(strong),
-                modifier = Modifier.size(24.dp).alpha(boxAlpha)
-            )
-            if (row.crowned) {
+      Box(modifier = Modifier.fillMaxWidth().clipToBounds()) {
+        Row(verticalAlignment = Alignment.Top, modifier = Modifier.offset { IntOffset(shownX.roundToInt(), 0) }) {
+            // A moved item can't be ticked, unless its copy is still planned: then ticking takes the move back,
+            // and the box is less faded, so it doesn't look off.
+            val boxAlpha = if (moved && row.canTakeBack) 0.7f else if (closed) 0.4f else 1f
+            Box(
+                modifier = Modifier.size(BoxSize)
+                    .clickable(enabled = !moved || row.canTakeBack, role = Role.Checkbox) { actions.onToggle(row.taskId) },
+                contentAlignment = Alignment.Center
+            ) {
                 Image(
-                    painter = painterResource(Res.drawable.crown_a),
-                    contentDescription = "Crowned",
-                    colorFilter = ColorFilter.tint(CrownGold),
-                    modifier = Modifier.align(Alignment.TopEnd).size(width = 18.dp, height = 14.dp)
+                    painter = painterResource(if (ticked) Res.drawable.check_square else Res.drawable.square_b),
+                    contentDescription = when {
+                        moved && row.canTakeBack -> "Take back the move of ${row.title}"
+                        moved -> "${row.title}, moved"
+                        ticked -> "Untick ${row.title}"
+                        else -> "Tick ${row.title}"
+                    },
+                    colorFilter = ColorFilter.tint(strong),
+                    modifier = Modifier.size(24.dp).alpha(boxAlpha)
+                )
+                if (row.crowned) {
+                    Image(
+                        painter = painterResource(Res.drawable.crown_a),
+                        contentDescription = "Crowned",
+                        colorFilter = ColorFilter.tint(CrownGold),
+                        modifier = Modifier.align(Alignment.TopEnd).size(width = 18.dp, height = 14.dp)
+                    )
+                }
+            }
+            Column(
+                modifier = Modifier.weight(1f).then(
+                    if (crownable) {
+                        Modifier.pointerInput(row.taskId) { detectTapGestures(onLongPress = { actions.onCrown(row.taskId) }) }
+                    } else Modifier
+                )
+            ) {
+                var titleLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
+                Text(
+                    row.title,
+                    fontSize = 20.sp, fontStyle = FontStyle.Italic, fontWeight = FontWeight.Light, letterSpacing = 0.6.sp,
+                    color = if (closed) InkGray else InkBlack,
+                    onTextLayout = { titleLayout = it },
+                    // A done title fades under a thin strike, so a mostly done list still reads calm.
+                    modifier = Modifier.alpha(if (ticked) 0.55f else 1f).drawWithContent {
+                        drawContent()
+                        val layout = titleLayout
+                        if (ticked && layout != null) {
+                            for (line in 0 until layout.lineCount) {
+                                val y = (layout.getLineTop(line) + layout.getLineBottom(line)) / 2
+                                drawLine(
+                                    strong.copy(alpha = 0.6f), Offset(layout.getLineLeft(line), y), Offset(layout.getLineRight(line), y),
+                                    strokeWidth = 1.2.dp.toPx()
+                                )
+                            }
+                        }
+                    }
+                )
+                Text(
+                    subline(row), fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray, lineHeight = 17.sp,
+                    modifier = Modifier.alpha(if (ticked) 0.55f else 1f)
+                )
+                if (editMode && row.state == TaskState.PLANNED && !row.isFixedBlock) {
+                    Row(modifier = Modifier.padding(top = 4.dp)) {
+                        if (!row.movedIn && !row.crowned) SmallChip("Swap") { actions.onSwap(row.taskId) }
+                        SmallChip("Remove") { actions.onRemove(row.taskId) }
+                    }
+                }
+            }
+            Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(start = 8.dp, top = 3.dp)) {
+                Text(minutesLabel(row.minutes), fontSize = 11.sp, color = InkGray)
+                Spacer(Modifier.height(5.dp))
+                Text(
+                    when {
+                        held != null -> "$held%"
+                        !row.pillar.scored -> "recharge"
+                        row.state == TaskState.PARTIAL -> "+${row.pointsEarned} of ${row.points}"
+                        else -> "+${row.points}"
+                    },
+                    fontSize = 12.sp, fontWeight = FontWeight.Medium, color = pillarInk(row.pillar),
+                    // Faded once closed, but not while it shows the dragged percent.
+                    modifier = Modifier.alpha(if (closed && held == null) 0.4f else 1f)
+                        .clip(RoundedCornerShape(10.dp)).background(pillarLight(row.pillar))
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
                 )
             }
         }
-        Column(
-            modifier = Modifier.weight(1f).then(
-                if (crownable) {
-                    Modifier.pointerInput(row.taskId) { detectTapGestures(onLongPress = { actions.onCrown(row.taskId) }) }
-                } else Modifier
+        if (shownX < 0f) {
+            val width = with(LocalDensity.current) { (-shownX).toDp() }
+            SlideActions(
+                row, chips, actionsWidth, actions, onDone = { slideX = 0f },
+                modifier = Modifier.align(Alignment.CenterEnd).width(width).clipToBounds()
             )
-        ) {
-            var titleLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
-            Text(
-                row.title,
-                fontSize = 20.sp, fontStyle = FontStyle.Italic, fontWeight = FontWeight.Light, letterSpacing = 0.6.sp,
-                color = if (closed) InkGray else InkBlack,
-                onTextLayout = { titleLayout = it },
-                modifier = Modifier.drawWithContent {
-                    drawContent()
-                    val layout = titleLayout
-                    if (ticked && layout != null) {
-                        for (line in 0 until layout.lineCount) {
-                            val y = (layout.getLineTop(line) + layout.getLineBottom(line)) / 2
-                            drawLine(
-                                strong, Offset(layout.getLineLeft(line), y), Offset(layout.getLineRight(line), y),
-                                strokeWidth = 3.dp.toPx()
-                            )
-                        }
-                    }
-                }
-            )
-            Text(subline(row), fontSize = 13.sp, fontStyle = FontStyle.Italic, color = InkGray, lineHeight = 17.sp)
-            if (evening && row.state == TaskState.PLANNED && !row.isFixedBlock) {
-                FlowRow(modifier = Modifier.padding(top = 4.dp)) {
-                    val half = (row.points + 1) / 2
-                    SmallChip(if (row.pillar.scored) "Did some · +$half" else "Did some") { actions.onDidSome(row.taskId) }
-                    // No day to name means the mission can't go anywhere this week: leave Move out rather than skip it quietly.
-                    row.moveTo?.let { day -> SmallChip("Move to $day") { actions.onMove(row.taskId) } }
-                    SmallChip("Skip today") { actions.onSkip(row.taskId) }
-                }
-            }
-            if (editMode && row.state == TaskState.PLANNED && !row.isFixedBlock) {
-                Row(modifier = Modifier.padding(top = 4.dp)) {
-                    if (!row.movedIn && !row.crowned) SmallChip("Swap") { actions.onSwap(row.taskId) }
-                    SmallChip("Remove") { actions.onRemove(row.taskId) }
-                }
-            }
         }
-        Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(start = 8.dp, top = 3.dp)) {
-            Text(minutesLabel(row.minutes), fontSize = 11.sp, color = InkGray)
-            Spacer(Modifier.height(5.dp))
-            Text(
-                when {
-                    held != null -> "$held%"
-                    !row.pillar.scored -> "recharge"
-                    row.state == TaskState.PARTIAL -> "+${row.pointsEarned} of ${row.points}"
-                    else -> "+${row.points}"
-                },
-                fontSize = 12.sp, fontWeight = FontWeight.Medium, color = pillarInk(row.pillar),
-                // Faded once closed, but not while it shows the dragged percent.
-                modifier = Modifier.alpha(if (closed && held == null) 0.4f else 1f)
-                    .clip(RoundedCornerShape(10.dp)).background(pillarLight(row.pillar))
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
-            )
+      }
+    }
+}
+
+/**
+ * Reset, Move and Skip, uncovered from the right as an item slides left. They keep their full width
+ * while only part shows, so the labels don't squash. No day to name means the mission can't go anywhere
+ * this week, so Move is left out rather than skipping it quietly.
+ */
+@Composable
+private fun SlideActions(
+    row: PlanRow, chips: List<String>, width: Dp,
+    actions: PlanRowActions, onDone: () -> Unit, modifier: Modifier,
+) {
+    Box(modifier = modifier) {
+        Row(
+            modifier = Modifier.wrapContentWidth(Alignment.Start, unbounded = true).width(width).padding(start = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            chips.forEach { chip ->
+                when (chip) {
+                    "reset" -> EveningButton("Reset") { onDone(); actions.onProgress(row.taskId, 0) }
+                    "move" -> EveningButton("→ ${shortDay(row.moveTo.orEmpty())}") { onDone(); actions.onMove(row.taskId) }
+                    else -> EveningButton("Skip") { onDone(); actions.onSkip(row.taskId) }
+                }
+            }
         }
     }
 }
+
+@Composable
+private fun RowScope.EveningButton(text: String, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(16.dp)
+    Box(
+        modifier = Modifier.weight(1f).heightIn(min = 40.dp).clip(shape)
+            .border(1.dp, ChipBorder, shape)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 6.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text, fontSize = 13.sp, color = Color(0xFF4A4A4A), maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+/** "next Thursday" → "Next Thu", "today" → "Today". */
+private fun shortDay(day: String): String =
+    day.split(" ").joinToString(" ") { if (it.first().isUpperCase()) it.take(3) else it }
+        .replaceFirstChar { it.uppercase() }
 
 private fun subline(row: PlanRow): String = when (row.state) {
     TaskState.MOVED -> "Moved to ${row.movedTo ?: "another day"}" + if (row.canTakeBack) " · tick to take it back" else ""

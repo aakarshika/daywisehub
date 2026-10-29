@@ -128,7 +128,7 @@ fun MissionEditorScreen(viewModel: MissionEditorViewModel, onClose: () -> Unit) 
     }
 }
 
-/** Steps with more than one control confirm with Next; the rest answer with a single tap. */
+/** Steps with more than one control confirm with Next; the rest answer with a single tap, or Next once answered. */
 private fun nextAction(step: EditorStep, state: EditorUiState, viewModel: MissionEditorViewModel): (() -> Unit)? = when (step) {
     EditorStep.TITLE -> if (state.draft.title.isNotBlank()) viewModel::confirmTitle else null
     EditorStep.PACE -> when (state.draft.kind) {
@@ -136,5 +136,5 @@ private fun nextAction(step: EditorStep, state: EditorUiState, viewModel: Missio
         MissionKind.BLOCK -> if (state.draft.weekDays.isNotEmpty()) viewModel::confirmPace else null
         else -> viewModel::confirmPace
     }
-    else -> null
+    else -> if (step in state.answered) viewModel::keepAnswer else null
 }

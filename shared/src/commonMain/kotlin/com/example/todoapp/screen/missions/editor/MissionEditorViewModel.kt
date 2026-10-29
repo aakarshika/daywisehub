@@ -6,6 +6,9 @@ import com.example.todoapp.db.models.MyDate
 import com.example.todoapp.domain.Effort
 import com.example.todoapp.domain.EditorStep
 import com.example.todoapp.domain.History
+import com.example.todoapp.domain.Idea
+import com.example.todoapp.domain.IdeaMatch
+import com.example.todoapp.domain.Ideas
 import com.example.todoapp.domain.IfMissed
 import com.example.todoapp.domain.MilestoneDraft
 import com.example.todoapp.domain.MissionDraft
@@ -16,6 +19,7 @@ import com.example.todoapp.domain.Period
 import com.example.todoapp.domain.PillarType
 import com.example.todoapp.domain.WeekCost
 import com.example.todoapp.domain.WeekCosts
+import com.example.todoapp.repo.IdeaBank
 import com.example.todoapp.repo.MilestoneRepository
 import com.example.todoapp.repo.MissionRepository
 import com.example.todoapp.repo.PlanRepository
@@ -28,6 +32,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -51,6 +58,8 @@ data class EditorUiState(
     val archiving: Boolean = false,
     /** Why the last save or archive didn't go through; cleared by the next change or step. */
     val failure: String? = null,
+    /** The library idea this new mission borrowed its answers from (spec 8.4). */
+    val ideaTitle: String? = null,
 ) {
     val steps: List<EditorStep> get() = draft.steps
 
@@ -72,6 +81,9 @@ class MissionEditorViewModel(
     private val planRepository: PlanRepository,
     private val milestoneRepository: MilestoneRepository,
     private val missionId: Long,
+    /** A new mission's answers borrowed from an idea; it then opens on the before-saving screen. */
+    private val seed: MissionDraft? = null,
+    private val seedIdeaTitle: String? = null,
 ) : ViewModel() {
 
     val today: LocalDate = MyDate.now().toLocalDate()
@@ -107,8 +119,28 @@ class MissionEditorViewModel(
         }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, null)
     }
 
+    /**
+     * Spec 8.3: while a new mission's title is typed (2 characters or more), the top 4 matching ideas.
+     * Empty once an idea is picked or past the title question.
+     */
+    @OptIn(kotlinx.coroutines.FlowPreview::class)
+    val suggestions: StateFlow<List<IdeaMatch>> = _state
+        .map { s -> if (s != null && s.isNew && s.step == EditorStep.TITLE && s.ideaTitle == null) s.draft.title else "" }
+        .distinctUntilChanged()
+        .debounce(150)
+        .map { title -> if (title.trim().length < 2) emptyList() else runCatching { Ideas.match(title, IdeaBank.get()) }.getOrDefault(emptyList()) }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     init {
         viewModelScope.launch {
+            if (missionId == 0L && seed != null) {
+                initial = seed
+                _state.value = EditorUiState(
+                    isNew = true, draft = seed, answered = EditorStep.entries.toSet(), step = null, ideaTitle = seedIdeaTitle,
+                )
+                return@launch
+            }
             val draft = if (missionId == 0L) {
                 MissionDrafts.new(today)
             } else {
@@ -142,6 +174,21 @@ class MissionEditorViewModel(
 
     fun confirmTitle() {
         if (_state.value?.draft?.title?.isNotBlank() == true) answer(EditorStep.TITLE)
+    }
+
+    /** Picking a suggestion keeps the typed title and borrows everything else, then opens the before-saving screen. */
+    fun useIdea(idea: Idea) {
+        val s = _state.value ?: return
+        if (s.saving || s.step != EditorStep.TITLE) return
+        val title = s.draft.title.trim().ifBlank { idea.displayTitle }
+        _state.value = s.copy(
+            draft = idea.toDraft(today, title),
+            answered = EditorStep.entries.toSet(),
+            step = null,
+            fromSummary = false,
+            ideaTitle = idea.displayTitle,
+            failure = null,
+        )
     }
 
     // Step 2
@@ -209,6 +256,11 @@ class MissionEditorViewModel(
         })
     }
 
+    /** The date picked for milestone [index]. */
+    fun setMilestoneDue(index: Int, due: LocalDate) = change { d ->
+        d.copy(milestones = d.milestones.mapIndexed { i, m -> if (i == index) m.copy(due = due) else m })
+    }
+
     fun removeMilestone(index: Int) = change { d -> d.copy(milestones = d.milestones.filterIndexed { i, _ -> i != index }) }
 
     fun setInterval(count: Int, unit: Period) = change {
@@ -231,6 +283,11 @@ class MissionEditorViewModel(
     fun pickWeight(weight: Int) = answer(EditorStep.WEIGHT) { it.copy(weight = weight) }
     fun pickIfMissed(rule: IfMissed) = answer(EditorStep.IF_MISSED) { it.copy(ifMissed = rule) }
     fun pickGentle(on: Boolean) = answer(EditorStep.GENTLE) { it.copy(gentle = on) }
+
+    /** "Next" on a single-tap question already answered: keeps the answer and moves on. */
+    fun keepAnswer() {
+        _state.value?.step?.let { answer(it) }
+    }
 
     /** The gentle-start sticky on the before-saving screen. */
     fun setGentle(on: Boolean) {
@@ -340,14 +397,20 @@ class MissionEditorViewModel(
         _state.value = s.copy(draft = draft, answered = s.answered - newlyAsked - unanswer(draft), failure = null)
     }
 
-    /** Records the answer to [step] (ignored if [step] isn't on screen) and moves to the first open question, or the before-saving screen. */
+    /**
+     * Records the answer to [step] (ignored if [step] isn't on screen) and moves on, or to the before-saving screen.
+     * Opened from there, it goes to the first open question. Walking the questions, it goes to the next one
+     * in line, so after Back the questions already answered are asked again instead of skipped.
+     */
     private fun answer(step: EditorStep, transform: (MissionDraft) -> MissionDraft = { it }) {
         if (_state.value?.step != step) return
         change(transform = transform)
         val s = _state.value ?: return
         if (s.saving) return
         val answered = s.answered + step
-        val next = s.draft.steps.firstOrNull { it !in answered }
+        val steps = s.draft.steps
+        val following = steps.getOrNull(steps.indexOf(step) + 1)
+        val next = steps.firstOrNull { it !in answered || (!s.fromSummary && it == following) }
         _state.value = s.copy(answered = answered, step = next, fromSummary = s.fromSummary && next != null)
     }
 }

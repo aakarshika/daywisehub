@@ -8,6 +8,7 @@ import com.example.todoapp.db.data.week.WeekSummary
 import com.example.todoapp.domain.AheadLine
 import com.example.todoapp.domain.BadgeInput
 import com.example.todoapp.domain.DayBadges
+import com.example.todoapp.domain.DayLogs
 import com.example.todoapp.domain.DayTasks
 import com.example.todoapp.domain.History
 import com.example.todoapp.domain.LinePart
@@ -15,11 +16,10 @@ import com.example.todoapp.domain.MissionLine
 import com.example.todoapp.domain.MissionProgress
 import com.example.todoapp.domain.MonthCalendar
 import com.example.todoapp.domain.MonthGrid
+import com.example.todoapp.domain.shows
 import com.example.todoapp.domain.PaceOffers
 import com.example.todoapp.domain.Patterns
 import com.example.todoapp.domain.WeekAhead
-import com.example.todoapp.domain.WeekHighlights
-import com.example.todoapp.domain.WeekHighlightsBuilder
 import com.example.todoapp.domain.WeekMath
 import com.example.todoapp.domain.WeekScore
 import com.example.todoapp.domain.WeekScores
@@ -50,6 +50,8 @@ data class MetricsInput(
     val plans: List<DayPlan>,
     /** The first stored item's day, where day badges start; null on an empty install. */
     val firstDay: LocalDate?,
+    /** Moods and water over the same window, for the badges of days with nothing done. */
+    val logs: DayLogs = DayLogs(),
 )
 
 data class MetricsUiState(
@@ -63,10 +65,9 @@ data class MetricsUiState(
     val canGoForward: Boolean,
     /** The week's pillar scores: stored for a finished week, live for this one. */
     val score: WeekScore,
-    val highlights: WeekHighlights,
     /** "NEXT WEEK", or "THE WEEK AFTER" for a finished week. */
     val aheadTitle: String,
-    /** What next week adjusts, each line naming its mission on a chip. Never empty. */
+    /** What next week adjusts, each line naming its mission on a chip. Empty when there's nothing to say. */
     val ahead: List<AheadLine>,
     /**
      * As of today, whichever week is on screen, in spec 9.2's order: each line a sentence whose mission and
@@ -93,6 +94,7 @@ object MetricsStateBuilder {
         // The weeks the diary was opened in, once for every section: the rest of the finished weeks are away.
         val opened = PaceOffers.openedWeeks(input.tasks)
         val score = WeekScores.forWeek(week, thisWeek, byWeek[week], missions, input.allMissions, days, history, opened)
+            .let { s -> s.copy(pillars = s.pillars.filter { it.pillar.shows(missions, it.earned, it.target) }) }
         // One index for the calendar's days, so each of them looks its badges up rather than reading every task.
         // It reaches back over the badges' look-back and up to today too, for the badge run's pattern; the
         // calendar still asks only its own days, and they come out the same.
@@ -102,7 +104,7 @@ object MetricsStateBuilder {
             BadgeInput(
                 today = input.today, from = minOf(span.start, lookBack), to = maxOf(span.endInclusive, input.today),
                 allMissions = input.allMissions, history = history, plans = input.plans,
-                milestones = input.milestones, summaries = byWeek, firstDay = input.firstDay,
+                milestones = input.milestones, summaries = byWeek, firstDay = input.firstDay, logs = input.logs,
                 lookBackDays = PlanRepository.HISTORY_DAYS, maxCrowns = PlanRepository.MAX_CROWNS,
             )
         )
@@ -121,11 +123,13 @@ object MetricsStateBuilder {
             canGoBack = week > earliest(input.summaries, thisWeek),
             canGoForward = week < thisWeek,
             score = score,
-            highlights = WeekHighlightsBuilder.build(title.uppercase(), week, thisWeek, score, byWeek, opened),
             aheadTitle = if (week < thisWeek) "THE WEEK AFTER" else "NEXT WEEK",
             ahead = WeekAhead.lines(week, input.today, missions, history),
             patterns = Patterns.lines(input.today, byWeek, input.allMissions, days, runs, opened) { it >= badgeFloor && badges.counts(it) },
-            calendar = MonthGrid.build(week, input.today, input.allMissions, days, byWeek, opened, badges, selected = week),
+            calendar = MonthGrid.build(
+                week, input.today, input.allMissions, days, byWeek, opened, badges, selected = week,
+                milestonesDue = MonthGrid.openMilestoneDays(input.milestones, input.allMissions),
+            ),
             missions = MissionProgress.lines(input.today, missions, history, input.milestones, runs),
         )
     }

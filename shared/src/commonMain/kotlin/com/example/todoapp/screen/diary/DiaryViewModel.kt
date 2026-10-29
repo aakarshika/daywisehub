@@ -3,6 +3,7 @@ package com.example.todoapp.screen.diary
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
+import com.example.todoapp.app.AppClock
 import com.example.todoapp.db.data.mission.milestone.Milestone
 import com.example.todoapp.db.data.mission.milestone.MilestoneWithDetails
 import com.example.todoapp.db.models.MyDate
@@ -11,7 +12,9 @@ import com.example.todoapp.domain.Energy
 import com.example.todoapp.domain.OfferResponse
 import com.example.todoapp.domain.TaskState
 import com.example.todoapp.domain.WeekMath
+import com.example.todoapp.domain.taskState
 import com.example.todoapp.repo.MilestoneRepository
+import com.example.todoapp.repo.DayLogRepository
 import com.example.todoapp.repo.MissionRepository
 import com.example.todoapp.repo.PlanRepository
 import com.example.todoapp.repo.TodayTaskRepository
@@ -27,38 +30,46 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
+import kotlinx.datetime.daysUntil
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
-import kotlinx.datetime.toLocalDateTime
 
 class DiaryViewModel(
-    missionRepository: MissionRepository,
-    todayTaskRepository: TodayTaskRepository,
+    private val missionRepository: MissionRepository,
+    private val todayTaskRepository: TodayTaskRepository,
     private val planRepository: PlanRepository,
     private val milestoneRepository: MilestoneRepository,
     weekRepository: WeekRepository,
+    dayLogRepository: DayLogRepository,
     private val currentDate: LocalDate,
 ) : ViewModel() {
 
-    private val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    private val now = AppClock.now()
     private val today: LocalDate = now.date
     val isToday: Boolean = currentDate == today
+    val isTomorrow: Boolean = currentDate == today.plus(1, DateTimeUnit.DAY)
+    /** Today, and tomorrow the night before: the pages with free time, swap, lighter day and "Looks good". */
+    val canPlan: Boolean = isToday || isTomorrow
     /** Past days, and today from 18:00, when this view model was made. */
     private val startedInEvening: Boolean = currentDate < now.date || (currentDate == now.date && now.hour >= EVENING_HOUR)
 
     private val _eveningOpen = MutableStateFlow(startedInEvening)
-    /** Today's list switches to the evening check at 18:00, or anytime by hand; past days always show it. */
+    /** Today's list switches to the evening check at 18:00; past days always show it. */
     val eveningOpen: StateFlow<Boolean> = _eveningOpen
 
     private val _notice = MutableStateFlow<String?>(null)
     /** A short one-off message under the list, cleared by the next action. */
     val notice: StateFlow<String?> = _notice
+
+    /** True once tomorrow got its "Looks good"; the evening check offers to plan it until then. */
+    val tomorrowPlanned: StateFlow<Boolean> = planRepository.observePlan(today.plus(1, DateTimeUnit.DAY))
+        .map { it?.confirmed == true }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     private val _addOptions = MutableStateFlow<List<AddOption>?>(null)
     /** The pencil's list while its dialog is open; null when it's closed. */
@@ -90,11 +101,15 @@ class DiaryViewModel(
         if (isToday) weekRepository.observeOffers(WeekMath.weekStart(today)) else flowOf(emptyList()),
     ) { plans, settings, lastWeek, thisPageWeek, offers -> DiaryExtras(plans, settings, lastWeek, thisPageWeek, offers) }
 
-    /** The page's badges also read when milestones were done, archived missions' too, and the first stored day. */
+    /**
+     * The page's badges also read when milestones were done, archived missions' too, the first stored day,
+     * and the day's mood and water.
+     */
     private val badgeExtras = combine(
         milestoneRepository.observeIncludingArchived(),
         todayTaskRepository.observeFirstDate(),
-    ) { milestones, first -> BadgeExtras(milestones, first) }
+        dayLogRepository.observe(currentDate, currentDate),
+    ) { milestones, first, logs -> BadgeExtras(milestones, first, logs) }
 
     /**
      * Archived missions come in too, only so their points earned this week still count in the bars.
@@ -131,9 +146,15 @@ class DiaryViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    /** The page's milestones, for the to-do list (see [pageMilestones]). */
     val milestones: StateFlow<List<MilestoneWithDetails>> = milestoneRepository
-        .observeInRange(MyDate.fromLocalDate(currentDate).subtractDays(7), MyDate.fromLocalDate(currentDate).addDays(7))
+        .observeActiveWithDetails()
+        .map { all -> pageMilestones(all, currentDate) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    private val _milestoneOffer = MutableStateFlow<MilestoneOffer?>(null)
+    /** A finish line's item just ticked, with the milestone it might have reached; null when there's none to ask about. */
+    val milestoneOffer: StateFlow<MilestoneOffer?> = _milestoneOffer
 
     init {
         // A failed build still shows the diary, with what's stored, so the app always opens.
@@ -168,7 +189,7 @@ class DiaryViewModel(
      */
     private suspend fun openEveningAtSix() {
         while (true) {
-            val clock = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+            val clock = AppClock.now()
             // After midnight CalDiaryViewModel moves the diary to the new day, with a new view model.
             if (clock.date != currentDate) return
             if (clock.hour >= EVENING_HOUR) {
@@ -186,10 +207,52 @@ class DiaryViewModel(
         act { planRepository.tickFixedBlocks(currentDate) }
     }
 
-    fun toggleDone(taskId: Long) = act { planRepository.toggleDone(taskId) }
+    fun toggleDone(taskId: Long) = act {
+        planRepository.toggleDone(taskId)
+        offerMilestone(taskId)
+    }
     fun didSome(taskId: Long) = act { planRepository.setState(taskId, TaskState.PARTIAL) }
     /** The swipe (spec 6.5): [percent] of the item got done. */
-    fun setProgress(taskId: Long, percent: Int) = act { planRepository.setProgress(taskId, percent) }
+    fun setProgress(taskId: Long, percent: Int) = act {
+        planRepository.setProgress(taskId, percent)
+        offerMilestone(taskId)
+    }
+
+    /**
+     * When [taskId] is now done and its mission has an open milestone, asks whether that's reached too: only
+     * from a week before the milestone's date, and not while a "Not yet" for it is still quiet.
+     */
+    private suspend fun offerMilestone(taskId: Long) {
+        val task = todayTaskRepository.get(taskId)?.takeIf { it.taskState == TaskState.DONE } ?: return
+        val next = milestoneRepository.getForMission(task.missionId)
+            .sortedBy { it.milestoneOrder }
+            .firstOrNull { it.status != TaskStatus.COMPLETED.value } ?: return
+        if (currentDate < next.expectedCompletionDate.toLocalDate().minus(MILESTONE_ASK_DAYS, DateTimeUnit.DAY)) return
+        if (milestoneQuietUntil[next.milestoneId]?.let { currentDate < it } == true) return
+        val mission = missionRepository.get(task.missionId) ?: return
+        _milestoneOffer.value = MilestoneOffer(next, mission.title, taskId)
+    }
+
+    /** Yes on the offer: the milestone is done on this page's day, by that item. */
+    fun acceptMilestoneOffer() {
+        val offer = _milestoneOffer.value ?: return
+        _milestoneOffer.value = null
+        act {
+            milestoneRepository.updateMilestone(
+                offer.milestone.copy(
+                    status = TaskStatus.COMPLETED.value,
+                    actualCompletionDate = MyDate.fromLocalDate(currentDate),
+                    completionTaskId = offer.taskId,
+                )
+            )
+        }
+    }
+
+    /** "Not yet": this milestone isn't asked about again for [MILESTONE_QUIET_DAYS]. */
+    fun dismissMilestoneOffer() {
+        _milestoneOffer.value?.let { milestoneQuietUntil[it.milestone.milestoneId] = currentDate.plus(MILESTONE_QUIET_DAYS, DateTimeUnit.DAY) }
+        _milestoneOffer.value = null
+    }
     fun moveTask(taskId: Long) = act { planRepository.moveToNextRoom(taskId) }
     fun skipTask(taskId: Long) = act { planRepository.setState(taskId, TaskState.SKIPPED) }
     fun toggleCrown(taskId: Long) = act { planRepository.toggleCrown(taskId) }
@@ -200,7 +263,10 @@ class DiaryViewModel(
     fun addMission(missionId: Long) = act { planRepository.addMission(currentDate, missionId) }
     fun lighterDay() = act { planRepository.lighterDay(currentDate) }
     fun changeDay(freeMinutes: Int, energy: Energy) = act { planRepository.changeDay(currentDate, freeMinutes, energy) }
-    fun confirm() = act { planRepository.confirm(currentDate) }
+    fun confirm() = act {
+        planRepository.confirm(currentDate)
+        if (isTomorrow) _notice.value = "Tomorrow is set. Sleep well."
+    }
     /** The write can't be cancelled (PlanRepository.write), and a second answer to the same offer does nothing. */
     fun answerOffer(offerId: Long, response: OfferResponse) = act { planRepository.answerOffer(offerId, response) }
 
@@ -210,7 +276,9 @@ class DiaryViewModel(
         _notice.value = null
         addLoading = viewModelScope.launch {
             try {
-                _addOptions.value = planRepository.addOptions(currentDate).map { AddOption.from(it) }
+                val choices = planRepository.addOptions(currentDate)
+                _addOptions.value = choices.recommended.map { AddOption.from(it, recommended = true) } +
+                    choices.rest.map { AddOption.from(it, recommended = false) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -225,21 +293,11 @@ class DiaryViewModel(
         _addOptions.value = null
     }
 
-    fun toggleEveningCheck() {
-        if (!isToday) return
-        if (_eveningOpen.value) {
-            _notice.value = null
-            _eveningOpen.value = false
-        } else {
-            openEvening()
-        }
-    }
-
     fun updateMilestoneStatus(milestone: Milestone, achieved: Boolean, completionDate: LocalDate) = act {
         val updated = if (achieved) {
             milestone.copy(status = TaskStatus.COMPLETED.value, actualCompletionDate = MyDate.fromLocalDate(completionDate))
         } else {
-            milestone.copy(status = TaskStatus.IN_PROGRESS.value, actualCompletionDate = null)
+            milestone.copy(status = TaskStatus.IN_PROGRESS.value, actualCompletionDate = null, completionTaskId = null)
         }
         milestoneRepository.updateMilestone(updated)
     }
@@ -264,3 +322,31 @@ class DiaryViewModel(
         private const val EVENING_CHECK_MILLIS = 30_000L
     }
 }
+
+/** A milestone that ticking [taskId] may have reached, with its mission's title for the question. */
+data class MilestoneOffer(val milestone: Milestone, val missionTitle: String, val taskId: Long)
+
+/**
+ * A page's milestones: open ones due within [UPCOMING_DAYS] after it, and late ones, so they can still be
+ * ticked; done ones on the day they were done and the next, then they're gone. Sorted by due date.
+ */
+internal fun pageMilestones(all: List<MilestoneWithDetails>, page: LocalDate): List<MilestoneWithDetails> =
+    all.filter {
+        val doneOn = it.milestone.actualCompletionDate?.toLocalDate()
+        if (it.milestone.status == TaskStatus.COMPLETED.value) doneOn != null && doneOn.daysUntil(page) in 0 until DONE_DAYS
+        else page.daysUntil(it.milestone.expectedCompletionDate.toLocalDate()) <= UPCOMING_DAYS
+    }.sortedBy { it.milestone.expectedCompletionDate.dateString }
+
+/** How far ahead an open milestone shows in the diary. */
+private const val UPCOMING_DAYS = 15
+/** For how many days, the done day first, a done milestone stays in the diary. */
+private const val DONE_DAYS = 2
+/** How many days before a milestone's date ticking its mission starts asking whether it's reached. */
+private const val MILESTONE_ASK_DAYS = 7
+/** How long a "Not yet" keeps a milestone from being asked about again. */
+private const val MILESTONE_QUIET_DAYS = 3
+/**
+ * Milestone id to the day it may be asked about again. Kept for the app's run, across diary pages;
+ * an app restart forgets it.
+ */
+private val milestoneQuietUntil = mutableMapOf<Long, LocalDate>()

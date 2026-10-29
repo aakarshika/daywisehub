@@ -117,7 +117,8 @@ private fun GentleNote(draft: MissionDraft, isNew: Boolean, onGentle: (Boolean) 
                 )
                 Spacer(Modifier.width(10.dp))
                 Text(
-                    if (isNew) "IT'S NEW. START GENTLY?" else "START GENTLY?",
+                    // A new mission was asked this a step ago, so here it's a statement, not the question again.
+                    if (!isNew) "START GENTLY?" else if (draft.gentleOn) "STARTING GENTLY" else "FULL PACE FROM THE START",
                     fontSize = 11.sp, letterSpacing = 1.2.sp, color = Color(0xFF6A5A2A)
                 )
             }
@@ -130,7 +131,13 @@ private fun GentleNote(draft: MissionDraft, isNew: Boolean, onGentle: (Boolean) 
                 fontSize = 16.sp, fontStyle = FontStyle.Italic, lineHeight = 23.sp, color = InkBlack,
                 modifier = Modifier.padding(top = 6.dp)
             )
-            FlowRow(
+            if (isNew) {
+                Text(
+                    if (draft.gentleOn) "Go straight to ${draft.count}× instead" else "Start gently instead",
+                    fontSize = 14.sp, color = Color(0xFF6A5A2A), textDecoration = TextDecoration.Underline,
+                    modifier = Modifier.padding(top = 8.dp).clickable { onGentle(!draft.gentleOn) }
+                )
+            } else FlowRow(
                 modifier = Modifier.padding(top = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)

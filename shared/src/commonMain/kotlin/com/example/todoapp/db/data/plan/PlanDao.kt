@@ -20,8 +20,25 @@ interface PlanDao {
     @Query("SELECT * FROM day_plan WHERE plan_date BETWEEN :from AND :to ORDER BY plan_date")
     fun observePlansBetween(from: String, to: String): Flow<List<DayPlan>>
 
+    @Query("SELECT * FROM day_plan WHERE plan_date BETWEEN :from AND :to ORDER BY plan_date")
+    suspend fun getPlansBetween(from: String, to: String): List<DayPlan>
+
     @Upsert
     suspend fun upsertPlan(plan: DayPlan)
+
+    @Query("DELETE FROM day_plan WHERE plan_date = :date")
+    suspend fun deletePlan(date: String)
+
+    /** Projected days before [date]: they went by without the diary opening on them. */
+    @Query("SELECT * FROM day_plan WHERE plan_date < :date AND plan_projected = 1 ORDER BY plan_date")
+    suspend fun getProjectedBefore(date: String): List<DayPlan>
+
+    /** A projected day that went by: its guesses ([taskIds]) and its plan row go, all or none. */
+    @Transaction
+    suspend fun dropProjected(taskIds: List<Long>, date: String) {
+        if (taskIds.isNotEmpty()) deleteTasks(taskIds)
+        deletePlan(date)
+    }
 
     @Query("DELETE FROM today_task WHERE today_task_id IN (:taskIds)")
     suspend fun deleteTasks(taskIds: List<Long>)

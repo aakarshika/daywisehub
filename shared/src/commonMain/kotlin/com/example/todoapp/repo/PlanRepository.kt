@@ -9,6 +9,7 @@ import com.example.todoapp.db.data.plan.PlanDao
 import com.example.todoapp.db.data.todotask.TodayTask
 import com.example.todoapp.db.data.week.PaceOffer
 import com.example.todoapp.db.models.MyDate
+import com.example.todoapp.domain.AddChoices
 import com.example.todoapp.domain.DayClose
 import com.example.todoapp.domain.Energy
 import com.example.todoapp.domain.History
@@ -17,10 +18,10 @@ import com.example.todoapp.domain.Moves
 import com.example.todoapp.domain.OfferResponse
 import com.example.todoapp.domain.OfferType
 import com.example.todoapp.domain.PaceOffers
-import com.example.todoapp.domain.Pick
 import com.example.todoapp.domain.PlanInput
 import com.example.todoapp.domain.Planner
 import com.example.todoapp.domain.Points
+import com.example.todoapp.domain.Projection
 import com.example.todoapp.domain.Reason
 import com.example.todoapp.domain.ReasonCode
 import com.example.todoapp.domain.TaskProgress
@@ -63,13 +64,18 @@ class PlanRepository(
 
     fun observeSettings(): Flow<List<DaySettings>> = planDao.observeSettings()
 
-    suspend fun ensureDefaults() {
-        if (planDao.getSettings().isEmpty()) planDao.upsertSettings(DaySettings.defaults)
+    /** True when the settings were missing, which only happens on the first start after an install. */
+    suspend fun ensureDefaults(): Boolean {
+        if (planDao.getSettings().isNotEmpty()) return false
+        planDao.upsertSettings(DaySettings.defaults)
+        return true
     }
 
     /**
-     * Closes what earlier days left open, then builds the day's list the first time it's asked for.
-     * Safe on every open: closing only touches what's still open, and a built day isn't rebuilt.
+     * Closes what earlier days left open, then builds the day's list the first time it's asked for, and
+     * projects the days ahead (see [projectAhead]). Safe on every open: closing only touches what's still
+     * open, and a built day isn't rebuilt. A day projected earlier is built again on its first open, from
+     * how the days before it went.
      */
     suspend fun ensurePlanned(date: LocalDate) = write {
         val today = today()
@@ -77,24 +83,37 @@ class PlanRepository(
         closePastDays(minOf(date, today))
         // A diary opened just before midnight asks for a day that's over by now; it isn't planned.
         if (date < today) return@write
-        if (planDao.getPlan(key(date)) != null) return@write
+        val plan = planDao.getPlan(key(date))
         // fill() writes the picks and the plan row in one transaction, so a build cut short is simply redone next time.
-        fill(date, DayPlan(date = key(date), freeMinutes = defaultFreeMinutes(date)))
+        when {
+            plan == null -> fill(date, DayPlan(date = key(date), freeMinutes = defaultFreeMinutes(date)))
+            plan.projected -> rebuild(date, plan.copy(projected = false), withBlocks = true)
+            // Built on an earlier open today, with the days ahead.
+            planDao.getPlan(key(Projection.lastDay(today))) != null -> return@write
+        }
+        // Today's list stands even if the days ahead can't be made; the next change makes them again.
+        runCatching { projectAhead() }
+            .onFailure { Logger.w(it) { "The days ahead couldn't be projected." } }
     }
 
     /** New free time or energy for the day: keeps what's done, crowned, moved in or added by hand, and re-picks the rest. */
     suspend fun changeDay(date: LocalDate, freeMinutes: Int, energy: Energy) = write {
         if (date < today()) return@write
+        claim(date)
         rebuild(date, currentPlan(date).copy(freeMinutes = freeMinutes.coerceIn(0, MAX_FREE_MINUTES), energy = energy.name))
+        projectAheadQuietly()
     }
 
     suspend fun lighterDay(date: LocalDate) = write {
         if (date < today()) return@write
+        claim(date)
         rebuild(date, currentPlan(date).copy(energy = Energy.LOW.name))
+        projectAheadQuietly()
     }
 
+    /** "Looks good". On a day ahead (planning tomorrow the night before) it also stops being a guess, see [claim]. */
     suspend fun confirm(date: LocalDate) = write {
-        planDao.getPlan(key(date))?.let { planDao.upsertPlan(it.copy(confirmed = true)) }
+        planDao.getPlan(key(date))?.let { planDao.upsertPlan(it.copy(confirmed = true, projected = false)) }
     }
 
     /** Evening check: fixed blocks start ticked, once per day, so an untick sticks. */
@@ -105,6 +124,7 @@ class PlanRepository(
         val task = todayTaskRepository.get(taskId) ?: return@write
         if (task.taskState == TaskState.MOVED) return@write
         updateState(task, state)
+        if (state == TaskState.SKIPPED && task.date >= today()) projectAheadQuietly()
     }
 
     /**
@@ -144,6 +164,7 @@ class PlanRepository(
 
     suspend fun toggleCrown(taskId: Long) = write {
         val task = todayTaskRepository.get(taskId) ?: return@write
+        claim(task.date)
         if (!task.crowned) {
             if (task.isFixedBlock || !task.taskState.isOpen) return@write
             if (openCrowns(task) >= MAX_CROWNS) return@write
@@ -152,7 +173,7 @@ class PlanRepository(
     }
 
     /** Spec 6.3, the pencil: every live mission not on the day's list, with its reason line. Only reads, so it doesn't lock. */
-    suspend fun addOptions(date: LocalDate): List<Pick> = withContext(Dispatchers.Default) {
+    suspend fun addOptions(date: LocalDate): AddChoices = withContext(Dispatchers.Default) {
         Planner.options(input(date, currentPlan(date)))
     }
 
@@ -165,6 +186,7 @@ class PlanRepository(
         if (task.taskState != TaskState.PLANNED || task.isFixedBlock) return@write
         val mission = missionRepository.get(task.missionId) ?: return@write
         if (!moveTask(task, mission, today())) updateState(task, TaskState.SKIPPED)
+        projectAheadQuietly()
     }
 
     /** True when the item was replaced; false when it stays (nothing fits, crowned, moved in, or not a plain pick). */
@@ -175,6 +197,7 @@ class PlanRepository(
         if (task.movedFromDate != null) return@writeFor false
         val mission = missionRepository.get(task.missionId) ?: return@writeFor false
         val date = task.date
+        claim(date)
         val plan = planDao.getPlan(key(date)) ?: return@writeFor false
         // Pick the replacement first; if nothing fits, the item stays.
         val full = input(date, plan)
@@ -185,6 +208,7 @@ class PlanRepository(
         todayTaskRepository.replace(taskId, newTask(next.mission, date, next.reason, fixed = false, order = task.sortOrder))
         // Only a real swap keeps the mission out for the rest of the day.
         swappedOut.getOrPut(date) { mutableSetOf() }.add(task.missionId)
+        projectAheadQuietly()
         true
     }
 
@@ -194,6 +218,7 @@ class PlanRepository(
         if (mission.missionKind == MissionKind.BLOCK) return@write
         val dayTasks = todayTaskRepository.getBetween(date, date)
         if (dayTasks.any { it.missionId == missionId }) return@write
+        claim(date)
         val order = (dayTasks.maxOfOrNull { it.sortOrder } ?: -1) + 1
         val task = newTask(mission, date, Reason(ReasonCode.ADDED), fixed = false, order = order)
         if (date < today()) {
@@ -203,18 +228,26 @@ class PlanRepository(
             refreshClosedWeek(date)
         } else {
             todayTaskRepository.insert(task)
+            projectAheadQuietly()
         }
     }
 
-    suspend fun removeTask(taskId: Long) = write { todayTaskRepository.delete(taskId) }
+    suspend fun removeTask(taskId: Long) = write {
+        todayTaskRepository.get(taskId)?.let { claim(it.date) }
+        todayTaskRepository.delete(taskId)
+    }
 
-    /** Free minutes per weekday (ISO numbers). Days already planned keep theirs; today changes from the diary. */
+    /**
+     * Free minutes per weekday (ISO numbers). Days already planned keep theirs, except projected ones,
+     * which are projected again with the new minutes; today changes from the diary.
+     */
     suspend fun saveSettings(minutesByWeekday: Map<Int, Int>) = write {
         planDao.upsertSettings(
             (1..7).map { day ->
                 DaySettings(day, (minutesByWeekday[day] ?: DaySettings.defaultFor(day)).coerceIn(0, MAX_FREE_MINUTES))
             }
         )
+        projectAheadQuietly()
     }
 
     /**
@@ -300,13 +333,39 @@ class PlanRepository(
     /**
      * Rebuilds today's open picks when today has a plan that isn't confirmed. Today's still-planned
      * fixed blocks go too, so fill() adds back every block due today with its current days and times;
-     * ticked ones stay. Call only inside [write].
+     * ticked ones stay. The days ahead are projected again either way. Call only inside [write].
      */
     private suspend fun refreshTodayIfOpen() {
         val date = today()
-        val plan = planDao.getPlan(key(date)) ?: return
-        if (plan.confirmed) return
-        rebuild(date, plan, withBlocks = true)
+        val plan = planDao.getPlan(key(date))
+        if (plan != null && !plan.confirmed) rebuild(date, plan, withBlocks = true)
+        projectAhead()
+    }
+
+    /**
+     * Builds each day after today through next week (Projection.lastDay) as the planner's guess, in date
+     * order, so each one reads the days before it as gone to plan. A projected day keeps its done, crowned,
+     * moved-in and added items, and follows the weekday's free minutes. A day planned for real is left as
+     * it is. Call only inside [write].
+     */
+    private suspend fun projectAhead() {
+        val today = today()
+        val last = Projection.lastDay(today)
+        var day = today.plus(1, DateTimeUnit.DAY)
+        while (day <= last) {
+            val plan = planDao.getPlan(key(day))
+            when {
+                plan == null -> fill(day, DayPlan(date = key(day), freeMinutes = defaultFreeMinutes(day), projected = true))
+                plan.projected -> rebuild(day, plan.copy(freeMinutes = defaultFreeMinutes(day)), withBlocks = true)
+            }
+            day = day.plus(1, DateTimeUnit.DAY)
+        }
+    }
+
+    /** [projectAhead] after a change that already stands, so a failure here doesn't report the change as failed. */
+    private suspend fun projectAheadQuietly() {
+        runCatching { projectAhead() }
+            .onFailure { Logger.w(it) { "The days ahead couldn't be projected; the next change tries again." } }
     }
 
     /**
@@ -317,6 +376,12 @@ class PlanRepository(
      * failure there doesn't stop today's list: the next open makes them again. Call only inside [write].
      */
     private suspend fun closePastDays(today: LocalDate) {
+        // A projected day the diary never opened on was never planned: its guesses go, and what's left is closed as usual.
+        planDao.getProjectedBefore(key(today)).forEach { plan ->
+            val date = MyDate(plan.date).toLocalDate()
+            val guesses = todayTaskRepository.getBetween(date, date).filter(Projection::repickable)
+            planDao.dropProjected(guesses.map { it.todayTaskId }, plan.date)
+        }
         planDao.getUntickedBefore(key(today)).forEach { tickBlocks(MyDate(it.date).toLocalDate()) }
         resolveUnfinished(today)
         runCatching { closeWeeks(today) }
@@ -328,8 +393,9 @@ class PlanRepository(
         val unfinished = todayTaskRepository.getPlannedBefore(today)
         if (unfinished.isEmpty()) return
         val missions = missionRepository.getActive().associateBy { it.missionId }
-        // Missions with an open item from today on. Each one carried forward joins them.
-        val coming = todayTaskRepository.getBetween(today, today.plus(7, DateTimeUnit.DAY))
+        // Missions with an open item from today on, not counting projected guesses. Each one carried forward joins them.
+        val ahead = today.plus(7, DateTimeUnit.DAY)
+        val coming = Projection.kept(todayTaskRepository.getBetween(today, ahead), projectedDays(today, ahead))
             .filter { it.taskState.isOpen }
             .mapTo(mutableSetOf()) { it.missionId }
         // Newest first, so when one mission has several, the latest is the one carried forward.
@@ -354,7 +420,9 @@ class PlanRepository(
         val from = task.date
         val after = Moves.anchor(from, today)
         val upcoming = todayTaskRepository.getBetween(after.plus(1, DateTimeUnit.DAY), after.plus(7, DateTimeUnit.DAY))
-        val target = Moves.target(mission, upcoming, roomByDay(after, tasks = upcoming)) ?: return false
+        // Projected guesses don't take room; the next projection picks around the moved item.
+        val kept = Projection.kept(upcoming, projectedDays(after.plus(1, DateTimeUnit.DAY), after.plus(7, DateTimeUnit.DAY)))
+        val target = Moves.target(mission, kept, roomByDay(after, tasks = kept)) ?: return false
         val order = (upcoming.filter { it.date == target }.maxOfOrNull { it.sortOrder } ?: -1) + 1
         todayTaskRepository.move(
             copy = newTask(mission, target, Reason(ReasonCode.MOVED, listOf(from.weekdayName())), fixed = false, order = order, movedFrom = from),
@@ -398,6 +466,17 @@ class PlanRepository(
         weekRepository.insertOffers(
             found.map { PaceOffer(missionId = it.mission.missionId, type = it.type.name, week = key(thisWeek)) }
         )
+    }
+
+    /**
+     * A change by hand to a projected day ahead (planning tomorrow the night before) makes it a real plan, so the
+     * next projection doesn't re-pick it. It's still planned as if the days before it go to plan (see [input]).
+     * Call only inside [write].
+     */
+    private suspend fun claim(date: LocalDate) {
+        if (date <= today()) return
+        val plan = planDao.getPlan(key(date)) ?: return
+        if (plan.projected) planDao.upsertPlan(plan.copy(projected = false))
     }
 
     private suspend fun currentPlan(date: LocalDate): DayPlan =
@@ -454,11 +533,7 @@ class PlanRepository(
      */
     private suspend fun rebuild(date: LocalDate, plan: DayPlan, withBlocks: Boolean = false) {
         val removed = todayTaskRepository.getBetween(date, date)
-            .filter { task ->
-                val planned = task.taskState == TaskState.PLANNED
-                if (task.isFixedBlock) planned && withBlocks
-                else planned && !task.crowned && task.movedFromDate == null && task.reasonCode != ReasonCode.ADDED.name
-            }
+            .filter { task -> Projection.repickable(task) && (withBlocks || !task.isFixedBlock) }
             .mapTo(mutableSetOf()) { it.todayTaskId }
         fill(date, plan, removed)
     }
@@ -487,13 +562,16 @@ class PlanRepository(
     /** What the planner reads for [date], leaving out the items in [without] (ones about to be re-picked). */
     private suspend fun input(date: LocalDate, plan: DayPlan, without: Set<Long> = emptySet()): PlanInput {
         val missions = missionRepository.getActive()
-        val tasks = todayTaskRepository.getBetween(date.minus(HISTORY_DAYS, DateTimeUnit.DAY), date.plus(7, DateTimeUnit.DAY))
+        val allMissions = missionRepository.getAll()
+        val stored = todayTaskRepository.getBetween(date.minus(HISTORY_DAYS, DateTimeUnit.DAY), date.plus(7, DateTimeUnit.DAY))
             .filter { it.todayTaskId !in without }
+        // A day ahead, projected or planned the night before, is planned as if the days before it go to plan.
+        val tasks = if (plan.projected || date > today()) Projection.assumingDone(stored, allMissions, today(), date) else stored
         val room = roomByDay(date, missions, tasks)
         return PlanInput(
             date = date,
             missions = missions,
-            earnedMissions = missionRepository.getAll(),
+            earnedMissions = allMissions,
             milestones = milestoneRepository.getAll(),
             history = History(tasks),
             todayTasks = tasks.filter { it.date == date },
@@ -512,9 +590,16 @@ class PlanRepository(
         val minutesById = (missions ?: missionRepository.getActive()).associate { it.missionId to it.durationMinutes }
         val days = (1..7).map { from.plus(it, DateTimeUnit.DAY) }
         val upcoming = tasks ?: todayTaskRepository.getBetween(days.first(), days.last())
-        val free = days.associateWith { day -> planDao.getPlan(key(day))?.freeMinutes ?: defaultFreeMinutes(day) }
-        return Moves.roomByDay(from, minutesById, upcoming, freeOn = { free[it] ?: 0 })
+        val plans = planDao.getPlansBetween(key(days.first()), key(days.last())).associateBy { it.date }
+        val free = days.associateWith { day -> plans[key(day)]?.freeMinutes ?: defaultFreeMinutes(day) }
+        // Projected guesses don't take room.
+        val projected = plans.values.filter { it.projected }.mapTo(mutableSetOf()) { it.date }
+        return Moves.roomByDay(from, minutesById, Projection.kept(upcoming, projected), freeOn = { free[it] ?: 0 })
     }
+
+    /** The projected days from [from] to [to], as yyyy-MM-dd. */
+    private suspend fun projectedDays(from: LocalDate, to: LocalDate): Set<String> =
+        planDao.getPlansBetween(key(from), key(to)).filter { it.projected }.mapTo(mutableSetOf()) { it.date }
 
     private suspend fun defaultFreeMinutes(date: LocalDate): Int {
         val weekday = date.dayOfWeek.isoDayNumber

@@ -11,8 +11,11 @@ import kotlinx.datetime.plus
 /** The nine questions of spec section 4.1, in order. */
 enum class EditorStep { TITLE, PILLAR, KIND, PACE, DURATION, EFFORT, WEIGHT, IF_MISSED, GENTLE }
 
-/** One milestone line of a finish line. [milestoneId] is 0 until it's saved. */
-data class MilestoneDraft(val milestoneId: Long = 0, val text: String = "")
+/**
+ * One milestone line of a finish line. [milestoneId] is 0 until it's saved. [due] is the date picked for
+ * it, or null to spread it evenly to the end date with the others (MissionDrafts.milestoneDates).
+ */
+data class MilestoneDraft(val milestoneId: Long = 0, val text: String = "", val due: LocalDate? = null)
 
 /**
  * A mission being written or edited. [count] is the full pace; a gentle start saves a lower
@@ -198,7 +201,7 @@ object MissionDrafts {
             startMinute = start,
             endMinute = end.coerceIn(start + CLOCK_STEP, DAY_MINUTES),
             endDate = mission.endDate?.toLocalDate(),
-            milestones = milestones.sortedBy { it.milestoneOrder }.map { MilestoneDraft(it.milestoneId, it.text) },
+            milestones = milestones.sortedBy { it.milestoneOrder }.map { MilestoneDraft(it.milestoneId, it.text, it.expectedCompletionDate.toLocalDate()) },
             durationMinutes = mission.durationMinutes.coerceAtLeast(5),
             effort = enumOr(mission.effort, Effort.STEADY),
             weight = mission.weight.coerceIn(1, 3),
